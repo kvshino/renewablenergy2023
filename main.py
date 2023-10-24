@@ -29,8 +29,6 @@ E_b=[]
 E_grid=[]
 battery_level=[]
 
-
-
 #popolamento 
 E_max=5
 E_min=1
