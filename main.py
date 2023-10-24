@@ -17,5 +17,3 @@ data = setup(disablePV=True, disableBattery=True)
 energy_request(data)
 print("L'utente ha speso/guadagnato non avendo i pannelli solari e la batteria:")
 print(profit(data))
-
-
