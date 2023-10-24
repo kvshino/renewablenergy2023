@@ -1,0 +1,4 @@
+maximum_battery_level: 10         #kwh
+minimum_battery_level: 2            #kwh
+initial_battery_level: 10                    #kwh
+
