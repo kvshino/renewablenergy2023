@@ -20,7 +20,7 @@ def energy_request(profilo_di_carico,generazione_pannello,ora,E_b,E_max,E_min,E_
             if(E_b+delta_Eb < E_max):        #batteria scarica ,la ricarico
                 E_b[i]=E_b[i]+delta_Eb
 
-
+print("ciao aadasdasd")
 #espressi in kw/h
 profilo_di_carico= []
 generazione_pannello=[]
