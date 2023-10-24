@@ -1,6 +1,7 @@
 import os
 import yaml
 import matplotlib.pyplot as plt
+import seaborn as sns
 import numpy as np
 
 def energy_request(data):
@@ -44,6 +45,7 @@ def energy_request(data):
 
 
 def setup(disablePV=0, disableBattery=0):
+    sns.set_theme()
     with open("conf.yaml") as f:
         data = yaml.load(f, Loader=yaml.FullLoader)
 
@@ -65,14 +67,13 @@ def setup(disablePV=0, disableBattery=0):
     return data
 
 
-def plot_graph(x, y, xlabel, ylabel, title, color):
+def plot_graph(data, y, ylabel, title, color):
     plt.figure(title)
-    plt.plot(x, y, label = title, color=color)
+    sns.lineplot(data, x="hours", y=y,  color=color)
     plt.title(title)
-    plt.xticks(np.arange(min(x), max(x)+1, 1.0))
-    plt.xlabel(xlabel)
+    plt.xticks(np.arange(0, 24, 1.0))
+    plt.xlabel("Hours")
     plt.ylabel(ylabel)
-    plt.legend()
 
 def profit(data):
     profit=0
