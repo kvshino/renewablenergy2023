@@ -1,6 +1,6 @@
 from functions import *
 
-data = setup(disablePV=True)
+data = setup()
 
 energy_request(data)
 
@@ -8,8 +8,14 @@ plot_graph(data["hours"], data["load_profile"], "Time", "kW/h", "Load profile", 
 plot_graph(data["hours"], data["battery_levels"], "Time", "kW/h", "Battery Level", "green")
 plot_graph(data["hours"], data["energy_grid"], "Time", "kW/h", "Energy from/to Grid", "blue")
 plot_graph(data["hours"], data["energy_pv"], "Time", "kW/h", "Energy from PV", "yellow")
-print(data["load_profile"])
-print(data["battery_levels"])
-print(data["energy_grid"])
-print(data["energy_pv"])
-plt.show()
+#plt.show()
+
+print("L'utente ha speso/guadagnato avendo i pannelli solari e la batteria:")
+print(profit(data))
+#disabilito sia la batteria che il pannello, costi se non avessi i pannellis
+data = setup(disablePV=True, disableBattery=True)
+energy_request(data)
+print("L'utente ha speso/guadagnato non avendo i pannelli solari e la batteria:")
+print(profit(data))
+
+

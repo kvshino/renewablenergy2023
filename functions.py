@@ -48,6 +48,8 @@ def setup(disablePV=0, disableBattery=0):
     with open("conf.yaml") as f:
         data = yaml.load(f, Loader=yaml.FullLoader)
     
+    data["price"] = [0.121,0.117,0.115,0.115,0.115,0.115,0.116,0.119,0.139,0.116,0.110,0.94,0.85,0.43,0.21,0.82,0.101,0.116,0.147,0.170,0.160,0.135,0.120,0.119]
+    data["sold"]= 0.14
 
     data["energy_pv"] = [0,0,0,0,0,0,     0.5,0.75,1,1.6,2.25,3,      2.25,1.6,1,0.75,0.5,0,   0,0,0,0,0,0]
     data["load_profile"] = [1,1,1,1,1,1.75,  2.5,1.75,1,1,1,1,    1,1,1,1,1,1,      1.75,2.5,1.75,1.6,1.5,1]
@@ -82,3 +84,12 @@ def plot_graph(x, y, xlabel, ylabel, title, color):
     plt.xlabel(xlabel)
     plt.ylabel(ylabel)
     plt.legend()
+
+def profit(data):
+    profit=0
+    for index, item in enumerate(data["energy_grid"]):
+        if item >=0:
+            profit=profit+ (data["energy_grid"][index]*data["sold"])
+        if item < 0:
+            profit= profit +(data["energy_grid"][index]*data["price"][index])
+    return profit
