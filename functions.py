@@ -67,9 +67,9 @@ def setup(disablePV=0, disableBattery=0):
     return data
 
 
-def plot_graph(data, y, ylabel, title, color):
+def plot_graph(data, x, y, ylabel, title, color):
     plt.figure(title)
-    sns.lineplot(data, x="hours", y=y,  color=color)
+    sns.lineplot(data, x=x, y=y,  color=color)
     plt.title(title)
     plt.xticks(np.arange(0, 24, 1.0))
     plt.xlabel("Hours")
