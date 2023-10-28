@@ -7,3 +7,4 @@ provare a fare algo di ml per previsione consumi /produzione (produzione vedere 
 produzione stima:
 Produzione stimata (in kWh) = Radiazione solare (in kWh/m²) * Area dei pannelli (in m²) * Efficienza dei pannelli * Fattore di correzione della temperatura
 si potrebbe stimare un giorno già "vissuto" per vedere le stime di quanto si discostano
+https://www.sciencedirect.com/science/article/abs/pii/S0960148116304943

@@ -9,6 +9,7 @@ from mercati_energetici import MercatiElettrici
 async def main():
     data = setup()
     energy_request(data)
+    
     dataframe=pd.DataFrame(data)
     print(get_meteo_data())
 
