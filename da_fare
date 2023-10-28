@@ -1,3 +1,9 @@
 prendere dati profilo di carico
+prendere dati produzione impianto!(chiaramente sapendo le caratteristiche d'impianto)(xSaba17 potrebbe fornirli)
 aggiungere le varie situazioni (meteo favorevole/sfavorevole, batteria carica/scarica, prezzo kwh)
 provare a fare algo di ml per previsione consumi /produzione (produzione vedere se formula approx bene avendo le previsioni di domani)
+
+
+produzione stima:
+Produzione stimata (in kWh) = Radiazione solare (in kWh/m²) * Area dei pannelli (in m²) * Efficienza dei pannelli * Fattore di correzione della temperatura
+si potrebbe stimare un giorno già "vissuto" per vedere le stime di quanto si discostano
