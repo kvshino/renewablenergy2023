@@ -1,2 +1,3 @@
-prendere dati dai database
+prendere dati profilo di carico
 aggiungere le varie situazioni (meteo favorevole/sfavorevole, batteria carica/scarica, prezzo kwh)
+provare a fare algo di ml per previsione consumi /produzione (produzione vedere se formula approx bene avendo le previsioni di domani)

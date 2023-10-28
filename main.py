@@ -1,4 +1,5 @@
-from functions import *
+from functions.fetchdata import *
+from functions.functions import *
 import asyncio
 from mercati_energetici import MercatiElettrici
 
