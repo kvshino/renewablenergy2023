@@ -4,7 +4,8 @@ initial_battery_level: 10         #kwh
 
 energy_pv: [0,0,0,0,0,0,     0.5,0.75,1,1.6,2.25,3,      2.25,1.6,1,0.75,0.5,0,   0,0,0,0,0,0]
 load_profile: [1,1,1,1,1,1.75,  2.5,1.75,1,1,1,1,    1,1,1,1,1,1,      1.75,2.5,1.75,1.6,1.5,1]
-
+latitude: 40.6824404
+longitude: 14.7680965
 energy_delta: 0
 battery_levels: []
 hours: []
