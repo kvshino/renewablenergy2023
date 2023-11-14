@@ -46,6 +46,8 @@ def setup(disablePV:bool=False, disableBattery:bool=False):
 
     return data
 
+
+
 def energy_request(data):
     """
     Estimate grid consumption, daily energy production from solar panels, and the discharge/charge behavior of the battery.
@@ -95,6 +97,7 @@ def energy_request(data):
     return data
 
 
+
 def plot_graph(data, x, y, xlabel, ylabel, title, color):
     """
     Plots a graph.
@@ -115,6 +118,8 @@ def plot_graph(data, x, y, xlabel, ylabel, title, color):
     plt.xticks(np.arange(0, 24, 1.0))
     plt.xlabel(xlabel)
     plt.ylabel(ylabel)
+
+
 
 def profit(data):
     """
@@ -157,6 +162,7 @@ def get_meteo_data(latitude:float=40.6824404,longitude:float=14.7680965):
     return pandasmeteo[(pandasmeteo['time'] > today) & (pandasmeteo['time'] < aftertomorrow)]
 
 
+
 async def get_intra_days_market(days=1):
     """
     Fetches price datas from mercatoelettrico.com
@@ -181,8 +187,10 @@ async def get_intra_days_market(days=1):
         return sud
     
 
+
 def energy_mean_price(energyCosts):
     return energyCosts["prezzo"].mean()
+
 
 
 async def get_future_day_market():
@@ -198,34 +206,6 @@ async def get_future_day_market():
         return priceDF
     
 
-
-async def mean_difference(days=1):
-    pastDF = await get_intra_days_market(days=days)
-    pastMean= energy_mean_price(pastDF)
-
-    try:
-        futureDF = await get_future_day_market()
-        futureMean= energy_mean_price(futureDF)
-        return (futureMean-pastMean), futureMean, pastMean
-    except Exception as error:
-        print(error)
-
-    
-
-def battery_or_grid(data, percentage):    # difference > 0 --> costo futuro > costo passato
-                                          # difference < 0 --> costo futuro < costo passato
-    
-    meteo_DF = filter_meteo_between_ss_and_sr(data)
-
-    if(data["mean_difference"] > data["past_mean"]*percentage/100):  #Se il costo energia della rete è troppo alto, a prescindere prendo dalla batteria
-        print("Bring energy from the battery")
-        return 1
-    
-    
-    
-    
-    
-    
 
 def filter_meteo_between_ss_and_sr(data):
 
@@ -243,24 +223,78 @@ def filter_meteo_between_ss_and_sr(data):
 
 
 
-
-
-
-
-
-def get_expected_energy_production_from_PV(data,direct_irradiance, diffuse_irradiance, temp_air):
-    irradiance = get_effective_irradiance(data["f1"], data["f2"], data["SF"], direct_irradiance, data["fd"], diffuse_irradiance)
-    temp_cell = get_temp_cell(temp_air,data["noct"],irradiance)
-    
-
-    print(temp_cell, irradiance)
-    return (1000/1000)*data["pmax"]*(1+data["gamma"]*(temp_cell-data["temp_ref"]))
-
-
 def get_temp_cell(temp_air,noct,irradiance):
-    
     return temp_air+(((noct-20)/800)*irradiance)
-
 
 def get_effective_irradiance(f1, f2, Sf, G_b, f_d, G_d):
     return f1*Sf*(G_b*f2+f_d*G_d)
+
+
+def get_expected_power_production_from_PV(data,direct_radiation, diffuse_radiation, temp_air):
+    irradiance = get_effective_irradiance(data["f1"], data["f2"], data["SF"], direct_radiation, data["fd"], diffuse_radiation)
+    temp_cell = get_temp_cell(temp_air,data["noct"],irradiance)
+    
+    return (irradiance/1000)*data["pmax"]*(1+data["gamma"]*(temp_cell-data["temp_ref"]))
+
+
+
+async def mean_difference(days=1):
+    pastDF = await get_intra_days_market(days=days)
+    pastMean= energy_mean_price(pastDF)
+
+    try:
+        futureDF = await get_future_day_market()
+        futureMean= energy_mean_price(futureDF)
+        return (futureMean-pastMean), futureMean, pastMean
+    except Exception as error:
+        print(error)
+
+
+
+def battery_or_grid(data, price_percentage):    # difference > 0 --> costo futuro > costo passato
+                                                # difference < 0 --> costo futuro < costo passato
+    
+    meteo_DF = filter_meteo_between_ss_and_sr(data)
+
+    if(data["mean_difference"] > data["past_mean"]*price_percentage/100):  #Se il costo energia della rete è troppo alto rispetto al passato, a prescindere prendo dalla batteria
+        print("Bring energy from the battery")
+        
+
+def funzione():
+    """
+    Faccio questi calcoli solo per capire come comportarmi tra un'ora
+
+    Sto attualmente producendo di più: 
+        - prendo dal fotovoltaico, carico la batteria
+    
+    
+    Sto attualmente producendo di meno:
+        in ogni caso controllo i prezzi
+        - prendo dalla rete
+            - quando la batteria è scarica
+            - quando domani la differenza produzione-consumo è negativa && quando domani il costo è elevato (preservo la batteria per domani)
+            - ##quando la batteria è scarica && quando il costo odierno è basso && il costo della rete domani è alto
+        - prendo dalla batteria
+            - quando domani la differenza produzione-consumo è positiva && quando domani il costo è elevato
+            - quando domani la differenza produzione-consumo è negativa && quando domani il costo è basso 
+            - quando domani la differenza produzione-consumo è positiva && quando domani il costo è basso 
+
+        PERCENTUALE PRODUZIONE-CONSUMO     threshold
+        Influenzata da: 
+        - costo dell'energia di domani,
+        - energia in batteria,
+        - differenza produzione-consumo del futuro (sia fra un ora che domani)
+    """
+    pass
+
+
+def current_hour_strategy(data, hour):
+    
+    energy_delta = data["energy_pv"][hour] - data["load_profile"][hour]
+    battery_level = data["battery_levels"][hour]
+    if(energy_delta > 0):           #produco più di quel che consumo
+        pass
+    else:                           #produco meno di quel che consumo
+        if(battery_level )
+
+    pass

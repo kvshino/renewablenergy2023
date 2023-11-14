@@ -27,8 +27,9 @@ async def main():
 
 
     meteo_DF = filter_meteo_between_ss_and_sr(data)
-    power= get_expected_energy_production_from_PV(data,130, 130, 25)
-    print(power)
+    
+    meteo_DF["expected_power_production"] = get_expected_power_production_from_PV(data, meteo_DF["direct_radiation"], meteo_DF["diffuse_radiation"], meteo_DF["temperature_2m"])
+    print(meteo_DF)
 
 
 
