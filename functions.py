@@ -163,6 +163,28 @@ def get_meteo_data(latitude:float=40.6824404,longitude:float=14.7680965):
 
 
 
+def get_tomorrow_meteo_data(latitude:float=40.6824404,longitude:float=14.7680965):
+    """
+    
+    Fetches tomorrow meteo datas from Open-Meteo.com
+    The datas are hour by hour until the day after tomorrow.
+
+    Args:
+        latitude
+        longitude
+    
+    Returns:
+        pandasmeteo: a dataframe containing the temperature and the direct/diffuse radiation
+    """
+    hourly = HourlyForecast()
+    options = ForecastOptions(latitude,longitude,False,celsius,kmh,mm,iso8601,utc)
+    mgr = OWmanager(options,OWmanager.forecast,hourly.temperature_2m().direct_radiation().diffuse_radiation())
+    meteo = mgr.get_data(1)
+    pandasmeteo = pd.DataFrame(meteo["hourly"])
+    today = str(datetime.now())[:-16]+"T23:00"
+    tomorrow = str(datetime.now() + timedelta(days=1))[:-16]+"T24:00"
+    return pandasmeteo[(pandasmeteo['time'] > today) & (pandasmeteo['time'] < tomorrow)]
+
 async def get_intra_days_market(days=1):
     """
     Fetches price datas from mercatoelettrico.com
@@ -189,11 +211,27 @@ async def get_intra_days_market(days=1):
 
 
 def energy_mean_price(energyCosts):
+    """
+        Calculate the average energy price.
+
+        Args:
+            energyCosts : Dataframe with column "prezzo" 
+
+        Returns:
+            Mean of energy price
+    """
     return energyCosts["prezzo"].mean()
 
 
 
 async def get_future_day_market():
+
+    """
+        Fetches future price datas from mercatoelettrico.com
+
+        Returns: 
+            priceDF: a dataframe containing future prices data
+    """
     async with MercatiElettrici() as mercati_elettrici:
         await mercati_elettrici.get_general_conditions()
         await mercati_elettrici.get_disclaimer()
@@ -208,7 +246,15 @@ async def get_future_day_market():
 
 
 def filter_meteo_between_ss_and_sr(data):
+    """
+        Filter the meteo data between sunrise and sunset
 
+        Args:
+            data : Dataframe with local informations
+
+        Returns:
+            Filtered dataFrame
+    """
     meteo_DF = get_meteo_data()
     sun = Sun(data["latitude"], data["longitude"])
     tz = pytz.timezone(data["timezone"])
@@ -224,13 +270,34 @@ def filter_meteo_between_ss_and_sr(data):
 
 
 def get_temp_cell(temp_air,noct,irradiance):
+    """
+        Calculate temperature of cell
+
+        Args:
+            temp_air : air temperature
+            noct : Standard value
+            irradiance : irradiance
+
+        Returns:
+           Cell temperature
+    """
     return temp_air+(((noct-20)/800)*irradiance)
 
 def get_effective_irradiance(f1, f2, Sf, G_b, f_d, G_d):
+
+
     return f1*Sf*(G_b*f2+f_d*G_d)
 
 
 def get_expected_power_production_from_PV(data,direct_radiation, diffuse_radiation, temp_air):
+    """
+        Calculate expected power production of a standard pannel
+
+        Returns:
+            Power production
+    
+    """
+
     irradiance = get_effective_irradiance(data["f1"], data["f2"], data["SF"], direct_radiation, data["fd"], diffuse_radiation)
     temp_cell = get_temp_cell(temp_air,data["noct"],irradiance)
     
@@ -239,6 +306,15 @@ def get_expected_power_production_from_PV(data,direct_radiation, diffuse_radiati
 
 
 async def mean_difference(days=1):
+    """
+
+        Calculate the difference between the mean of past energy prices
+        and the mean of future prices
+
+        Returns:
+            Difference between the prices
+    
+    """
     pastDF = await get_intra_days_market(days=days)
     pastMean= energy_mean_price(pastDF)
 
@@ -292,9 +368,27 @@ def current_hour_strategy(data, hour):
     
     energy_delta = data["energy_pv"][hour] - data["load_profile"][hour]
     battery_level = data["battery_levels"][hour]
+    minimum_battery_level = data["minimum_battery_level"]
     if(energy_delta > 0):           #produco più di quel che consumo
         pass
     else:                           #produco meno di quel che consumo
-        if(battery_level )
+        if(battery_level < minimum_battery_level ):     #se la batteria è scarica
+            print("prendo dalla rete" )
 
-    pass
+    return 0
+
+def difference_of_production(data):
+    """
+        Estime the difference between the future production
+        and the future load 
+
+        Returns :
+            Array with difference
+    
+    
+    """
+    tomorrow_meteo= get_tomorrow_meteo_data()
+    tomorrow_meteo["production"]=get_expected_power_production_from_PV(data,tomorrow_meteo["direct_radiation"],tomorrow_meteo["diffuse_radiation"], tomorrow_meteo["temperature_2m"])
+   
+    return tomorrow_meteo["production"]-data["load_profile"]
+    

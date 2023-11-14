@@ -6,6 +6,7 @@ from openmeteo_py.Hourly.HourlyForecast import HourlyForecast
 from openmeteo_py.Options.ForecastOptions import ForecastOptions
 from openmeteo_py.Utils.constants import *
 import pandas as pd
+from functions import *
 
 coords = {'longitude' : 14.7680965, 'latitude' : 40.6824404 }
 
@@ -32,5 +33,7 @@ hourly = HourlyForecast()
 options = ForecastOptions(latitude,longitude,False,celsius,kmh,mm,iso8601,utc)
 mgr = OWmanager(options,OWmanager.forecast,hourly.temperature_2m().direct_radiation().diffuse_radiation())
 meteo = mgr.get_data(1)
-pandasmeteo = pd.DataFrame(meteo["hourly"])
-print(pandasmeteo[(pd.to_datetime(pandasmeteo['time']).dt.hour > 8) & (pd.to_datetime(pandasmeteo['time']).dt.hour <  14)])
+#pandasmeteo = pd.DataFrame(meteo["hourly"])
+#print(pandasmeteo[(pd.to_datetime(pandasmeteo['time']).dt.hour > 8) & (pd.to_datetime(pandasmeteo['time']).dt.hour <  14)])
+data = setup()
+print(difference_of_production(data))
