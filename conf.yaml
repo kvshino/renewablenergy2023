@@ -15,3 +15,5 @@ price: [0.121,0.117,0.115,0.115,0.115,0.115,0.116,0.119,0.139,0.116,0.110,0.094,
 sold: 0.14
 # dati https://www.mercatoelettrico.org/It/default.aspx 30/09/23(sabato)
 
+timezone: 'Europe/Rome'
+

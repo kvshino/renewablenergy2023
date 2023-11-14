@@ -3,7 +3,6 @@ import yaml
 import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
-import asyncio
 import pandas as pd
 from mercati_energetici import MercatiElettrici
 from datetime import datetime, timedelta
@@ -11,6 +10,9 @@ from openmeteo_py import OWmanager
 from openmeteo_py.Hourly.HourlyForecast import HourlyForecast
 from openmeteo_py.Options.ForecastOptions import ForecastOptions
 from openmeteo_py.Utils.constants import *
+from suntime import Sun
+import pytz
+
 
 def setup(disablePV:bool=False, disableBattery:bool=False):
     """
@@ -153,7 +155,7 @@ def get_meteo_data(latitude:float=40.6824404,longitude:float=14.7680965):
     return pandasmeteo[(pandasmeteo['time'] > today) & (pandasmeteo['time'] < aftertomorrow)]
 
 
-async def get_intra_day_market():
+async def get_intra_days_market(days=1):
     """
     Fetches price datas from mercatoelettrico.com
 
@@ -164,7 +166,64 @@ async def get_intra_day_market():
         await mercati_elettrici.get_general_conditions()
         await mercati_elettrici.get_disclaimer()
         await mercati_elettrici.get_markets()
-        dati = await mercati_elettrici.get_prices("MI-A2", "20221001")
-        pandasdati = pd.DataFrame(dati)
-        sud = pandasdati.loc[pandasdati['zona'] == "SUD"]
+
+        pandasdati=pd.DataFrame()
+        today=datetime.now()
+        for i in range(days):
+            dati = await mercati_elettrici.get_prices("MI-A2", today.strftime("%Y%m%d"))
+            today= today - timedelta(days=1)
+            pandasdati=pd.concat([pandasdati, pd.DataFrame(dati)])
+
+        sud = pandasdati.loc[pandasdati['zona'] == "SUD"].drop(["mercato","zona"],axis=1)
+        
         return sud
+    
+
+def energy_mean_price(energyCosts):
+    return energyCosts["prezzo"].mean()
+
+
+async def get_future_day_market():
+    async with MercatiElettrici() as mercati_elettrici:
+        await mercati_elettrici.get_general_conditions()
+        await mercati_elettrici.get_disclaimer()
+        await mercati_elettrici.get_markets()   
+        try:
+            price = await mercati_elettrici.get_prices("MI-A2", (datetime.now()+timedelta(days=1)).strftime("%Y%m%d"))
+            priceDF = pd.DataFrame(price).drop(["mercato","zona"], axis=1)
+        except:
+            raise Exception("Tomorrow market data prices are not available yet")
+        return priceDF
+    
+async def mean_difference(days=1):
+    pastDF = await get_intra_days_market(days=days)
+    pastMean= energy_mean_price(pastDF)
+
+    try:
+        futureDF = await get_future_day_market()
+        futureMean= energy_mean_price(futureDF)
+        return (futureMean-pastMean), futureMean, pastMean
+    except Exception as error:
+        print(error)
+    return None,None,None
+
+    
+def battery_or_grid(data, percentage):    # difference > 0 --> costo futuro > costo passato
+                                                         # difference < 0 --> costo futuro < costo passato
+    
+    meteo_DF = get_meteo_data()
+    if(data["mean_difference"] > data["past_mean"]*percentage/100):     
+        print("Bring energy from the battery")
+        return 1
+    
+    tz = pytz.timezone(data["timezone"])
+    sun = Sun(data["latitude"], data["longitude"])
+    today_sr = sun.get_local_sunrise_time(datetime.today(), local_time_zone=tz) 
+    today_ss = sun.get_local_sunset_time(datetime.today(), local_time_zone=tz)
+
+    today_sr = today_sr - timedelta(minutes=today_sr.minute)
+    today_ss = today_ss + timedelta(hours=1) - timedelta(minutes=today_ss.minute)
+
+    meteo_DF = meteo_DF[(meteo_DF['time'] > today_sr) & (meteo_DF['time'] <  today_ss)]
+    print(meteo_DF)
+    

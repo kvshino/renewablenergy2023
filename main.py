@@ -11,9 +11,25 @@ async def main():
     dataframe=pd.DataFrame(data)
     print(get_meteo_data())
 
-    energy = await get_intra_day_market()
-    plot_graph(energy, "ora", "prezzo","Hours", "Price", "Price", "#B55E60")
+    energyCosts = await get_intra_days_market(1)
+    plot_graph(energyCosts, "ora", "prezzo","Hours", "Price", "Price", "#B55E60")
     plt.show()
+
+
+    try:
+        data["mean_difference"], data["future_mean"], data["past_mean"] = await mean_difference()
+        battery_or_grid(data,10)
+    except Exception as error:
+        print(error)
+
+
+    try:
+        futurePrices = await get_future_day_market()
+
+    except Exception as error:
+        print(error)
+
+    
 
 """
 plot_graph(data, "hours", "load_profile", "kW", "Load profile", "#B55E60")
