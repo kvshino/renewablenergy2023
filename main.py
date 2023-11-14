@@ -9,25 +9,40 @@ async def main():
     data = setup()
     energy_request(data)
     dataframe=pd.DataFrame(data)
-    print(get_meteo_data())
+    #print(get_meteo_data())
 
     energyCosts = await get_intra_days_market(1)
-    plot_graph(energyCosts, "ora", "prezzo","Hours", "Price", "Price", "#B55E60")
-    plt.show()
+    #plot_graph(energyCosts, "ora", "prezzo","Hours", "Price", "Price", "#B55E60")
+    #plt.show()
+    
+
+    # try:
+    #     data["mean_difference"], data["future_mean"], data["past_mean"] = await mean_difference()
+    #     print(data["mean_difference"], data["future_mean"], data["past_mean"])
+    #     battery_or_grid(data,10)
+        
+    # except Exception as error:
+    #     print(error)
 
 
-    try:
-        data["mean_difference"], data["future_mean"], data["past_mean"] = await mean_difference()
-        battery_or_grid(data,10)
-    except Exception as error:
-        print(error)
+
+    meteo_DF = filter_meteo_between_ss_and_sr(data)
+    power= get_expected_energy_production_from_PV(data,130, 130, 25)
+    print(power)
 
 
-    try:
-        futurePrices = await get_future_day_market()
 
-    except Exception as error:
-        print(error)
+
+
+
+
+
+
+
+
+
+
+
 
     
 

@@ -133,6 +133,8 @@ def profit(data):
             profit= profit +(data["energy_grid"][index]*data["price"][index])
     return profit
 
+
+
 def get_meteo_data(latitude:float=40.6824404,longitude:float=14.7680965):
     """
     Fetches meteo datas from Open-Meteo.com
@@ -195,6 +197,8 @@ async def get_future_day_market():
             raise Exception("Tomorrow market data prices are not available yet")
         return priceDF
     
+
+
 async def mean_difference(days=1):
     pastDF = await get_intra_days_market(days=days)
     pastMean= energy_mean_price(pastDF)
@@ -205,25 +209,58 @@ async def mean_difference(days=1):
         return (futureMean-pastMean), futureMean, pastMean
     except Exception as error:
         print(error)
-    return None,None,None
 
     
+
 def battery_or_grid(data, percentage):    # difference > 0 --> costo futuro > costo passato
-                                                         # difference < 0 --> costo futuro < costo passato
+                                          # difference < 0 --> costo futuro < costo passato
     
-    meteo_DF = get_meteo_data()
-    if(data["mean_difference"] > data["past_mean"]*percentage/100):     
+    meteo_DF = filter_meteo_between_ss_and_sr(data)
+
+    if(data["mean_difference"] > data["past_mean"]*percentage/100):  #Se il costo energia della rete è troppo alto, a prescindere prendo dalla batteria
         print("Bring energy from the battery")
         return 1
     
-    tz = pytz.timezone(data["timezone"])
+    
+    
+    
+    
+    
+
+def filter_meteo_between_ss_and_sr(data):
+
+    meteo_DF = get_meteo_data()
     sun = Sun(data["latitude"], data["longitude"])
+    tz = pytz.timezone(data["timezone"])
     today_sr = sun.get_local_sunrise_time(datetime.today(), local_time_zone=tz) 
     today_ss = sun.get_local_sunset_time(datetime.today(), local_time_zone=tz)
 
-    today_sr = today_sr - timedelta(minutes=today_sr.minute)
-    today_ss = today_ss + timedelta(hours=1) - timedelta(minutes=today_ss.minute)
-
-    meteo_DF = meteo_DF[(meteo_DF['time'] > today_sr) & (meteo_DF['time'] <  today_ss)]
-    print(meteo_DF)
+    today_sr = int((today_sr - timedelta(minutes=today_sr.minute)).strftime("%H"))
+    today_ss = int((today_ss + timedelta(hours=1) - timedelta(minutes=today_ss.minute)).strftime("%H"))
     
+    
+    return meteo_DF[(pd.to_datetime(meteo_DF['time']).dt.hour > today_sr) & (pd.to_datetime(meteo_DF['time']).dt.hour <  today_ss)]
+
+
+
+
+
+
+
+
+def get_expected_energy_production_from_PV(data,direct_irradiance, diffuse_irradiance, temp_air):
+    irradiance = get_effective_irradiance(data["f1"], data["f2"], data["SF"], direct_irradiance, data["fd"], diffuse_irradiance)
+    temp_cell = get_temp_cell(temp_air,data["noct"],irradiance)
+    
+
+    print(temp_cell, irradiance)
+    return (1000/1000)*data["pmax"]*(1+data["gamma"]*(temp_cell-data["temp_ref"]))
+
+
+def get_temp_cell(temp_air,noct,irradiance):
+    
+    return temp_air+(((noct-20)/800)*irradiance)
+
+
+def get_effective_irradiance(f1, f2, Sf, G_b, f_d, G_d):
+    return f1*Sf*(G_b*f2+f_d*G_d)
