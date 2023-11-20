@@ -1,4 +1,3 @@
-import os
 import yaml
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -14,13 +13,13 @@ from suntime import Sun
 import pytz
 
 
-def setup(disablePV:bool=False, disableBattery:bool=False):
+def setup(disable_pv: bool = False, disable_battery: bool = False):
     """
     Takes the datas from the conf.yaml and stores them in data.
 
     Args:
-        disablePV: when True disables the PV grid
-        disableBattery: when True disables the battery (a plant without accumulators)
+        disable_pv: when True disables the PV grid
+        disable_battery: when True disables the battery (a plant without accumulators)
 
     Returns:
         data: struct containing all the datas
@@ -29,16 +28,16 @@ def setup(disablePV:bool=False, disableBattery:bool=False):
     with open("conf.yaml") as f:
         data = yaml.load(f, Loader=yaml.FullLoader)
 
-    if disablePV:
+    if disable_pv:
         data["energy_pv"] = []
     
-    if disableBattery:
+    if disable_battery:
         data["maximum_battery_level"] = 0
         data["minimum_battery_level"] = 0
         data["initial_battery_level"] = 0
 
-    for i in range(0,24):
-        if disablePV:
+    for i in range(0, 24):
+        if disable_pv:
             data["energy_pv"].append(0)
         data["hours"].append(i)
         data["energy_grid"].append(0)
@@ -47,10 +46,10 @@ def setup(disablePV:bool=False, disableBattery:bool=False):
     return data
 
 
-
 def energy_request(data):
     """
-    Estimate grid consumption, daily energy production from solar panels, and the discharge/charge behavior of the battery.
+    Estimate grid consumption, daily energy production from solar panels,
+    and the discharge/charge behavior of the battery.
 
     Args:
         data: struct containing all the datas
@@ -59,46 +58,44 @@ def energy_request(data):
         data: struct containing all the datas (now updated with the new values)
     """
     for i in data["hours"]:
-        data["energy_delta"] = data["energy_pv"][i]- data["load_profile"][i]
+        data["energy_delta"] = data["energy_pv"][i] - data["load_profile"][i]
 
-
-        if(data["energy_delta"] >= 0):                   #produco più di quel che consumo
-            if (i == 0):
-                if(data["initial_battery_level"] + data["energy_delta"] >= data["maximum_battery_level"]):      #batteria piena ,vendo alla rete(in futuro accumulo sopra soglia)
+        if data["energy_delta"] >= 0:                   # produco più di quel che consumo
+            if i == 0:
+                if data["initial_battery_level"] + data["energy_delta"] >= data["maximum_battery_level"]:      # batteria piena ,vendo alla rete(in futuro accumulo sopra soglia)
                     data["energy_grid"][i] = data["initial_battery_level"] + data["energy_delta"] - data["maximum_battery_level"]
                     data["battery_levels"][i] = data["maximum_battery_level"]
 
-                if(data["initial_battery_level"] + data["energy_delta"] < data["maximum_battery_level"]):        #batteria scarica ,la ricarico
+                if data["initial_battery_level"] + data["energy_delta"] < data["maximum_battery_level"]:        # batteria scarica ,la ricarico
                     data["battery_levels"][i] = data["initial_battery_level"] + data["energy_delta"]
             else:
-                if(data["battery_levels"][i-1] + data["energy_delta"] >= data["maximum_battery_level"]):      #batteria piena ,vendo alla rete(in futuro accumulo sopra soglia)
+                if data["battery_levels"][i-1] + data["energy_delta"] >= data["maximum_battery_level"]:      # batteria piena ,vendo alla rete(in futuro accumulo sopra soglia)
                     data["energy_grid"][i] = data["battery_levels"][i-1] + data["energy_delta"] - data["maximum_battery_level"]
                     data["battery_levels"][i] = data["maximum_battery_level"]
 
-                if(data["battery_levels"][i-1] + data["energy_delta"] < data["maximum_battery_level"]):        #batteria scarica ,la ricarico
+                if data["battery_levels"][i-1] + data["energy_delta"] < data["maximum_battery_level"]:        # batteria scarica ,la ricarico
                     data["battery_levels"][i] = data["battery_levels"][i-1] + data["energy_delta"]
 
-        if(data["energy_delta"] < 0):                     #consumo più di quello che produco
-            if(i == 0):
-                if(data["initial_battery_level"] > data["minimum_battery_level"] + abs(data["energy_delta"]) ):       #la batteria ha sufficiente energia per alimentare il carico
+        if data["energy_delta"] < 0:                     # consumo più di quello che produco
+            if i == 0:
+                if data["initial_battery_level"] > data["minimum_battery_level"] + abs(data["energy_delta"]):       # la batteria ha sufficiente energia per alimentare il carico
                     data["battery_levels"][i] = data["initial_battery_level"] - abs(data["energy_delta"])
                     
-                if(data["initial_battery_level"] < data["minimum_battery_level"] + abs(data["energy_delta"])):                #la batteria non ha sufficiente energia(totale), prendo energia dalla rete
-                    data["energy_grid"][i] = - ( abs(data["energy_delta"]) - ( data["initial_battery_level"] - data["minimum_battery_level"] ) )
+                if data["initial_battery_level"] < data["minimum_battery_level"] + abs(data["energy_delta"]):    # la batteria non ha sufficiente energia(totale), prendo energia dalla rete
+                    data["energy_grid"][i] = - (abs(data["energy_delta"]) - (data["initial_battery_level"] - data["minimum_battery_level"]))
                     data["battery_levels"][i] = data["minimum_battery_level"]
             else:
-                if(data["battery_levels"][i-1] > data["minimum_battery_level"] + abs(data["energy_delta"]) ):       #la batteria ha sufficiente energia per alimentare il carico
+                if data["battery_levels"][i-1] > data["minimum_battery_level"] + abs(data["energy_delta"]):      # la batteria ha sufficiente energia per alimentare il carico
                     data["battery_levels"][i] = data["battery_levels"][i-1] - abs(data["energy_delta"])
                     
-                if(data["battery_levels"][i-1] < data["minimum_battery_level"] + abs(data["energy_delta"])):                #la batteria non ha sufficiente energia(totale), prendo energia dalla rete
-                    data["energy_grid"][i] = - ( abs(data["energy_delta"]) - ( data["battery_levels"][i-1] - data["minimum_battery_level"] ) )
+                if data["battery_levels"][i-1] < data["minimum_battery_level"] + abs(data["energy_delta"]):      # la batteria non ha sufficiente energia(totale), prendo energia dalla rete
+                    data["energy_grid"][i] = - (abs(data["energy_delta"]) - (data["battery_levels"][i-1] - data["minimum_battery_level"]))
                     data["battery_levels"][i] = data["minimum_battery_level"]
 
     return data
 
 
-
-def plot_graph(data, x, y, xlabel, ylabel, title, color):
+def plot_graph(data, x, y, x_label, y_label, title, color):
     """
     Plots a graph.
 
@@ -106,8 +103,8 @@ def plot_graph(data, x, y, xlabel, ylabel, title, color):
         data: a dataframe containing x and y
         x: dataframe column for the x-coordinates
         y: dataframe column for the y-coordinates
-        xlabel: label for the x-coordinates
-        ylabel: label for the y-coordinates
+        x_label: label for the x-coordinates
+        y_label: label for the y-coordinates
         title: used for the window
         color: color of the line plot
 
@@ -116,9 +113,8 @@ def plot_graph(data, x, y, xlabel, ylabel, title, color):
     sns.lineplot(data, x=x, y=y,  color=color)
     plt.title(title)
     plt.xticks(np.arange(0, 24, 1.0))
-    plt.xlabel(xlabel)
-    plt.ylabel(ylabel)
-
+    plt.xlabel(x_label)
+    plt.ylabel(y_label)
 
 
 def profit(data):
@@ -130,17 +126,16 @@ def profit(data):
     Returns:
         profit: €
     """
-    profit=0
+    earning = 0
     for index, item in enumerate(data["energy_grid"]):
-        if item >=0:
-            profit=profit+ (data["energy_grid"][index]*data["sold"])
+        if item >= 0:
+            earning = earning + (data["energy_grid"][index]*data["sold"])
         if item < 0:
-            profit= profit +(data["energy_grid"][index]*data["price"][index])
-    return profit
+            earning = earning + (data["energy_grid"][index]*data["price"][index])
+    return earning
 
 
-
-def get_meteo_data(latitude:float=40.6824404,longitude:float=14.7680965):
+def get_meteo_data(latitude: float = 40.6824404, longitude: float = 14.7680965):
     """
     Fetches meteo datas from Open-Meteo.com
     The datas are hour by hour until the day after tomorrow.
@@ -153,8 +148,8 @@ def get_meteo_data(latitude:float=40.6824404,longitude:float=14.7680965):
         pandasmeteo: a dataframe containing the temperature and the direct/diffuse radiation
     """
     hourly = HourlyForecast()
-    options = ForecastOptions(latitude,longitude,False,celsius,kmh,mm,iso8601,utc)
-    mgr = OWmanager(options,OWmanager.forecast,hourly.temperature_2m().direct_radiation().diffuse_radiation())
+    options = ForecastOptions(latitude, longitude, False, celsius, kmh, mm, iso8601, utc)
+    mgr = OWmanager(options, OWmanager.forecast, hourly.temperature_2m().direct_radiation().diffuse_radiation())
     meteo = mgr.get_data(1)
     pandasmeteo = pd.DataFrame(meteo["hourly"])
     today = str(datetime.now())[:-16]+"T00:00"
@@ -162,8 +157,7 @@ def get_meteo_data(latitude:float=40.6824404,longitude:float=14.7680965):
     return pandasmeteo[(pandasmeteo['time'] > today) & (pandasmeteo['time'] < aftertomorrow)]
 
 
-
-def get_tomorrow_meteo_data(latitude:float=40.6824404,longitude:float=14.7680965):
+def get_tomorrow_meteo_data(latitude: float = 40.6824404, longitude: float = 14.7680965):
     """
     
     Fetches tomorrow meteo datas from Open-Meteo.com
@@ -177,13 +171,14 @@ def get_tomorrow_meteo_data(latitude:float=40.6824404,longitude:float=14.7680965
         pandasmeteo: a dataframe containing the temperature and the direct/diffuse radiation
     """
     hourly = HourlyForecast()
-    options = ForecastOptions(latitude,longitude,False,celsius,kmh,mm,iso8601,utc)
-    mgr = OWmanager(options,OWmanager.forecast,hourly.temperature_2m().direct_radiation().diffuse_radiation())
+    options = ForecastOptions(latitude, longitude, False, celsius, kmh, mm, iso8601, utc)
+    mgr = OWmanager(options, OWmanager.forecast, hourly.temperature_2m().direct_radiation().diffuse_radiation())
     meteo = mgr.get_data(1)
     pandasmeteo = pd.DataFrame(meteo["hourly"])
     today = str(datetime.now())[:-16]+"T23:00"
     tomorrow = str(datetime.now() + timedelta(days=1))[:-16]+"T24:00"
     return pandasmeteo[(pandasmeteo['time'] > today) & (pandasmeteo['time'] < tomorrow)]
+
 
 async def get_intra_days_market(days=1):
     """
@@ -197,31 +192,29 @@ async def get_intra_days_market(days=1):
         await mercati_elettrici.get_disclaimer()
         await mercati_elettrici.get_markets()
 
-        pandasdati=pd.DataFrame()
-        today=datetime.now()
+        pandasdati = pd.DataFrame()
+        today = datetime.now()
         for i in range(days):
             dati = await mercati_elettrici.get_prices("MI-A2", today.strftime("%Y%m%d"))
-            today= today - timedelta(days=1)
-            pandasdati=pd.concat([pandasdati, pd.DataFrame(dati)])
+            today = today - timedelta(days=1)
+            pandasdati = pd.concat([pandasdati, pd.DataFrame(dati)])
 
-        sud = pandasdati.loc[pandasdati['zona'] == "SUD"].drop(["mercato","zona"],axis=1)
+        sud = pandasdati.loc[pandasdati['zona'] == "SUD"].drop(["mercato", "zona"], axis=1)
         
         return sud
-    
 
 
-def energy_mean_price(energyCosts):
+def energy_mean_price(energy_costs):
     """
         Calculate the average energy price.
 
         Args:
-            energyCosts : Dataframe with column "prezzo" 
+            energy_costs : Dataframe with column "prezzo"
 
         Returns:
             Mean of energy price
     """
-    return energyCosts["prezzo"].mean()
-
+    return energy_costs["prezzo"].mean()
 
 
 async def get_future_day_market():
@@ -230,7 +223,7 @@ async def get_future_day_market():
         Fetches future price datas from mercatoelettrico.com
 
         Returns: 
-            priceDF: a dataframe containing future prices data
+            price_df: a dataframe containing future prices data
     """
     async with MercatiElettrici() as mercati_elettrici:
         await mercati_elettrici.get_general_conditions()
@@ -238,11 +231,10 @@ async def get_future_day_market():
         await mercati_elettrici.get_markets()   
         try:
             price = await mercati_elettrici.get_prices("MI-A2", (datetime.now()+timedelta(days=1)).strftime("%Y%m%d"))
-            priceDF = pd.DataFrame(price).drop(["mercato","zona"], axis=1)
+            price_df = pd.DataFrame(price).drop(["mercato", "zona"], axis=1)
         except:
             raise Exception("Tomorrow market data prices are not available yet")
-        return priceDF
-    
+        return price_df
 
 
 def filter_meteo_between_ss_and_sr(data):
@@ -255,7 +247,7 @@ def filter_meteo_between_ss_and_sr(data):
         Returns:
             Filtered dataFrame
     """
-    meteo_DF = get_meteo_data()
+    meteo_df = get_meteo_data()
     sun = Sun(data["latitude"], data["longitude"])
     tz = pytz.timezone(data["timezone"])
     today_sr = sun.get_local_sunrise_time(datetime.today(), local_time_zone=tz) 
@@ -264,12 +256,10 @@ def filter_meteo_between_ss_and_sr(data):
     today_sr = int((today_sr - timedelta(minutes=today_sr.minute)).strftime("%H"))
     today_ss = int((today_ss + timedelta(hours=1) - timedelta(minutes=today_ss.minute)).strftime("%H"))
     
-    
-    return meteo_DF[(pd.to_datetime(meteo_DF['time']).dt.hour > today_sr) & (pd.to_datetime(meteo_DF['time']).dt.hour <  today_ss)]
+    return meteo_df[(pd.to_datetime(meteo_df['time']).dt.hour > today_sr) & (pd.to_datetime(meteo_df['time']).dt.hour < today_ss)]
 
 
-
-def get_temp_cell(temp_air,noct,irradiance):
+def get_temp_cell(temp_air, noct, irradiance):
     """
         Calculate temperature of cell
 
@@ -283,13 +273,12 @@ def get_temp_cell(temp_air,noct,irradiance):
     """
     return temp_air+(((noct-20)/800)*irradiance)
 
-def get_effective_irradiance(f1, f2, Sf, G_b, f_d, G_d):
+
+def get_effective_irradiance(f1, f2, sf, g_b, f_d, g_d):
+    return f1*sf*(g_b * f2 + f_d * g_d)
 
 
-    return f1*Sf*(G_b*f2+f_d*G_d)
-
-
-def get_expected_power_production_from_PV(data,direct_radiation, diffuse_radiation, temp_air):
+def get_expected_power_production_from_pv(data, direct_radiation, diffuse_radiation, temp_air):
     """
         Calculate expected power production of a standard pannel
 
@@ -299,10 +288,9 @@ def get_expected_power_production_from_PV(data,direct_radiation, diffuse_radiati
     """
 
     irradiance = get_effective_irradiance(data["f1"], data["f2"], data["SF"], direct_radiation, data["fd"], diffuse_radiation)
-    temp_cell = get_temp_cell(temp_air,data["noct"],irradiance)
+    temp_cell = get_temp_cell(temp_air, data["noct"], irradiance)
     
     return (irradiance/1000)*data["pmax"]*(1+data["gamma"]*(temp_cell-data["temp_ref"]))
-
 
 
 async def mean_difference(days=1):
@@ -315,24 +303,24 @@ async def mean_difference(days=1):
             Difference between the prices
     
     """
-    pastDF = await get_intra_days_market(days=days)
-    pastMean= energy_mean_price(pastDF)
+    past_df = await get_intra_days_market(days=days)
+    past_mean = energy_mean_price(past_df)
 
     try:
-        futureDF = await get_future_day_market()
-        futureMean= energy_mean_price(futureDF)
-        return (futureMean-pastMean), futureMean, pastMean
+        future_df = await get_future_day_market()
+        future_mean = energy_mean_price(future_df)
+        return (future_mean - past_mean), future_mean, past_mean
     except Exception as error:
         print(error)
 
 
-
-def battery_or_grid(data, price_percentage):    # difference > 0 --> costo futuro > costo passato
-                                                # difference < 0 --> costo futuro < costo passato
+def battery_or_grid(data, price_percentage):
+    # difference > 0 --> costo futuro > costo passato
+    # difference < 0 --> costo futuro < costo passato
     
-    meteo_DF = filter_meteo_between_ss_and_sr(data)
+    meteo_df = filter_meteo_between_ss_and_sr(data)
 
-    if(data["mean_difference"] > data["past_mean"]*price_percentage/100):  #Se il costo energia della rete è troppo alto rispetto al passato, a prescindere prendo dalla batteria
+    if data["mean_difference"] > data["past_mean"]*price_percentage/100:  # Se il costo energia della rete è troppo alto rispetto al passato, a prescindere prendo dalla batteria
         print("Bring energy from the battery")
         
 
@@ -369,13 +357,14 @@ def current_hour_strategy(data, hour):
     energy_delta = data["energy_pv"][hour] - data["load_profile"][hour]
     battery_level = data["battery_levels"][hour]
     minimum_battery_level = data["minimum_battery_level"]
-    if(energy_delta > 0):           #produco più di quel che consumo
+    if energy_delta > 0:           # produco più di quel che consumo
         pass
-    else:                           #produco meno di quel che consumo
-        if(battery_level < minimum_battery_level ):     #se la batteria è scarica
-            print("prendo dalla rete" )
+    else:                           # produco meno di quel che consumo
+        if battery_level < minimum_battery_level:     # se la batteria è scarica
+            print("prendo dalla rete")
 
     return 0
+
 
 def difference_of_production(data):
     """
@@ -387,8 +376,8 @@ def difference_of_production(data):
     
     
     """
-    tomorrow_meteo= get_tomorrow_meteo_data()
-    tomorrow_meteo["production"]=get_expected_power_production_from_PV(data,tomorrow_meteo["direct_radiation"],tomorrow_meteo["diffuse_radiation"], tomorrow_meteo["temperature_2m"])
+    tomorrow_meteo = get_tomorrow_meteo_data()
+    tomorrow_meteo["production"] = get_expected_power_production_from_pv(data, tomorrow_meteo["direct_radiation"], tomorrow_meteo["diffuse_radiation"], tomorrow_meteo["temperature_2m"])
    
     return tomorrow_meteo["production"]-data["load_profile"]
     

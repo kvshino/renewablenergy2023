@@ -2,17 +2,13 @@ import math
 import datetime
 
 class Sun:
-
     def getSunriseTime( self, coords ):
         return self.calcSunTime( coords, True )
-
     def getSunsetTime( self, coords ):
         return self.calcSunTime( coords, False )
-
     def getCurrentUTC( self ):
         now = datetime.datetime.now()
         return [ now.day, now.month, now.year ]
-    
     def calcSunTime( self, coords, isRiseTime, zenith = 90.8 ):
     
         # isRiseTime == False, returns sunsetTime
