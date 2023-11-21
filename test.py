@@ -1,4 +1,6 @@
 from functions import *
+import pandas as pd
+import statistics
 
 coords = {'longitude': 14.7680965, 'latitude': 40.6824404}
 
@@ -62,3 +64,13 @@ energy_request(data)
 print("L'utente ha speso/guadagnato non avendo i pannelli solari e la batteria:")
 print(profit(data))
 """
+
+
+data = setup()
+valore=data.get("energy_pv")
+print(statistics.mean(data["energy_pv"]))
+valore2=statistics.mean(data.get("energy_pv"))/statistics.mean(data.get("load_profile"))
+print(valore2)
+#print(data["energy_pv"]/data["load_profile"])
+
+print(type(pd.DataFrame()))

@@ -12,7 +12,10 @@ battery_levels: []
 hours: []
 energy_grid: []
 
-price: [0.121,0.117,0.115,0.115,0.115,0.115,0.116,0.119,0.139,0.116,0.110,0.094,0.085,0.043,0.021,0.082,0.101,0.116,0.147,0.170,0.160,0.135,0.120,0.119]
+
+k_min: 0.5
+h_max: 1
+
 sold: 0.14
 # dati https://www.mercatoelettrico.org/It/default.aspx 30/09/23(sabato)
 
