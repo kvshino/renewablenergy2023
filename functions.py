@@ -402,12 +402,14 @@ def k_parameter(data) -> float:
     return statistics.mean(data["energy_pv"]) / statistics.mean(data.get("load_profile")) #Si dovrà cambiare
 
 async def h_parameter(data):
+
     price_week = await get_intra_days_market(7) #prende il costo degli ultimi 7 giornii e te lo mette in un df
-
-
-
-
-
+    data = int(datetime.now().strftime("%Y%m%d"))
+    ora = int(datetime.now().strftime("%H"))
+    current_cost = price_week[(price_week['data'] == data) & (price_week['ora'] == ora)]["prezzo"].item()
+    price_previous_week = price_week[price_week['data']!=data]
+    media = price_previous_week["prezzo"].mean()
+    return current_cost / media
 
 
 

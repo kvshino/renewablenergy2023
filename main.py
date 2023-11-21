@@ -1,11 +1,12 @@
 from functions import *
 import asyncio
+import pandas as pd
 
 
 async def main():
     data = setup()
     #energy_request(data)
-    await h_parameter(data)
+    print(await h_parameter(data))
 
     meteo_df = filter_meteo_between_ss_and_sr(data)
     
