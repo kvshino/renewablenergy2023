@@ -26,7 +26,6 @@ def get_expected_power_production_from_pv(data, direct_radiation, diffuse_radiat
 
         Returns:
             Power production
-
     """
 
     irradiance = get_effective_irradiance(data["f1"], data["f2"], data["SF"], direct_radiation, data["fd"],
@@ -41,6 +40,7 @@ def get_expected_power_production_from_pv_of_tomorrow(data):
     tomorrow_meteo["production"] = get_expected_power_production_from_pv(data, tomorrow_meteo["direct_radiation"],
                                                                          tomorrow_meteo["diffuse_radiation"],
                                                                          tomorrow_meteo["temperature_2m"])
+
     return tomorrow_meteo
 
 
@@ -51,10 +51,7 @@ def difference_of_production(data):
 
         Returns :
             Array with difference
-
-
     """
-
     tomorrow_meteo = get_expected_power_production_from_pv_of_tomorrow(data)
 
     return tomorrow_meteo["production"] - data["load_profile"]

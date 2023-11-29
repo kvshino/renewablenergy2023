@@ -27,12 +27,12 @@ def get_meteo_data(latitude: float = 40.6824404, longitude: float = 14.7680965) 
     pandas_meteo = pd.DataFrame(meteo["hourly"])
     today = str(datetime.now())[:-16] + "T00:00"
     after_tomorrow = str(datetime.now() + timedelta(days=2))[:-16] + "T24:00"
+
     return pandas_meteo[(pandas_meteo['time'] > today) & (pandas_meteo['time'] < after_tomorrow)]
 
 
 def get_tomorrow_meteo_data(latitude: float = 40.6824404, longitude: float = 14.7680965) -> pd.core.frame.DataFrame:
     """
-
     Fetches tomorrow meteo datas from Open-Meteo.com
     The datas are hour by hour until the day after tomorrow.
 
@@ -50,7 +50,9 @@ def get_tomorrow_meteo_data(latitude: float = 40.6824404, longitude: float = 14.
     pandas_meteo = pd.DataFrame(meteo["hourly"])
     today = str(datetime.now())[:-16] + "T23:00"
     tomorrow = str(datetime.now() + timedelta(days=1))[:-16] + "T24:00"
+
     return pandas_meteo[(pandas_meteo['time'] > today) & (pandas_meteo['time'] < tomorrow)]
+
 
 def filter_meteo_between_ss_and_sr(data) -> pd.core.frame.DataFrame:
     """
