@@ -293,7 +293,7 @@ def get_effective_irradiance(f1, f2, sf, g_b, f_d, g_d) -> float:
 
 def get_expected_power_production_from_pv(data, direct_radiation, diffuse_radiation, temp_air) -> float:
     """
-        Calculate expected power production of a standard pannel
+        Calculate expected power production of a standard panel
 
         Returns:
             Power production
@@ -380,9 +380,17 @@ def current_hour_strategy(data, hour):
     return 0
 
 
+def get_expected_power_production_from_pv_of_tomorrow(data):
+    tomorrow_meteo = get_tomorrow_meteo_data()
+    tomorrow_meteo["production"] = get_expected_power_production_from_pv(data, tomorrow_meteo["direct_radiation"],
+                                                                         tomorrow_meteo["diffuse_radiation"],
+                                                                         tomorrow_meteo["temperature_2m"])
+    return tomorrow_meteo
+
+
 def difference_of_production(data):
     """
-        Estime the difference between the future production
+        Estimate the difference between the future production
         and the future load
 
         Returns :
@@ -390,18 +398,13 @@ def difference_of_production(data):
 
 
     """
-    tomorrow_meteo = get_tomorrow_meteo_data()
-    tomorrow_meteo["production"] = get_expected_power_production_from_pv(data, tomorrow_meteo["direct_radiation"],
-                                                                         tomorrow_meteo["diffuse_radiation"],
-                                                                         tomorrow_meteo["temperature_2m"])
+
+    tomorrow_meteo = get_expected_power_production_from_pv_of_tomorrow(data)
 
     return tomorrow_meteo["production"] - data["load_profile"]
 
 
-def k_parameter(data) -> float:
-    return statistics.mean(data["energy_pv"]) / statistics.mean(data.get("load_profile")) #Si dovrà cambiare
-
-async def h_parameter(data):
+async def get_h_parameter(data) -> float:
 
     price_week = await get_intra_days_market(7) #prende il costo degli ultimi 7 giornii e te lo mette in un df
     data = int(datetime.now().strftime("%Y%m%d"))
@@ -411,7 +414,13 @@ async def h_parameter(data):
     media = price_previous_week["prezzo"].mean()
     return current_cost / media
 
-
+async def get_k_parameter(data) -> float:
+    # ora = int(datetime.now().strftime("%H"))
+    ora = 0
+    e_l = 0
+    power = get_expected_power_production_from_pv_of_tomorrow(data)
+    for i in range(ora, ora+24):
+        e_l = e_l + data['load_profile'][i]
 
 
 def logic(data):
