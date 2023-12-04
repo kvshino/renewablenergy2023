@@ -1,8 +1,7 @@
-soc_max: 10             #kwh
-soc_min: 2              #kwh
-socs: [10]              #10 primo valore
+soc_max: 10000             #Wh
+soc_min: 2000              #Wh
+socs: [10000]              #10 primo valore
 
-energy_pv: [0,0,0,0,0,0,     0.5,0.75,1,1.6,2.25,3,      2.25,1.6,1,0.75,0.5,0,   0,0,0,0,0,0]
 load_profile: [1000,1000,1000,1000,1000,1750,  2500,1750,1000,1000,1000,1000,    1000,1000,1000,1000,1000,1000,      1750,2500,1750,1600,1500,1000]
 #load_profile portato in watt per esigenze di calcolo 
 latitude: 40.6824404
@@ -15,7 +14,7 @@ energy_grid: []
 k_min: 0.5
 h_max: 1
 
-sold: 0.14
+sold: 0.14/1000
 # dati https://www.mercatoelettrico.org/It/default.aspx 30/09/23(sabato)
 
 timezone: 'Europe/Rome'

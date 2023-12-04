@@ -27,17 +27,16 @@ def setup(disable_pv: bool = False, disable_battery: bool = False) -> dict:
         data["energy_pv"] = []
 
     if disable_battery:
-        data["maximum_battery_level"] = 0
-        data["minimum_battery_level"] = 0
-        data["initial_battery_level"] = 0
+        data["soc_max"] = 0
+        data["soc_min"] = 0
+        data["socs"] = 0
 
     for i in range(0, 24):
         if disable_pv:
             data["energy_pv"].append(0)
         data["hours"].append(i)
         data["energy_grid"].append(0)
-        data["battery_levels"].append(data["initial_battery_level"])
-
+        #data["battery_levels"].append(data["initial_battery_level"])
     return data
 
 

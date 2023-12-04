@@ -23,9 +23,8 @@ async def get_intra_days_market(days=1) -> pd.core.frame.DataFrame:
             pandas_data = pd.concat([pandas_data, pd.DataFrame(data)])
 
         sud = pandas_data.loc[pandas_data['zona'] == "SUD"].drop(["mercato", "zona"], axis=1)
-
-        return sud
-
+        sud["prezzo"] = sud["prezzo"]/1000/1000
+        return sud.reset_index(drop=True)
 
 def energy_mean_price(energy_costs) -> float:
     """
