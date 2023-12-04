@@ -61,3 +61,7 @@ def plot_graph(data, x, y, x_label, y_label, title, color):
     plt.xticks(np.arange(0, 24, 1.0))
     plt.xlabel(x_label)
     plt.ylabel(y_label)
+
+
+def get_load_consumption(data,hour: int):
+    return data["load_profile"][hour]
