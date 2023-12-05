@@ -1,3 +1,9 @@
-chiedere al prof profilo di carico
-
-ricaricare batteria da rete o vendere energia in batteria
+-profilo di carico nuovo con "statistiche"
+-Dimensionamento pannelli per caso di prova
+-piu' ciclate sull'ottimizzatore
+-dati vendita energia
+-vendita energia da batteiria
+-stato di batteria preservato durante i test o più viciino possibile all'inizio
+-grafici vari (confronto con e senza magari)
+-dimensionamento dell ottimizzatore
+-stampa strategia in maniera leggibile ora per ora ( ore 12: carico del 20% ,mettendo in forma tabellare i risultati)

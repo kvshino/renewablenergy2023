@@ -1,13 +1,12 @@
-from functions import *
 import asyncio
+import random
 
+from pymoo.core.mixed import MixedVariableGA
 from pymoo.core.problem import ElementwiseProblem
 from pymoo.core.variable import Binary, Integer
-from pymoo.core.mixed import MixedVariableGA
 from pymoo.optimize import minimize
+
 from functions import *
-import numpy as np
-import random
 
 data = setup()
 
@@ -21,7 +20,7 @@ class MixedVariableProblem(ElementwiseProblem):
             variables[f"i{j}"] = Integer(bounds=(0, 100))
         super().__init__(vars=variables, n_obj=1, **kwargs)
 
-    def  _evaluate(self, X, out, *args, **kwargs):
+    def _evaluate(self, X, out, *args, **kwargs):
         # Your evaluation logic here
         # 1 carico batteria ,0 la scarico
         # 000 123 076 123 099 135
@@ -30,52 +29,51 @@ class MixedVariableProblem(ElementwiseProblem):
         sum = 0
         delta_production = difference_of_production(data)
         sold = data["sold"]
-        #valori negativi indicano consumi ,positivi guadagni
+        # valori negativi indicano consumi ,positivi guadagni
         for j in range(24):
             charge = X[f"b{j}"]
             percentage = X[f"i{j}"]
             if charge:
-                quantity_charging_battery = ((data["soc_max"]-data["socs"][j])*percentage)/100
-                data["socs"].append(data["socs"][j] +quantity_charging_battery)
+                quantity_charging_battery = ((data["soc_max"] - data["socs"][j]) * percentage) / 100
+                data["socs"].append(data["socs"][j] + quantity_charging_battery)
 
                 if quantity_charging_battery - delta_production.iloc[j] < 0:
-                                                       #devo vendere
-                    sum = sum + ((quantity_charging_battery - delta_production.iloc[j]) *sold )                  #sum = sum - rimborso
+                    # devo vendere
+                    sum = sum + ((quantity_charging_battery - delta_production.iloc[j]) * sold)  # sum = sum - rimborso
                 else:
-                    sum = sum + (quantity_charging_battery - delta_production.iloc[j] ) * data["prices"]["prezzo"].iloc[j]
+                    sum = sum + (quantity_charging_battery - delta_production.iloc[j]) * data["prices"]["prezzo"].iloc[
+                        j]
             else:
-                quantity_discharging_battery = ((data["socs"][j] -  data["soc_min"])*percentage)/100
+                quantity_discharging_battery = ((data["socs"][j] - data["soc_min"]) * percentage) / 100
                 data["socs"].append(data["socs"][j] - quantity_discharging_battery)
 
                 if delta_production.iloc[j] + quantity_discharging_battery > 0:
-                    #sto scaricando la batteria  con surplus di energia
-                    #vendo alla rete MA dalla batteria
-                    if delta_production.iloc[j] > 0 :
-                        #vendo alla rete quello del fotovoltaico
+                    # sto scaricando la batteria  con surplus di energia
+                    # vendo alla rete MA dalla batteria
+                    if delta_production.iloc[j] > 0:
+                        # vendo alla rete quello del fotovoltaico
                         sum = sum - delta_production.iloc[j] * sold
                     else:
-                       # in questo else teoricamente potrei vendere enegia della batteria ma invece sovrascrivo il valore
-                       data ["socs"][j+1] = data ["socs"][j] + delta_production.iloc[j]
+                        # in questo else teoricamente potrei vendere enegia della batteria ma invece sovrascrivo il valore
+                        data["socs"][j + 1] = data["socs"][j] + delta_production.iloc[j]
                 else:
-                    sum = sum + (- (delta_production.iloc[j] + quantity_discharging_battery ) * data["prices"]["prezzo"].iloc[j])
+                    sum = sum + (- (delta_production.iloc[j] + quantity_discharging_battery) *
+                                 data["prices"]["prezzo"].iloc[j])
 
         out["F"] = sum
 
 
-
-
-
 async def main():
-    #energy_request(data)
+    # energy_request(data)
 
     meteo_df = filter_meteo_between_ss_and_sr(data)
     delta_production = difference_of_production(data)
 
-    meteo_df["expected_power_production"] = get_expected_power_production_from_pv(data, meteo_df["direct_radiation"], meteo_df["diffuse_radiation"], meteo_df["temperature_2m"])
-    print(delta_production)
+    meteo_df["expected_power_production"] = get_expected_power_production_from_pv(data, meteo_df["direct_radiation"],
+                                                                                  meteo_df["diffuse_radiation"],
+                                                                                  meteo_df["temperature_2m"])
 
-    data["prices"] =await get_intra_days_market()
-    print(data["prices"]["prezzo"])
+    data["prices"] = await get_intra_days_market()
     problem = MixedVariableProblem()
 
     # Set the population size to 1
