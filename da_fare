@@ -9,3 +9,4 @@
 -stampa strategia in maniera leggibile ora per ora ( ore 12: carico del 20% ,mettendo in forma tabellare i risultati)
 -try sul fetch dei dati futuri di costo(esempio : sono le 12 e la strategia non può avere i dati di domani dei costi, cosa fare?
 usare quelli di oggi per avere quelli di domani finchè non saranno caricati)
+-possibilità di vendere l'energia contenuta all'interno della batteria

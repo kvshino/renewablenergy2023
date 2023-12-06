@@ -74,7 +74,10 @@ async def main():
                                                                                   meteo_df["temperature_2m"])
 
     data["prices"] = await get_intra_days_market()
-    problem = MixedVariableProblem()
+
+    get_estimate_load_consumption(get_true_load_consumption())
+    """
+       problem = MixedVariableProblem()
 
     # Set the population size to 1
     pop_size = 100
@@ -87,7 +90,7 @@ async def main():
                    verbose=False)
 
     print("Best solution found: \nX = %s\nF = %s" % (res.X, res.F))
-
+    """
 
 if __name__ == "__main__":
     asyncio.run(main())
