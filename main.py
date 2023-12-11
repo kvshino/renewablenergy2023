@@ -8,6 +8,8 @@ from pymoo.optimize import minimize
 
 from functions import *
 
+import csv
+
 data = setup()
 
 
@@ -37,18 +39,17 @@ class MixedVariableProblem(ElementwiseProblem):
             if charge:
                 quantity_charging_battery = ((data["soc_max"] * data["battery_capacity"] - data["socs"][j] * data[
                     "battery_capacity"]) * percentage) / 100
-                data["socs"].append(data["socs"][j] * data["battery_capacity"] + quantity_charging_battery)
+                data["socs"].append(data["socs"][j]  + quantity_charging_battery/data["battery_capacity"])
 
                 if quantity_charging_battery - delta_production.iloc[j] < 0:
                     # devo vendere
                     sum = sum + ((quantity_charging_battery - delta_production.iloc[j]) * sold)  # sum = sum - rimborso
                 else:
-                    sum = sum + (quantity_charging_battery - delta_production.iloc[j]) * data["prices"]["prezzo"].iloc[
-                        j]
+                    sum = sum + (quantity_charging_battery - delta_production.iloc[j]) * data["prices"]["prezzo"].iloc[j]
             else:
                 quantity_discharging_battery = ((data["socs"][j] * data["battery_capacity"] - data["soc_min"] * data[
                     "battery_capacity"]) * percentage) / 100
-                data["socs"].append(data["socs"][j] * data["battery_capacity"] - quantity_discharging_battery)
+                data["socs"].append(data["socs"][j] - quantity_discharging_battery/data["battery_capacity"])
 
                 if delta_production.iloc[j] + quantity_discharging_battery > 0:
                     # sto scaricando la batteria  con surplus di energia
@@ -95,6 +96,23 @@ async def main():
 
     print(data["socs"])
 
+
+    file_path = 'csv/socs.csv'
+    print(res.X)
+    
+    grouped_values = {}
+    for key, value in res.X.items():
+        num_part = key[1:]  # Extract the part of the key after the first character
+        if num_part.isdigit():
+            num_part = int(num_part)
+            if num_part not in grouped_values:
+                grouped_values[num_part] = {'b': None, 'i': None}
+            if key.startswith('b'):
+                grouped_values[num_part]['b'] = value
+            elif key.startswith('i'):
+                grouped_values[num_part]['i'] = value
+
+    
 
     print("Best solution found: \nX = %s\nF = %s" % (res.X, res.F))
 
