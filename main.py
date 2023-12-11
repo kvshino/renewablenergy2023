@@ -36,8 +36,9 @@ class MixedVariableProblem(ElementwiseProblem):
             percentage = X[f"i{j}"]
             if charge:
                 quantity_charging_battery = ((data["soc_max"] * data["battery_capacity"] - data["socs"][j] * data[
-                    "battery_capacity"]) * percentage) / 100
-                data["socs"].append(data["socs"][j] * data["battery_capacity"] + quantity_charging_battery)
+                    "soc_max"]) * percentage) / 100
+                data["socs"].append(
+                    ((data["socs"][j] * data["battery_capacity"] + quantity_charging_battery) * 100) / data["soc_max"])
 
                 if quantity_charging_battery - delta_production.iloc[j] < 0:
                     # devo vendere
@@ -48,7 +49,10 @@ class MixedVariableProblem(ElementwiseProblem):
             else:
                 quantity_discharging_battery = ((data["socs"][j] * data["battery_capacity"] - data["soc_min"] * data[
                     "battery_capacity"]) * percentage) / 100
-                data["socs"].append(data["socs"][j] * data["battery_capacity"] - quantity_discharging_battery)
+
+                data["socs"].append(
+                    ((data["socs"][j] * data["battery_capacity"] - quantity_discharging_battery) * 100) / data[
+                        "soc_max"])
 
                 if delta_production.iloc[j] + quantity_discharging_battery > 0:
                     # sto scaricando la batteria  con surplus di energia
@@ -59,7 +63,7 @@ class MixedVariableProblem(ElementwiseProblem):
                     else:
                         # in questo else teoricamente potrei vendere enegia della batteria ma invece sovrascrivo il valore
                         data["socs"][j + 1] = data["socs"][j] + delta_production.iloc[j] / data[
-                            "battery_capacity"]  # DA VEDERE: Non superare il 100% di socs
+                            "soc_max"]  # DA VEDERE: Non superare il 100% di socs
                 else:
                     sum = sum + (- (delta_production.iloc[j] + quantity_discharging_battery) *
                                  data["prices"]["prezzo"].iloc[j])
@@ -93,11 +97,18 @@ async def main():
                    seed=random.randint(0, 99999),
                    verbose=False)
 
-    print(data["socs"])
-
-
     print("Best solution found: \nX = %s\nF = %s" % (res.X, res.F))
 
+    initial = []
+    initial.append(data["socs"][0])
+    for i in range(24):
+        if res.X[f"b{i}"] == "False":
+            initial.append(initial[i] - (initial[i] * res.X[f"i{i}"]) / 100)
+        else:
+            initial.append(initial[i] + (initial[i] * res.X[f"i{i}"]) / 100)
+
+    print(len(initial))
+    print(initial)
 
 if __name__ == "__main__":
     asyncio.run(main())
