@@ -29,13 +29,15 @@ class MixedVariableProblem(ElementwiseProblem):
         sum = 0
         delta_production = difference_of_production(data)
         sold = data["sold"]
+        sold = 0.2
         # valori negativi indicano consumi ,positivi guadagni
         for j in range(24):
             charge = X[f"b{j}"]
             percentage = X[f"i{j}"]
             if charge:
-                quantity_charging_battery = ((data["soc_max"] - data["socs"][j]) * percentage) / 100
-                data["socs"].append(data["socs"][j] + quantity_charging_battery)
+                quantity_charging_battery = ((data["soc_max"] * data["battery_capacity"] - data["socs"][j] * data[
+                    "battery_capacity"]) * percentage) / 100
+                data["socs"].append(data["socs"][j] * data["battery_capacity"] + quantity_charging_battery)
 
                 if quantity_charging_battery - delta_production.iloc[j] < 0:
                     # devo vendere
@@ -44,8 +46,9 @@ class MixedVariableProblem(ElementwiseProblem):
                     sum = sum + (quantity_charging_battery - delta_production.iloc[j]) * data["prices"]["prezzo"].iloc[
                         j]
             else:
-                quantity_discharging_battery = ((data["socs"][j] - data["soc_min"]) * percentage) / 100
-                data["socs"].append(data["socs"][j] - quantity_discharging_battery)
+                quantity_discharging_battery = ((data["socs"][j] * data["battery_capacity"] - data["soc_min"] * data[
+                    "battery_capacity"]) * percentage) / 100
+                data["socs"].append(data["socs"][j] * data["battery_capacity"] - quantity_discharging_battery)
 
                 if delta_production.iloc[j] + quantity_discharging_battery > 0:
                     # sto scaricando la batteria  con surplus di energia
@@ -55,7 +58,8 @@ class MixedVariableProblem(ElementwiseProblem):
                         sum = sum - delta_production.iloc[j] * sold
                     else:
                         # in questo else teoricamente potrei vendere enegia della batteria ma invece sovrascrivo il valore
-                        data["socs"][j + 1] = data["socs"][j] + delta_production.iloc[j]
+                        data["socs"][j + 1] = data["socs"][j] + delta_production.iloc[j] / data[
+                            "battery_capacity"]  # DA VEDERE: Non superare il 100% di socs
                 else:
                     sum = sum + (- (delta_production.iloc[j] + quantity_discharging_battery) *
                                  data["prices"]["prezzo"].iloc[j])
@@ -76,8 +80,8 @@ async def main():
     data["prices"] = await get_intra_days_market()
 
     get_estimate_load_consumption(get_true_load_consumption())
-    """
-       problem = MixedVariableProblem()
+
+    problem = MixedVariableProblem()
 
     # Set the population size to 1
     pop_size = 100
@@ -89,8 +93,11 @@ async def main():
                    seed=random.randint(0, 99999),
                    verbose=False)
 
+    print(data["socs"])
+
+
     print("Best solution found: \nX = %s\nF = %s" % (res.X, res.F))
-    """
+
 
 if __name__ == "__main__":
     asyncio.run(main())

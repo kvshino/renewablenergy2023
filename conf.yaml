@@ -1,7 +1,7 @@
 soc_max: 0.8              # Adimensionale
 soc_min: 0.2              # Adimensionale
 battery_capacity: 10000   # Wh
-
+socs: [ 0.5 ]
 load_profile: [1000,1000,1000,1000,1000,1750,  2500,1750,1000,1000,1000,1000,    1000,1000,1000,1000,1000,1000,      1750,2500,1750,1600,1500,1000]
 #load_profile portato in watt per esigenze di calcolo 
 latitude: 40.6824404

@@ -2,11 +2,17 @@
 -Dimensionamento pannelli per caso di prova
 -piu' ciclate sull'ottimizzatore
 -dati vendita energia
+
 -vendita energia da batteiria
+
 -stato di batteria preservato durante i test o più viciino possibile all'inizio
+
 -grafici vari (confronto con e senza magari)
+
 -dimensionamento dell ottimizzatore
+
 -stampa strategia in maniera leggibile ora per ora ( ore 12: carico del 20% ,mettendo in forma tabellare i risultati)
+
 -try sul fetch dei dati futuri di costo(esempio : sono le 12 e la strategia non può avere i dati di domani dei costi, cosa fare?
 usare quelli di oggi per avere quelli di domani finchè non saranno caricati)
 -possibilità di vendere l'energia contenuta all'interno della batteria
