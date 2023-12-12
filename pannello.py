@@ -52,6 +52,18 @@ def difference_of_production(data):
         Returns :
             Array with difference
     """
-    tomorrow_meteo = get_expected_power_production_from_pv_of_tomorrow(data)
+    twentyfour_meteo = get_expected_power_production_from_pv_24_hours_from_now(data)
 
-    return tomorrow_meteo["production"] - data["load_profile"]
+    return twentyfour_meteo["production"] - data["load_profile"]
+
+
+
+####################################################################
+
+def get_expected_power_production_from_pv_24_hours_from_now(data):
+    twentyfour_meteo = get_meteo_data_24_hours_from_now()
+    twentyfour_meteo["production"] = get_expected_power_production_from_pv(data, twentyfour_meteo["direct_radiation"],
+                                                                         twentyfour_meteo["diffuse_radiation"],
+                                                                         twentyfour_meteo["temperature_2m"])
+
+    return twentyfour_meteo

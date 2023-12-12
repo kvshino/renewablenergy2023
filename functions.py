@@ -101,3 +101,7 @@ def get_estimate_load_consumption(dataframe: pd.DataFrame):
     media_giorno_target = dataframe.groupby("ora")["consumo"].mean()
 
     return (media_oraria + media_giorno_target) / 2
+
+
+def shift_result_estimation_consumption(dataframe: pd.DataFrame):
+    pass
