@@ -1,11 +1,15 @@
-from mercati_energetici import MercatiElettrici
 from datetime import datetime, timedelta
+
 import pandas as pd
+from mercati_energetici import MercatiElettrici
 
 
 async def get_intra_days_market(days=1) -> pd.core.frame.DataFrame:
     """
-    Fetches price datas from mercatoelettrico.com
+    Fetches previous price datas from mercatoelettrico.com
+
+    Args:
+        days : number of days from today (days: 1 only fetches today's data)
 
     Returns:
         sud: a dataframe containing prices data
