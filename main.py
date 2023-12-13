@@ -6,8 +6,8 @@ from pymoo.core.problem import ElementwiseProblem
 from pymoo.core.variable import Binary, Integer
 from pymoo.optimize import minimize
 
-from functions import *
 from costi import *
+from functions import *
 
 data = setup()
 
@@ -80,7 +80,7 @@ async def main():
     problem = MixedVariableProblem()
 
     # Set the population size to 1
-    pop_size = 1
+    pop_size = 100
     algorithm = MixedVariableGA(pop_size)
 
     res = minimize(problem,
@@ -103,13 +103,15 @@ async def main():
     sum_dataframe = pd.DataFrame({'datetime': time_column, 'value': sum})
     expected_load_dataframe = pd.DataFrame({'datetime': time_column, 'value': data["estimate"]["consumo"].tolist()})
     expected_production_dataframe = pd.DataFrame({'datetime': time_column, 'value': expected_production["production"].tolist()})
-    #time_column = pd.date_range(start=current_datetime.replace(minute=0, second=0, microsecond=0) - timedelta(hours=1),periods=25, freq='H')
+    time_column = pd.date_range(start=current_datetime.replace(minute=0, second=0, microsecond=0) - timedelta(hours=1),
+                                periods=25, freq='H')
     soc_dataframe = pd.DataFrame({'datetime': time_column, 'value': actual_percentage})
 
 
     plot_graph(sum_dataframe, "datetime", "value", "Time", "Cost €", "Costo Grid", "Orange")
-    plot_graph(expected_load_dataframe, "datetime", "value", "Time", "kW", "Expected Load", "Red")
-    plot_graph(expected_production_dataframe, "datetime", "value", "time", "production", "Expected Production", "Blue")
+    plot_graph(expected_load_dataframe, "datetime", "value", "Time", "W", "Expected Load", "Red")
+    plot_graph(expected_production_dataframe, "datetime", "value", "time", "Production in Watt", "Expected Production",
+               "Blue")
     plot_graph(soc_dataframe, "datetime", "value", "Time", "Percentage %", "Soc", "Green")
 
 
