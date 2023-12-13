@@ -1,9 +1,11 @@
 
-x = [1,0,0 , 1,1,1 , 0,1,1]
 
+from functions import *
+from pannello import *
 
-charge_discharge_bits = x[:, 0]
-percentage_bits = x[:, 1:].reshape((3, 2))
+data=setup()
+print(get_meteo_data_24_hours_from_now())
+print(get_expected_power_production_from_pv_24_hours_from_now(data))
+print(difference_of_production(data))
 
-print(charge_discharge_bits)
-print(percentage_bits)
+print(get_estimate_load_consumption(get_true_load_consumption()))

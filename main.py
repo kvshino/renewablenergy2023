@@ -7,6 +7,7 @@ from pymoo.core.variable import Binary, Integer
 from pymoo.optimize import minimize
 
 from functions import *
+from costi import *
 
 data = setup()
 
@@ -29,41 +30,39 @@ class MixedVariableProblem(ElementwiseProblem):
         sum = 0
         delta_production = difference_of_production(data)
         sold = data["sold"]
-        sold = 0.2
+        upper_limit = (data["soc_max"] * data["battery_capacity"])
+        lower_limit = (data["soc_min"] * data["battery_capacity"])
+        actual_percentage = [data["socs"][-1]]
         # valori negativi indicano consumi ,positivi guadagni
         for j in range(24):
             charge = X[f"b{j}"]
             percentage = X[f"i{j}"]
             if charge:
-                quantity_charging_battery = ((data["soc_max"] * data["battery_capacity"] - data["socs"][j] * data[
-                    "soc_max"]) * percentage) / 100
-                data["socs"].append(
-                    ((data["socs"][j] * data["battery_capacity"] + quantity_charging_battery) * 100) / data["soc_max"])
+
+                quantity_charging_battery = ((upper_limit - actual_percentage[j] * upper_limit) * percentage) / 100
+                actual_percentage.append(actual_percentage[j] + quantity_charging_battery / upper_limit)
 
                 if quantity_charging_battery - delta_production.iloc[j] < 0:
                     # devo vendere
                     sum = sum + ((quantity_charging_battery - delta_production.iloc[j]) * sold)  # sum = sum - rimborso
+
                 else:
                     sum = sum + (quantity_charging_battery - delta_production.iloc[j]) * data["prices"]["prezzo"].iloc[
                         j]
             else:
-                quantity_discharging_battery = ((data["socs"][j] * data["battery_capacity"] - data["soc_min"] * data[
-                    "battery_capacity"]) * percentage) / 100
-
-                data["socs"].append(
-                    ((data["socs"][j] * data["battery_capacity"] - quantity_discharging_battery) * 100) / data[
-                        "soc_max"])
+                quantity_discharging_battery = ((actual_percentage[j] * upper_limit - lower_limit) * percentage) / 100
+                actual_percentage.append(actual_percentage[j] - quantity_discharging_battery / upper_limit)
 
                 if delta_production.iloc[j] + quantity_discharging_battery > 0:
                     # sto scaricando la batteria  con surplus di energia
                     # vendo alla rete MA dalla batteria
-                    if delta_production.iloc[j] > 0:
-                        # vendo alla rete quello del fotovoltaico
-                        sum = sum - delta_production.iloc[j] * sold
-                    else:
-                        # in questo else teoricamente potrei vendere enegia della batteria ma invece sovrascrivo il valore
-                        data["socs"][j + 1] = data["socs"][j] + delta_production.iloc[j] / data[
-                            "soc_max"]  # DA VEDERE: Non superare il 100% di socs
+                    # if delta_production.iloc[j] > 0:
+                    #     # vendo alla rete quello del fotovoltaico
+                    #     sum = sum - delta_production.iloc[j] * sold
+                    # else:
+                    #     # in questo else teoricamente potrei vendere enegia della batteria ma invece sovrascrivo il valore
+                    #     data["socs"][j + 1] = data["socs"][j] + delta_production.iloc[j] / upper_limit  # DA VEDERE: Non superare lo 0% di socs
+                    sum = sum - ((delta_production.iloc[j] + quantity_discharging_battery) * sold)
                 else:
                     sum = sum + (- (delta_production.iloc[j] + quantity_discharging_battery) *
                                  data["prices"]["prezzo"].iloc[j])
@@ -74,41 +73,51 @@ class MixedVariableProblem(ElementwiseProblem):
 async def main():
     # energy_request(data)
 
-    meteo_df = filter_meteo_between_ss_and_sr(data)
-    delta_production = difference_of_production(data)
+    data["prices"] = await get_intra_days_market()  #Bring the prices of energy from Mercati Elettrici
 
-    meteo_df["expected_power_production"] = get_expected_power_production_from_pv(data, meteo_df["direct_radiation"],
-                                                                                  meteo_df["diffuse_radiation"],
-                                                                                  meteo_df["temperature_2m"])
-
-    data["prices"] = await get_intra_days_market()
-
-    get_estimate_load_consumption(get_true_load_consumption())
+    data["estimate"] = get_estimate_load_consumption(get_true_load_consumption()) #It gives an estimation of the load consumption
 
     problem = MixedVariableProblem()
 
     # Set the population size to 1
-    pop_size = 100
+    pop_size = 1
     algorithm = MixedVariableGA(pop_size)
 
     res = minimize(problem,
                    algorithm,
-                   termination=('n_evals', 2),
+                   termination=('n_evals', 1),
                    seed=random.randint(0, 99999),
-                   verbose=False)
+                   verbose=False)       
+
+
+
+    expected_production = get_expected_power_production_from_pv_24_hours_from_now(data)
+    sum, actual_percentage = evaluate(data, res)
+
+
+
+
+    # Plot Graphs
+    current_datetime = datetime.now()+timedelta(hours=1)
+    time_column = pd.date_range(start=current_datetime.replace(minute=0, second=0, microsecond=0),periods=24, freq='H')
+    sum_dataframe = pd.DataFrame({'datetime': time_column, 'value': sum})
+    expected_load_dataframe = pd.DataFrame({'datetime': time_column, 'value': data["estimate"]["consumo"].tolist()})
+    expected_production_dataframe = pd.DataFrame({'datetime': time_column, 'value': expected_production["production"].tolist()})
+    #time_column = pd.date_range(start=current_datetime.replace(minute=0, second=0, microsecond=0) - timedelta(hours=1),periods=25, freq='H')
+    soc_dataframe = pd.DataFrame({'datetime': time_column, 'value': actual_percentage})
+
+
+    plot_graph(sum_dataframe, "datetime", "value", "Time", "Cost €", "Costo Grid", "Orange")
+    plot_graph(expected_load_dataframe, "datetime", "value", "Time", "kW", "Expected Load", "Red")
+    plot_graph(expected_production_dataframe, "datetime", "value", "time", "production", "Expected Production", "Blue")
+    plot_graph(soc_dataframe, "datetime", "value", "Time", "Percentage %", "Soc", "Green")
+
+
 
     print("Best solution found: \nX = %s\nF = %s" % (res.X, res.F))
+    plt.show()
 
-    initial = []
-    initial.append(data["socs"][0])
-    for i in range(24):
-        if res.X[f"b{i}"] == "False":
-            initial.append(initial[i] - (initial[i] * res.X[f"i{i}"]) / 100)
-        else:
-            initial.append(initial[i] + (initial[i] * res.X[f"i{i}"]) / 100)
 
-    print(len(initial))
-    print(initial)
 
 if __name__ == "__main__":
     asyncio.run(main())
