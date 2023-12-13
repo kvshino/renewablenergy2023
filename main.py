@@ -7,6 +7,7 @@ from pymoo.core.variable import Binary, Integer
 from pymoo.optimize import minimize
 
 from functions import *
+from costi import *
 
 data = setup()
 
@@ -72,9 +73,9 @@ class MixedVariableProblem(ElementwiseProblem):
 async def main():
     # energy_request(data)
 
-    data["prices"] = await get_intra_days_market()
+    data["prices"] = await get_intra_days_market()  #Bring the prices of energy from Mercati Elettrici
 
-    data["estimate"] = get_estimate_load_consumption(get_true_load_consumption())
+    data["estimate"] = get_estimate_load_consumption(get_true_load_consumption()) #It gives an estimation of the load consumption
 
     problem = MixedVariableProblem()
 
@@ -86,34 +87,37 @@ async def main():
                    algorithm,
                    termination=('n_evals', 1),
                    seed=random.randint(0, 99999),
-                   verbose=False)
+                   verbose=False)       
+
+
 
     expected_production = get_expected_power_production_from_pv_24_hours_from_now(data)
-
     sum, actual_percentage = evaluate(data, res)
 
+
+
+
     # Plot Graphs
-
-    current_datetime = datetime.now()
-    time_column = pd.date_range(start=current_datetime.replace(minute=0, second=0, microsecond=0),
-                                periods=24, freq='H')
+    current_datetime = datetime.now()+timedelta(hours=1)
+    time_column = pd.date_range(start=current_datetime.replace(minute=0, second=0, microsecond=0),periods=24, freq='H')
     sum_dataframe = pd.DataFrame({'datetime': time_column, 'value': sum})
-    plot_graph(sum_dataframe, "datetime", "value", "Time", "Cost €", "Costo Grid", "Orange")
-
     expected_load_dataframe = pd.DataFrame({'datetime': time_column, 'value': data["estimate"]["consumo"].tolist()})
-    plot_graph(expected_load_dataframe, "datetime", "value", "Time", "kW", "Expected Load", "Red")
-
-    expected_production_dataframe = pd.DataFrame(
-        {'datetime': time_column, 'value': expected_production["production"].tolist()})
-    plot_graph(expected_production_dataframe, "datetime", "value", "time", "production", "Expected Production", "Blue")
-
-    time_column = pd.date_range(start=current_datetime.replace(minute=0, second=0, microsecond=0) - timedelta(hours=1),
-                                periods=25, freq='H')
+    expected_production_dataframe = pd.DataFrame({'datetime': time_column, 'value': expected_production["production"].tolist()})
+    #time_column = pd.date_range(start=current_datetime.replace(minute=0, second=0, microsecond=0) - timedelta(hours=1),periods=25, freq='H')
     soc_dataframe = pd.DataFrame({'datetime': time_column, 'value': actual_percentage})
+
+
+    plot_graph(sum_dataframe, "datetime", "value", "Time", "Cost €", "Costo Grid", "Orange")
+    plot_graph(expected_load_dataframe, "datetime", "value", "Time", "kW", "Expected Load", "Red")
+    plot_graph(expected_production_dataframe, "datetime", "value", "time", "production", "Expected Production", "Blue")
     plot_graph(soc_dataframe, "datetime", "value", "Time", "Percentage %", "Soc", "Green")
+
+
 
     print("Best solution found: \nX = %s\nF = %s" % (res.X, res.F))
     plt.show()
+
+
 
 if __name__ == "__main__":
     asyncio.run(main())

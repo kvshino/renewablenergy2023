@@ -156,4 +156,4 @@ def evaluate(data, res):
                 sum.append(sum[j] + (
                         - (delta_production.iloc[j] + quantity_discharging_battery) * data["prices"]["prezzo"].iloc[j]))
 
-    return sum[1:], actual_percentage
+    return sum[1:], actual_percentage[1:]
