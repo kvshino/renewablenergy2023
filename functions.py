@@ -119,10 +119,14 @@ def evaluate(data, res):
     lower_limit = (data["soc_min"] * data["battery_capacity"])
     actual_percentage = []
     actual_percentage.append(data["socs"][-1])
+    
+    quantity_delta_battery=[]
     # valori negativi indicano consumi ,positivi guadagni
     for j in range(24):
         charge = res.X[f"b{j}"]
         percentage = res.X[f"i{j}"]
+        quantity_charging_battery=None
+        quantity_discharging_battery=None
         if charge:
 
             quantity_charging_battery = ((upper_limit - actual_percentage[j] * upper_limit) * percentage) / 100
@@ -153,5 +157,10 @@ def evaluate(data, res):
             else:
                 sum.append(sum[j] + (
                         - (delta_production.iloc[j] + quantity_discharging_battery) * data["prices"]["prezzo"].iloc[j]))
+                
+        if quantity_charging_battery != None:
+            quantity_delta_battery.append(+quantity_charging_battery)
+        else:
+            quantity_delta_battery.append(-quantity_discharging_battery)
 
-    return sum[1:], actual_percentage
+    return sum[1:], actual_percentage, quantity_delta_battery

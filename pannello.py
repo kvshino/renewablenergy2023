@@ -61,7 +61,7 @@ def difference_of_production(data):
 ####################################################################
 
 def get_expected_power_production_from_pv_24_hours_from_now(data):
-    twentyfour_meteo = get_meteo_data_24_hours_from_now()
+    twentyfour_meteo = get_meteo_data_24_hours_from_now(data["latitude"], data["longitude"])
     twentyfour_meteo["production"] = get_expected_power_production_from_pv(data, twentyfour_meteo["direct_radiation"],
                                                                          twentyfour_meteo["diffuse_radiation"],
                                                                          twentyfour_meteo["temperature_2m"])

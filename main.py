@@ -85,14 +85,14 @@ async def main():
 
     res = minimize(problem,
                    algorithm,
-                   termination=('n_evals', 1),
+                   termination=('n_evals', 5),
                    seed=random.randint(0, 99999),
                    verbose=False)       
-
+    
 
 
     expected_production = get_expected_power_production_from_pv_24_hours_from_now(data)
-    sum, actual_percentage = evaluate(data, res)
+    sum, actual_percentage, quantity_delta_battery = evaluate(data, res)
 
 
 
@@ -103,18 +103,32 @@ async def main():
     sum_dataframe = pd.DataFrame({'datetime': time_column, 'value': sum})
     expected_load_dataframe = pd.DataFrame({'datetime': time_column, 'value': data["estimate"]["consumo"].tolist()})
     expected_production_dataframe = pd.DataFrame({'datetime': time_column, 'value': expected_production["production"].tolist()})
+    
+    
+    
+    quantity_delta_battery_dataframe = pd.DataFrame({'datetime': time_column, 'value': quantity_delta_battery})
+
+    
     time_column = pd.date_range(start=current_datetime.replace(minute=0, second=0, microsecond=0) - timedelta(hours=1),
                                 periods=25, freq='H')
-    soc_dataframe = pd.DataFrame({'datetime': time_column, 'value': actual_percentage})
+    
+    battery_wh = [percentage * float(data["soc_max"] * data["battery_capacity"]) for percentage in actual_percentage]
+
+    battery_wh_dataframe = pd.DataFrame({'datetime': time_column, 'value': battery_wh})
+    
+    #difference=expected_load_dataframe-expected_production_dataframe-battery_wh_dataframe
 
 
     plot_graph(sum_dataframe, "datetime", "value", "Time", "Cost €", "Costo Grid", "Orange")
-    plot_graph(expected_load_dataframe, "datetime", "value", "Time", "W", "Expected Load", "Red")
-    plot_graph(expected_production_dataframe, "datetime", "value", "time", "Production in Watt", "Expected Production",
+    plot_graph(expected_load_dataframe, "datetime", "value", "Time", "Wh", "Grafico", "Red")
+    plot_graph(expected_production_dataframe, "datetime", "value", "time", "Production in Watt", "Grafico",
                "Blue")
-    plot_graph(soc_dataframe, "datetime", "value", "Time", "Percentage %", "Soc", "Green")
+    plot_graph(battery_wh_dataframe, "datetime", "value", "Time", "Wh", "Grafico", "Green")
+    #plot_graph(difference, "datetime", "value", "Time", "Wh", "Prova", "Green")
 
 
+    print(quantity_delta_battery_dataframe)
+    plot_graph(quantity_delta_battery_dataframe, "datetime", "value", "Time", "Wh", "Grafico", "Green")
 
     print("Best solution found: \nX = %s\nF = %s" % (res.X, res.F))
     plt.show()

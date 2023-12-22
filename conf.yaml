@@ -26,6 +26,6 @@ fd: 1           #Pari ad 1 poichè il PV è piatto
 SF: 1           #soiling factor: sporcizia. Se pari ad 1 il pannello è pulito
 f1: 0.9         #funzione che descrive la massa d'aria (Slide libro 78)
 f2: 1           #funzione che descrive come i raggi cadono sul pannello. Un valore pari ad 1 indica che i raggi sono perpendicolari
-pmax: 370
+pmax: 7000
 gamma: -0.0026   #γ for power: around -0.3% to -0.5% per degree Celsius. -0.4% is -0.004
 temp_ref: 25
