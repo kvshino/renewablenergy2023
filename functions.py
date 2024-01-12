@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 import seaborn as sns
 import yaml
+import pandas as pd
 
 from pannello import *
 
@@ -22,11 +23,19 @@ def setup(disable_pv: bool = False, disable_battery: bool = False) -> dict:
 
     if disable_pv:
         data["energy_pv"] = []
+        
+
 
     if disable_battery:
         data["soc_max"] = 0
         data["soc_min"] = 0
         data["socs"] = 0
+    else:
+        df = pd.read_csv('csv/socs.csv')
+        # Prendi l'ultimo valore
+        data["socs"] = df.iloc[-1]
+
+        
 
     for i in range(0, 24):
         if disable_pv:
@@ -67,9 +76,11 @@ def plot_subgraph(data, x, y, color, label, position):
     plt.plot(data[x],data[y], color=color)
     plt.xticks(data['datetime'], data['datetime'].dt.strftime('%H'), rotation=10)
     plt.title(label)
-    if label != "Cost":
+    if label != "Cost" or label != "Cost without Battery":
         plt.ylim(-10000, 10000)
-
+    else:
+        plt.ylim(-5, 5)
+    
 
 def get_true_load_consumption():
     """
@@ -175,3 +186,5 @@ def evaluate(data, res):
             quantity_delta_battery.append(-quantity_discharging_battery)
 
     return sum[1:], actual_percentage, quantity_delta_battery
+
+

@@ -9,6 +9,11 @@ from pymoo.optimize import minimize
 from costi import *
 from functions import *
 
+import warnings
+
+
+warnings.filterwarnings("ignore", category=FutureWarning)
+
 data = setup()
 
 
@@ -71,71 +76,51 @@ class MixedVariableProblem(ElementwiseProblem):
 
 
 async def main():
-    # energy_request(data)
 
     data["prices"] = await get_intra_days_market()  #Bring the prices of energy from Mercati Elettrici
-
     data["estimate"] = get_estimate_load_consumption(get_true_load_consumption()) #It gives an estimation of the load consumption
+    expected_production = get_expected_power_production_from_pv_24_hours_from_now(data)
+
+
 
     problem = MixedVariableProblem()
-
-    # Set the population size to 1
     pop_size = 1
     algorithm = MixedVariableGA(pop_size)
 
     res = minimize(problem,
-                   algorithm,
-                   termination=('n_evals', 5),
-                   seed=1, #random.randint(0, 99999),
-                   verbose=False)       
+                algorithm,
+                termination=('n_evals', 5),
+                seed=1, #random.randint(0, 99999),
+                verbose=False)       
     
-
-
-    expected_production = get_expected_power_production_from_pv_24_hours_from_now(data)
     sum, actual_percentage, quantity_delta_battery = evaluate(data, res)
 
 
+    ### Start Code for Plots ##
 
-
-    # Plot Graphs
     current_datetime = datetime.now()+timedelta(hours=1)
     time_column = pd.date_range(start=current_datetime.replace(minute=0, second=0, microsecond=0),periods=24, freq='H')
     sum_dataframe = pd.DataFrame({'datetime': time_column, 'value': sum})
     expected_load_dataframe = pd.DataFrame({'datetime': time_column, 'value': data["estimate"]["consumo"].tolist()})
     expected_production_dataframe = pd.DataFrame({'datetime': time_column, 'value': expected_production["production"].tolist()})
-    
-    
-    
     quantity_delta_battery_dataframe = pd.DataFrame({'datetime': time_column, 'value': quantity_delta_battery})
 
     
     time_column = pd.date_range(start=current_datetime.replace(minute=0, second=0, microsecond=0) - timedelta(hours=1),
                                 periods=25, freq='H')
-    
     battery_wh = [percentage * float(data["soc_max"] * data["battery_capacity"]) for percentage in actual_percentage]
-
     battery_wh_dataframe = pd.DataFrame({'datetime': time_column, 'value': battery_wh})
     
     
-    ########## EVALUATE DIFFERENCE ###########
-
+    time_column = pd.date_range(start=current_datetime.replace(minute=0, second=0, microsecond=0), periods=24, freq='H')
     temp = battery_wh_dataframe.iloc[1:]
     temp = temp.reset_index(drop=True)
-    
     difference=(expected_production_dataframe["value"]+temp["value"])-expected_load_dataframe["value"]
-    print(type(difference))
 
-    print(expected_production_dataframe)
-    print(temp)
-    print(expected_load_dataframe)
-    print(difference)
-
-    time_column = pd.date_range(start=current_datetime.replace(minute=0, second=0, microsecond=0),
-                                periods=24, freq='H')
     
     difference_dataframe = pd.DataFrame({'datetime': time_column, 'value': difference})
 
-    #########################################
+
 
     plot_graph(sum_dataframe, "datetime", "value",  "Costo Grid", "Orange", "Cost")
     plot_graph(expected_load_dataframe, "datetime", "value", "Grafico", "Red", "Expected Load")
@@ -143,6 +128,7 @@ async def main():
     plot_graph(battery_wh_dataframe, "datetime", "value", "Grafico", "Green", "Battery Level Wh")    
     plot_graph(difference_dataframe, "datetime", "value", "Grafico", "Purple", "Difference")
     plot_graph(quantity_delta_battery_dataframe, "datetime", "value", "Grafico", "Yellow", "Delta Battery")
+    plt.legend()
 
     plt.figure()
     plot_subgraph(sum_dataframe, "datetime", "value", "Orange", "Cost", 1)
@@ -152,10 +138,85 @@ async def main():
     plot_subgraph(difference_dataframe, "datetime", "value", "Purple", "Difference", 5)
     plot_subgraph(quantity_delta_battery_dataframe, "datetime", "value", "Yellow", "Delta Battery", 6)
 
-   
 
     print("Best solution found: \nX = %s\nF = %s" % (res.X, res.F))
-    plt.legend()
+
+
+    #This part of code puts the update value of the battery in the file csv/socs.csv
+    if res.X["b0"] == True:
+
+        new_value = data["socs"]+( (data["soc_max"] - data["socs"])*(res.X["i0"]/100))
+    else:
+        new_value = data["socs"]-( (data["socs"] - data["soc_min"])*(res.X["i0"]/100))
+    df_nuovo = pd.DataFrame([new_value])
+    df_nuovo.to_csv('csv/socs.csv', mode='a', header=False, index=False)
+
+
+    ########################################################################################
+    #This is the part where we consider only the pv without taking into account the battery#
+    ########################################################################################
+
+
+    result_only_pv = difference_of_production(data)
+    result = []
+    result.append(0)
+    if result_only_pv[0] < 0:
+        result.append((-result_only_pv[0])*data["prices"]["prezzo"][0])
+    else:
+        result.append((-result_only_pv[0])*data["sold"])
+
+
+    for i in range(1,24):
+        if result_only_pv[i] < 0:
+            result.append((-result_only_pv[i])*data["prices"]["prezzo"][i]+result[i])
+        else:
+            result.append((-result_only_pv[i])*data["sold"]+result[i])
+    
+
+    current_datetime = datetime.now()+timedelta(hours=1)
+    time_column = pd.date_range(start=current_datetime.replace(minute=0, second=0, microsecond=0),periods=24, freq='H')
+    pv_only_dataframe = pd.DataFrame({'datetime': time_column, 'value': result[1:]})
+
+    plt.figure()
+
+    plt.subplot(1, 3, 1)
+    plt.plot(pv_only_dataframe["datetime"],pv_only_dataframe["value"], color="Orange")
+    plt.xticks(pv_only_dataframe['datetime'], pv_only_dataframe['datetime'].dt.strftime('%H'), rotation=10)
+    plt.title("Cost without Battery")
+
+    plt.subplot(1, 3, 2)
+    plt.plot(expected_load_dataframe["datetime"],expected_load_dataframe["value"], color="Green")
+    plt.xticks(expected_load_dataframe['datetime'], expected_load_dataframe['datetime'].dt.strftime('%H'), rotation=10)
+    plt.title("Expected Load")
+    plt.ylim(-10000, 10000)
+
+    plt.subplot(1, 3, 3)
+    plt.plot(expected_production_dataframe["datetime"],expected_production_dataframe["value"], color="Blue")
+    plt.xticks(expected_production_dataframe['datetime'], expected_production_dataframe['datetime'].dt.strftime('%H'), rotation=10)
+    plt.title("Expected Production")
+    plt.ylim(-10000, 10000)
+
+
+    
+
+
+    ########################################################################################
+    #This is the part where we consider only the consumption and PV and the battery#########
+    ########################################################################################
+
+    consumption_list=[]
+    consumption_list.append(0)
+    i=0
+    for value in data["estimate"]["consumo"].values:
+        consumption_list.append((-value*data["prices"]["prezzo"][i])+consumption_list[i])
+        i=i+1
+    
+
+    consumption_only_dataframe = pd.DataFrame({'datetime': time_column, 'value': consumption_list[1:]})
+    plot_graph(consumption_only_dataframe, "datetime", "value",  "Solo Consumo", "Orange", "Only Cost")
+
+
+
     plt.show()
 
 
