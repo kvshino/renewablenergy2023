@@ -38,7 +38,7 @@ def setup(disable_pv: bool = False, disable_battery: bool = False) -> dict:
     return data
 
 
-def plot_graph(data, x, y, x_label, y_label, title, color):
+def plot_graph(data, x, y, title, color, label):
     """
     Plots a graph.
 
@@ -53,11 +53,22 @@ def plot_graph(data, x, y, x_label, y_label, title, color):
 
     """
     plt.figure(title)
-    sns.lineplot(data, x=x, y=y, color=color)
+    ax=sns.lineplot(data, x=x, y=y, color=color)
+    ax.plot(data[x], data[y], label=label, color=color)
+
     plt.xticks(data['datetime'], data['datetime'].dt.strftime('%d/%m Ore:%H:%M'), rotation=45)
     plt.title(title)
-    plt.xlabel(x_label)
-    plt.ylabel(y_label)
+
+
+
+def plot_subgraph(data, x, y, color, label, position):
+
+    plt.subplot(2, 3, position)
+    plt.plot(data[x],data[y], color=color)
+    plt.xticks(data['datetime'], data['datetime'].dt.strftime('%H'), rotation=10)
+    plt.title(label)
+    if label != "Cost":
+        plt.ylim(-10000, 10000)
 
 
 def get_true_load_consumption():

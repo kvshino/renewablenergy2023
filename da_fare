@@ -42,6 +42,24 @@ usare quelli di oggi per avere quelli di domani finchè non saranno caricati)
 
 12/12
  - controllare se sum viene moltiplicato
-
-- fare i delta della batteria e plottarli
+- fare i delta della batteria e plottarli [FATTO]
 - 
+
+Situazioni:
+- Solo consumi
+    - Salerno
+    - Milano
+    - Lecce
+    - Roma    
+- Solo consumi e pannelli
+    - Salerno
+    - Milano
+    - Lecce
+    - Roma 
+- Consumi, Pannelli e batteria
+    - Salerno
+    - Milano
+    - Lecce
+    - Roma 
+
+Fare i database dei consumi

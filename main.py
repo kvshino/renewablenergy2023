@@ -80,13 +80,13 @@ async def main():
     problem = MixedVariableProblem()
 
     # Set the population size to 1
-    pop_size = 100
+    pop_size = 1
     algorithm = MixedVariableGA(pop_size)
 
     res = minimize(problem,
                    algorithm,
                    termination=('n_evals', 5),
-                   seed=random.randint(0, 99999),
+                   seed=1, #random.randint(0, 99999),
                    verbose=False)       
     
 
@@ -116,21 +116,46 @@ async def main():
 
     battery_wh_dataframe = pd.DataFrame({'datetime': time_column, 'value': battery_wh})
     
-    #difference=expected_load_dataframe-expected_production_dataframe-battery_wh_dataframe
+    
+    ########## EVALUATE DIFFERENCE ###########
 
+    temp = battery_wh_dataframe.iloc[1:]
+    temp = temp.reset_index(drop=True)
+    
+    difference=(expected_production_dataframe["value"]+temp["value"])-expected_load_dataframe["value"]
+    print(type(difference))
 
-    plot_graph(sum_dataframe, "datetime", "value", "Time", "Cost €", "Costo Grid", "Orange")
-    plot_graph(expected_load_dataframe, "datetime", "value", "Time", "Wh", "Grafico", "Red")
-    plot_graph(expected_production_dataframe, "datetime", "value", "time", "Production in Watt", "Grafico",
-               "Blue")
-    plot_graph(battery_wh_dataframe, "datetime", "value", "Time", "Wh", "Grafico", "Green")
-    #plot_graph(difference, "datetime", "value", "Time", "Wh", "Prova", "Green")
+    print(expected_production_dataframe)
+    print(temp)
+    print(expected_load_dataframe)
+    print(difference)
 
+    time_column = pd.date_range(start=current_datetime.replace(minute=0, second=0, microsecond=0),
+                                periods=24, freq='H')
+    
+    difference_dataframe = pd.DataFrame({'datetime': time_column, 'value': difference})
 
-    print(quantity_delta_battery_dataframe)
-    plot_graph(quantity_delta_battery_dataframe, "datetime", "value", "Time", "Wh", "Grafico", "Green")
+    #########################################
+
+    plot_graph(sum_dataframe, "datetime", "value",  "Costo Grid", "Orange", "Cost")
+    plot_graph(expected_load_dataframe, "datetime", "value", "Grafico", "Red", "Expected Load")
+    plot_graph(expected_production_dataframe, "datetime", "value", "Grafico","Blue", "Expected Production")
+    plot_graph(battery_wh_dataframe, "datetime", "value", "Grafico", "Green", "Battery Level Wh")    
+    plot_graph(difference_dataframe, "datetime", "value", "Grafico", "Purple", "Difference")
+    plot_graph(quantity_delta_battery_dataframe, "datetime", "value", "Grafico", "Yellow", "Delta Battery")
+
+    plt.figure()
+    plot_subgraph(sum_dataframe, "datetime", "value", "Orange", "Cost", 1)
+    plot_subgraph(expected_load_dataframe, "datetime", "value", "Red", "Expected Load", 2)
+    plot_subgraph(expected_production_dataframe, "datetime", "value", "Blue", "Expected Production", 3)
+    plot_subgraph(battery_wh_dataframe, "datetime", "value", "Green", "Battery Level Wh", 4)
+    plot_subgraph(difference_dataframe, "datetime", "value", "Purple", "Difference", 5)
+    plot_subgraph(quantity_delta_battery_dataframe, "datetime", "value", "Yellow", "Delta Battery", 6)
+
+   
 
     print("Best solution found: \nX = %s\nF = %s" % (res.X, res.F))
+    plt.legend()
     plt.show()
 
 
