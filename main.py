@@ -81,8 +81,6 @@ async def main():
     data["estimate"] = get_estimate_load_consumption(get_true_load_consumption()) #It gives an estimation of the load consumption
     expected_production = get_expected_power_production_from_pv_24_hours_from_now(data)
 
-
-
     problem = MixedVariableProblem()
     pop_size = 1
     algorithm = MixedVariableGA(pop_size)
@@ -98,31 +96,36 @@ async def main():
 
     ### Start Code for Plots ##
 
+    #ASCISSA TEMPORALE DEI GRAFICI
     current_datetime = datetime.now()+timedelta(hours=1)
     time_column = pd.date_range(start=current_datetime.replace(minute=0, second=0, microsecond=0),periods=24, freq='H')
-    sum_dataframe = pd.DataFrame({'datetime': time_column, 'value': sum})
+
+    #COSTI ESPRESSI IN EURO                                - Controllati OK   - Fino a 23  - Negativo quando pago, Positivo quando mi rimborsano  -  Ogni punto è la somma dei precedenti
+    cost_dataframe = pd.DataFrame({'datetime': time_column, 'value': sum})
+    
+    #STIMA DEL CARICO NELLE PROSSIME 24H                   - Controllati OK   - Fino a 23   - Positivo
     expected_load_dataframe = pd.DataFrame({'datetime': time_column, 'value': data["estimate"]["consumo"].tolist()})
+    
+    #STIMA DELLA PRODUZIONE NELLE PROSSIME 24 H            - Controllati OK   - Fino a 23   - Positivo
     expected_production_dataframe = pd.DataFrame({'datetime': time_column, 'value': expected_production["production"].tolist()})
+    
+    #QUANTA ENERGIA STIMATA ENTRA ED ESCE DALLA BATTERIA   - Controllati OK   - Fino a 23   - Positivo quando entra, negativo quando esce
     quantity_delta_battery_dataframe = pd.DataFrame({'datetime': time_column, 'value': quantity_delta_battery})
 
-    
+    #QUANTA ENERGIA HO IN BATTERIA                         - Controllati OK   - Fino a 24   - Positivo
     time_column = pd.date_range(start=current_datetime.replace(minute=0, second=0, microsecond=0) - timedelta(hours=1),
                                 periods=25, freq='H')
     battery_wh = [percentage * float(data["soc_max"] * data["battery_capacity"]) for percentage in actual_percentage]
     battery_wh_dataframe = pd.DataFrame({'datetime': time_column, 'value': battery_wh})
     
-    
+    #SCAMBIO ENERGETICO CON LA RETE                        - Controllati OK   - Fino a 24   - Positivo quando prendo, negativo quando vendo
     time_column = pd.date_range(start=current_datetime.replace(minute=0, second=0, microsecond=0), periods=24, freq='H')
-    temp = battery_wh_dataframe.iloc[1:]
-    temp = temp.reset_index(drop=True)
-    difference=(expected_production_dataframe["value"]+temp["value"])-expected_load_dataframe["value"]
-
-    
+    difference = expected_load_dataframe["value"] - (expected_production_dataframe["value"] - quantity_delta_battery_dataframe["value"])
     difference_dataframe = pd.DataFrame({'datetime': time_column, 'value': difference})
 
 
 
-    plot_graph(sum_dataframe, "datetime", "value",  "Costo Grid", "Orange", "Cost")
+    plot_graph(cost_dataframe, "datetime", "value",  "Costo Grid", "Orange", "Cost")
     plot_graph(expected_load_dataframe, "datetime", "value", "Grafico", "Red", "Expected Load")
     plot_graph(expected_production_dataframe, "datetime", "value", "Grafico","Blue", "Expected Production")
     plot_graph(battery_wh_dataframe, "datetime", "value", "Grafico", "Green", "Battery Level Wh")    
@@ -131,7 +134,7 @@ async def main():
     plt.legend()
 
     plt.figure()
-    plot_subgraph(sum_dataframe, "datetime", "value", "Orange", "Cost", 1)
+    plot_subgraph(cost_dataframe, "datetime", "value", "Orange", "Cost", 1)
     plot_subgraph(expected_load_dataframe, "datetime", "value", "Red", "Expected Load", 2)
     plot_subgraph(expected_production_dataframe, "datetime", "value", "Blue", "Expected Production", 3)
     plot_subgraph(battery_wh_dataframe, "datetime", "value", "Green", "Battery Level Wh", 4)
@@ -145,9 +148,9 @@ async def main():
     #This part of code puts the update value of the battery in the file csv/socs.csv
     if res.X["b0"] == True:
 
-        new_value = data["socs"]+( (data["soc_max"] - data["socs"])*(res.X["i0"]/100))
+        new_value = data["socs"]+( (1 - data["socs"])*(res.X["i0"]/100))
     else:
-        new_value = data["socs"]-( (data["socs"] - data["soc_min"])*(res.X["i0"]/100))
+        new_value = data["socs"]-( (data["socs"])*(res.X["i0"]/100))
     df_nuovo = pd.DataFrame([new_value])
     df_nuovo.to_csv('csv/socs.csv', mode='a', header=False, index=False)
 

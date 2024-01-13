@@ -6,13 +6,9 @@ import pandas as pd
 from pannello import *
 
 
-def setup(disable_pv: bool = False, disable_battery: bool = False) -> dict:
+def setup() -> dict:
     """
     Takes the datas from the conf.yaml and stores them in data.
-
-    Args:
-        disable_pv: when True disables the PV grid
-        disable_battery: when True disables the battery (a plant without accumulators)
 
     Returns:
         data: struct containing all the datas
@@ -21,25 +17,14 @@ def setup(disable_pv: bool = False, disable_battery: bool = False) -> dict:
     with open("conf.yaml") as f:
         data = yaml.load(f, Loader=yaml.FullLoader)
 
-    if disable_pv:
-        data["energy_pv"] = []
-        
-
-
-    if disable_battery:
-        data["soc_max"] = 0
-        data["soc_min"] = 0
-        data["socs"] = 0
-    else:
-        df = pd.read_csv('csv/socs.csv')
-        # Prendi l'ultimo valore
-        data["socs"] = df.iloc[-1]
+    
+    df = pd.read_csv('csv/socs.csv')
+    # Prendi l'ultimo valore
+    data["socs"] = df.iloc[-1]
 
         
 
     for i in range(0, 24):
-        if disable_pv:
-            data["energy_pv"].append(0)
         data["hours"].append(i)
         data["energy_grid"].append(0)
         # data["battery_levels"].append(data["initial_battery_level"])
@@ -89,7 +74,7 @@ def get_true_load_consumption():
         """
 
     # Legge il CSV in un DataFrame
-    df = pd.read_csv("csv/load_profile.csv")
+    df = pd.read_csv("csv/loadnew.csv")
 
     # Ottiene la data e l'ora attuali
     now = datetime.now()
