@@ -11,7 +11,6 @@ from functions import *
 
 import warnings
 
-
 warnings.filterwarnings("ignore", category=FutureWarning)
 
 data = setup()
@@ -76,55 +75,93 @@ class MixedVariableProblem(ElementwiseProblem):
 
 
 async def main():
-
-    data["prices"] = await get_intra_days_market()  #Bring the prices of energy from Mercati Elettrici
-    data["estimate"] = get_estimate_load_consumption(get_true_load_consumption()) #It gives an estimation of the load consumption
+    data["prices"] = await get_intra_days_market()  # Bring the prices of energy from Mercati Elettrici
+    data["estimate"] = get_estimate_load_consumption(
+        get_true_load_consumption())  # It gives an estimation of the load consumption
     expected_production = get_expected_power_production_from_pv_24_hours_from_now(data)
 
     problem = MixedVariableProblem()
-    pop_size = 1
+    pop_size = 1000
     algorithm = MixedVariableGA(pop_size)
 
     res = minimize(problem,
-                algorithm,
-                termination=('n_evals', 5),
-                seed=1, #random.randint(0, 99999),
-                verbose=False)       
-    
+                   algorithm,
+                   termination=('n_evals', 5),
+                   seed=104,  # random.randint(0, 99999),
+                   verbose=False)
+
     sum, actual_percentage, quantity_delta_battery = evaluate(data, res)
 
+    # Start Code for Plots
 
-    ### Start Code for Plots ##
+    # ASCISSA TEMPORALE DEI GRAFICI
+    current_datetime = datetime.now() + timedelta(hours=1)
+    time_column = pd.date_range(start=current_datetime.replace(minute=0, second=0, microsecond=0), periods=24, freq='H')
 
-    #ASCISSA TEMPORALE DEI GRAFICI
-    current_datetime = datetime.now()+timedelta(hours=1)
-    time_column = pd.date_range(start=current_datetime.replace(minute=0, second=0, microsecond=0),periods=24, freq='H')
-
-    #COSTI ESPRESSI IN EURO                                - Controllati OK   - Fino a 23  - Negativo quando pago, Positivo quando mi rimborsano  -  Ogni punto è la somma dei precedenti
+    # COSTI ESPRESSI IN EURO                                - Controllati OK   - Fino a 23  - Negativo quando pago, Positivo quando mi rimborsano  -  Ogni punto è la somma dei precedenti
     cost_dataframe = pd.DataFrame({'datetime': time_column, 'value': sum})
-    
-    #STIMA DEL CARICO NELLE PROSSIME 24H                   - Controllati OK   - Fino a 23   - Positivo
+    cost_dataframe["value"] = cost_dataframe["value"].multiply(-1)
+    # STIMA DEL CARICO NELLE PROSSIME 24H                   - Controllati OK   - Fino a 23   - Positivo
     expected_load_dataframe = pd.DataFrame({'datetime': time_column, 'value': data["estimate"]["consumo"].tolist()})
-    
-    #STIMA DELLA PRODUZIONE NELLE PROSSIME 24 H            - Controllati OK   - Fino a 23   - Positivo
-    expected_production_dataframe = pd.DataFrame({'datetime': time_column, 'value': expected_production["production"].tolist()})
-    
-    #QUANTA ENERGIA STIMATA ENTRA ED ESCE DALLA BATTERIA   - Controllati OK   - Fino a 23   - Positivo quando entra, negativo quando esce
-    quantity_delta_battery_dataframe = pd.DataFrame({'datetime': time_column, 'value': quantity_delta_battery})
 
-    #QUANTA ENERGIA HO IN BATTERIA                         - Controllati OK   - Fino a 24   - Positivo
+    # STIMA DELLA PRODUZIONE NELLE PROSSIME 24 H            - Controllati OK   - Fino a 23   - Positivo
+    expected_production_dataframe = pd.DataFrame(
+        {'datetime': time_column, 'value': expected_production["production"].tolist()})
+
+
+
+    # QUANTA ENERGIA HO IN BATTERIA                         - Controllati OK   - Fino a 24   - Positivo
     time_column = pd.date_range(start=current_datetime.replace(minute=0, second=0, microsecond=0) - timedelta(hours=1),
                                 periods=25, freq='H')
-    battery_wh = [percentage * float(data["soc_max"] * data["battery_capacity"]) for percentage in actual_percentage]
+
+    min_value = float(data["soc_min"] * data["battery_capacity"])
+    max_value = float(data["soc_max"] * data["battery_capacity"])
+    battery_wh = [min_value + (percentage * (max_value - min_value)) for percentage in actual_percentage]
     battery_wh_dataframe = pd.DataFrame({'datetime': time_column, 'value': battery_wh})
-    
-    #SCAMBIO ENERGETICO CON LA RETE                        - Controllati OK   - Fino a 24   - Positivo quando prendo, negativo quando vendo
+
+    # QUANTA ENERGIA STIMATA ENTRA ED ESCE DALLA BATTERIA   - Controllati OK   - Fino a 23   - Positivo quando entra, negativo quando esce
+    quantity_delta_battery_dataframe = pd.DataFrame({'datetime': time_column, 'value': quantity_delta_battery})
+
+    # PERCENTUALE BATTERIA
+    actual_percentage_dataframe = pd.DataFrame({'datetime': time_column, 'value': actual_percentage})
+    actual_percentage_dataframe["value"] = actual_percentage_dataframe["value"].multiply(100*data["soc_max"])
+
+    # SCAMBIO ENERGETICO CON LA RETE                        - Controllati OK   - Fino a 23   - Positivo quando prendo, negativo quando vendo
+    quantity_delta_battery_dataframe2 = quantity_delta_battery_dataframe[1:].reset_index()
     time_column = pd.date_range(start=current_datetime.replace(minute=0, second=0, microsecond=0), periods=24, freq='H')
-    difference = expected_load_dataframe["value"] - (expected_production_dataframe["value"] - quantity_delta_battery_dataframe["value"])
+    difference = expected_load_dataframe["value"] - (
+                expected_production_dataframe["value"] - quantity_delta_battery_dataframe2["value"])
     difference_dataframe = pd.DataFrame({'datetime': time_column, 'value': difference})
 
 
+    # Grafici
 
+
+    plot_graph(expected_production_dataframe, "datetime", "value", "Stima Produzione PV", "#F3722C", "Wh")
+    plt.ylim(-300, 5000)
+
+    plot_graph(expected_load_dataframe, "datetime", "value", "Stima Carico", "#F94144", "Wh")
+    plt.ylim(-300, 5000)
+
+    plot_graph(difference_dataframe, "datetime", "value", "Stima scambio energetico con la rete elettrica (acquisto positivo)", "#43AA8B", "Wh")
+
+    plot_graph(cost_dataframe, "datetime", "value", "Stima costi in bolletta (guadagno positivo)", "#577590", "Euro €")
+
+    plot_graph(quantity_delta_battery_dataframe, "datetime", "value", "Stima carica/scarica batteria (carica positiva)", "#4D908E", "Wh")
+
+    plot_graph(battery_wh_dataframe, "datetime", "value", "Stima energia in batteria", "#90BE6D", "Wh")
+    plt.ylim(-300, data["battery_capacity"]+data["battery_capacity"]/15)
+
+    plot_graph(actual_percentage_dataframe, "datetime", "value", "Stima percentuale batteria", "#90BE6D", "%")
+    plt.ylim(-5, 100)
+
+
+
+
+
+
+
+    """
     plot_graph(cost_dataframe, "datetime", "value",  "Costo Grid", "Orange", "Cost")
     plot_graph(expected_load_dataframe, "datetime", "value", "Grafico", "Red", "Expected Load")
     plot_graph(expected_production_dataframe, "datetime", "value", "Grafico","Blue", "Expected Production")
@@ -154,6 +191,7 @@ async def main():
     df_nuovo = pd.DataFrame([new_value])
     df_nuovo.to_csv('csv/socs.csv', mode='a', header=False, index=False)
 
+    """
 
     ########################################################################################
     #This is the part where we consider only the pv without taking into account the battery#
@@ -164,43 +202,24 @@ async def main():
     result = []
     result.append(0)
     if result_only_pv[0] < 0:
-        result.append((-result_only_pv[0])*data["prices"]["prezzo"][0])
+        result.append((result_only_pv[0])*data["prices"]["prezzo"][0])
     else:
-        result.append((-result_only_pv[0])*data["sold"])
+        result.append((result_only_pv[0])*data["sold"])
 
 
     for i in range(1,24):
         if result_only_pv[i] < 0:
-            result.append((-result_only_pv[i])*data["prices"]["prezzo"][i]+result[i])
+            result.append((result_only_pv[i])*data["prices"]["prezzo"][i]+result[i])
         else:
-            result.append((-result_only_pv[i])*data["sold"]+result[i])
+            result.append((result_only_pv[i])*data["sold"]+result[i])
     
 
     current_datetime = datetime.now()+timedelta(hours=1)
     time_column = pd.date_range(start=current_datetime.replace(minute=0, second=0, microsecond=0),periods=24, freq='H')
     pv_only_dataframe = pd.DataFrame({'datetime': time_column, 'value': result[1:]})
 
-    plt.figure()
+    plot_graph(pv_only_dataframe, "datetime", "value", "Stima costi in bolletta (guadagno positivo) (senza batteria)", "#577590", "Euro €")
 
-    plt.subplot(1, 3, 1)
-    plt.plot(pv_only_dataframe["datetime"],pv_only_dataframe["value"], color="Orange")
-    plt.xticks(pv_only_dataframe['datetime'], pv_only_dataframe['datetime'].dt.strftime('%H'), rotation=10)
-    plt.title("Cost without Battery")
-
-    plt.subplot(1, 3, 2)
-    plt.plot(expected_load_dataframe["datetime"],expected_load_dataframe["value"], color="Green")
-    plt.xticks(expected_load_dataframe['datetime'], expected_load_dataframe['datetime'].dt.strftime('%H'), rotation=10)
-    plt.title("Expected Load")
-    plt.ylim(-10000, 10000)
-
-    plt.subplot(1, 3, 3)
-    plt.plot(expected_production_dataframe["datetime"],expected_production_dataframe["value"], color="Blue")
-    plt.xticks(expected_production_dataframe['datetime'], expected_production_dataframe['datetime'].dt.strftime('%H'), rotation=10)
-    plt.title("Expected Production")
-    plt.ylim(-10000, 10000)
-
-
-    
 
 
     ########################################################################################
@@ -213,15 +232,12 @@ async def main():
     for value in data["estimate"]["consumo"].values:
         consumption_list.append((-value*data["prices"]["prezzo"][i])+consumption_list[i])
         i=i+1
-    
 
     consumption_only_dataframe = pd.DataFrame({'datetime': time_column, 'value': consumption_list[1:]})
-    plot_graph(consumption_only_dataframe, "datetime", "value",  "Solo Consumo", "Orange", "Only Cost")
-
+    plot_graph(consumption_only_dataframe, "datetime", "value",  "Stima costi in bolletta (guadagno positivo) (senza batteria e senza PV)", "#577590", "Euro €")
 
 
     plt.show()
-
 
 
 if __name__ == "__main__":

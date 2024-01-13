@@ -47,11 +47,12 @@ def plot_graph(data, x, y, title, color, label):
 
     """
     plt.figure(title)
+    sns.set(font_scale=1.48)
     ax=sns.lineplot(data, x=x, y=y, color=color)
-    ax.plot(data[x], data[y], label=label, color=color)
-
+    ax.plot(data[x], data[y], color=color)
+    plt.ylabel(label)
     plt.xticks(data['datetime'], data['datetime'].dt.strftime('%d/%m Ore:%H:%M'), rotation=45)
-    plt.title(title)
+    plt.title(title, weight='bold')
 
 
 
@@ -128,6 +129,7 @@ def evaluate(data, res):
     actual_percentage.append(data["socs"][-1])
     
     quantity_delta_battery=[]
+    quantity_delta_battery.append(0)
     # valori negativi indicano consumi ,positivi guadagni
     for j in range(24):
         charge = res.X[f"b{j}"]
