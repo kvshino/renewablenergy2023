@@ -46,7 +46,10 @@ def plot_graph(data, x, y, title, color, label):
         color: color of the line plot
 
     """
-    plt.figure(title)
+    sns.set(rc={'axes.facecolor': '#edf1ef', 'figure.facecolor': '#edf1ef'})
+
+    plt.figure(title, facecolor='#edf1ef')
+
     sns.set(font_scale=1.48)
     ax=sns.lineplot(data, x=x, y=y, color=color)
     ax.plot(data[x], data[y], color=color)
@@ -58,14 +61,15 @@ def plot_graph(data, x, y, title, color, label):
 
 def plot_subgraph(data, x, y, color, label, position):
 
-    plt.subplot(2, 3, position)
-    plt.plot(data[x],data[y], color=color)
+    plt.subplot(1, 1, position)
+    plt.plot(data[x],data[y], color=color, label= label)
     plt.xticks(data['datetime'], data['datetime'].dt.strftime('%H'), rotation=10)
     plt.title(label)
+
     if label != "Cost" or label != "Cost without Battery":
         plt.ylim(-10000, 10000)
     else:
-        plt.ylim(-5, 5)
+        plt.ylim(-2, 2)
     
 
 def get_true_load_consumption():

@@ -1,19 +1,14 @@
-soc_max: 0.8              # Adimensionale
-soc_min: 0.2              # Adimensionale
-battery_capacity: 10000   # Wh
-#socs: [ 0.5 ]
+soc_max: 0.8                      # Adimensionale
+soc_min: 0.2                      # Adimensionale
+battery_capacity: 14000           # Wh
+maximum_power_absorption: 4500    # Wh
 
-load_profile: [1000,1000,1000,1000,1000,1750,  2500,1750,1000,1000,1000,1000,    1000,1000,1000,1000,1000,1000,      1750,2500,1750,1600,1500,1000]
-#load_profile portato in watt per esigenze di calcolo 
-latitude: 40.6824404
-longitude: 14.7680965
-energy_delta: 0
+latitude: 45.2801
+longitude: 12.2858
+aasdas: 5981, 713, 104
 hours: []
 energy_grid: []
 
-
-k_min: 0.5
-h_max: 1
 
 sold: 0.00014
 # dati https://www.mercatoelettrico.org/It/default.aspx 30/09/23(sabato)
@@ -26,6 +21,6 @@ fd: 1           #Pari ad 1 poichè il PV è piatto
 SF: 1           #soiling factor: sporcizia. Se pari ad 1 il pannello è pulito
 f1: 0.9         #funzione che descrive la massa d'aria (Slide libro 78)
 f2: 1           #funzione che descrive come i raggi cadono sul pannello. Un valore pari ad 1 indica che i raggi sono perpendicolari
-pmax: 0
+pmax: 3700
 gamma: -0.0026   #γ for power: around -0.3% to -0.5% per degree Celsius. -0.4% is -0.004
 temp_ref: 25

@@ -25,7 +25,6 @@ async def get_intra_days_market(days=1) -> pd.core.frame.DataFrame:
             data = await mercati_elettrici.get_prices("MI-A2", today.strftime("%Y%m%d"))
             today = today - timedelta(days=1)
             pandas_data = pd.concat([pandas_data, pd.DataFrame(data)])
-
         sud = pandas_data.loc[pandas_data['zona'] == "SUD"].drop(["mercato", "zona"], axis=1)
         sud["prezzo"] = sud["prezzo"]/1000/1000
         return sud.reset_index(drop=True)
