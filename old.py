@@ -164,3 +164,38 @@ def logic(data):
         else:
             print("Bring energy from the grid")
             return 1
+
+
+
+
+
+
+
+
+def StavaNelMainPlot():
+    plot_graph(cost_dataframe, "datetime", "value", "Costo Grid", "Orange", "Cost")
+    plot_graph(expected_load_dataframe, "datetime", "value", "Grafico", "Red", "Expected Load")
+    plot_graph(expected_production_dataframe, "datetime", "value", "Grafico", "Blue", "Expected Production")
+    plot_graph(battery_wh_dataframe, "datetime", "value", "Grafico", "Green", "Battery Level Wh")
+    plot_graph(difference_dataframe, "datetime", "value", "Grafico", "Purple", "Difference")
+    plot_graph(quantity_delta_battery_dataframe, "datetime", "value", "Grafico", "Yellow", "Delta Battery")
+    plt.legend()
+
+    plt.figure()
+    plot_subgraph(cost_dataframe, "datetime", "value", "Orange", "Cost", 1)
+    plot_subgraph(expected_load_dataframe, "datetime", "value", "Red", "Expected Load", 2)
+    plot_subgraph(expected_production_dataframe, "datetime", "value", "Blue", "Expected Production", 3)
+    plot_subgraph(battery_wh_dataframe, "datetime", "value", "Green", "Battery Level Wh", 4)
+    plot_subgraph(difference_dataframe, "datetime", "value", "Purple", "Difference", 5)
+    plot_subgraph(quantity_delta_battery_dataframe, "datetime", "value", "Yellow", "Delta Battery", 6)
+
+    print("Best solution found: \nX = %s\nF = %s" % (res.X, res.F))
+
+    # This part of code puts the update value of the battery in the file csv/socs.csv
+    if res.X["b0"] == True:
+
+        new_value = data["socs"] + ((1 - data["socs"]) * (res.X["i0"] / 100))
+    else:
+        new_value = data["socs"] - ((data["socs"]) * (res.X["i0"] / 100))
+    df_nuovo = pd.DataFrame([new_value])
+    df_nuovo.to_csv('csv/socs.csv', mode='a', header=False, index=False)
