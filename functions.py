@@ -14,6 +14,9 @@ from pymoo.core.variable import Binary, Integer
 from pymoo.optimize import minimize
 from pymoo.util.display.output import Output
 from pymoo.util.display.column import Column
+from pymoo.algorithms.moo.nsga2 import RankAndCrowding
+from sklearn.preprocessing import MinMaxScaler
+
 
 
 def setup() -> dict:
@@ -50,8 +53,6 @@ def plot_graph(data, x, y, title, color, label):
         data: a dataframe containing x and y
         x: dataframe column for the x-coordinates
         y: dataframe column for the y-coordinates
-        x_label: label for the x-coordinates
-        y_label: label for the y-coordinates
         title: used for the window
         color: color of the line plot
 
@@ -67,6 +68,7 @@ def plot_graph(data, x, y, title, color, label):
     plt.xticks(data['datetime'], data['datetime'].dt.strftime('%d/%m Ore:%H:%M'), rotation=90)
     plt.title(title, weight='bold')
 
+
 def plot_graph_hist(data, x, y, title, color, label):
     plt.figure(title)
     colors = ['#F94144' if value < 0 else '#90BE6D' for value in data['value']]
@@ -74,6 +76,7 @@ def plot_graph_hist(data, x, y, title, color, label):
     plt.xticks(data['datetime'], data['datetime'].dt.strftime('%d/%m Ore:%H:%M'), rotation=90)
     plt.ylabel(label)
     plt.title(title, weight='bold')
+
 
 def plot_subgraph(data, x, y, color, label, position):
     plt.subplot(1, 1, position)
@@ -197,14 +200,14 @@ def evaluate(data, variables_values):
 
 
 def start_genetic_algorithm(data, pop_size, n_gen, n_threads):
-    class MixedVariableProblem(ElementwiseProblem):
+    class MultiObjectiveMixedVariableProblem(ElementwiseProblem):
 
         def __init__(self, n_couples=24, **kwargs):
             variables = {}
             for j in range(n_couples):
                 variables[f"b{j}"] = Binary()
                 variables[f"i{j}"] = Integer(bounds=(0, 100))
-            super().__init__(vars=variables, n_obj=1, **kwargs)
+            super().__init__(vars=variables, n_ieq_constr=0, n_obj=2, **kwargs)
 
         def _evaluate(self, X, out, *args, **kwargs):
             # 1 carico batteria ,0 la scarico
@@ -217,6 +220,7 @@ def start_genetic_algorithm(data, pop_size, n_gen, n_threads):
             upper_limit = (data["soc_max"] * data["battery_capacity"])
             lower_limit = (data["soc_min"] * data["battery_capacity"])
             actual_percentage = [data["socs"][-1]]
+            quantity_battery = 0
             # valori negativi indicano consumi ,positivi guadagni
             for j in range(24):
                 charge = X[f"b{j}"]
@@ -233,12 +237,13 @@ def start_genetic_algorithm(data, pop_size, n_gen, n_threads):
                             j]) * sold)  # sum = sum - rimborso
 
                     else:
-                        if( quantity_charging_battery > data["maximum_power_absorption"] + delta_production.iloc[j]):
+                        if (quantity_charging_battery > data["maximum_power_absorption"] + delta_production.iloc[j]):
                             quantity_charging_battery = data["maximum_power_absorption"] + delta_production.iloc[j]
 
                         sum = sum + (quantity_charging_battery - delta_production.iloc[j]) * \
                               data["prices"]["prezzo"].iloc[j]
 
+                    quantity_battery += abs(quantity_charging_battery)
                 else:
                     quantity_discharging_battery = ((actual_percentage[
                                                          j] * upper_limit - lower_limit) * percentage) / 100
@@ -258,24 +263,31 @@ def start_genetic_algorithm(data, pop_size, n_gen, n_threads):
                         sum = sum + (- (delta_production.iloc[j] + quantity_discharging_battery) *
                                      data["prices"]["prezzo"].iloc[j])
 
-            out["F"] = sum
+                    quantity_battery += abs(quantity_discharging_battery)
+
+            out["F"] = [sum, quantity_battery]
 
     class MyOutput(Output):
 
         def __init__(self):
             super().__init__()
-            self.f_min = Column("f_min", width=13)
-            self.columns += [self.f_min]
+            self.f_min_sum = Column("f_min_sum", width=13)
+            self.f_min_quantity_battery = Column("f_min_quantity_battery", width=20)
+            self.columns += [self.f_min_sum, self.f_min_quantity_battery]
 
         def update(self, algorithm):
             super().update(algorithm)
-            self.f_min.set(-np.min(algorithm.pop.get("F")))
+            f_values = algorithm.pop.get("F")
+            f_min_sum = np.min(f_values[:, 0])
+            f_min_quantity_battery = np.min(f_values[:, 1])
+            self.f_min_sum.set('{:.3f}'.format(-f_min_sum) + " €")
+            self.f_min_quantity_battery.set('{:.0f}'.format(f_min_quantity_battery) + " Wh")
 
     pool = ThreadPool(n_threads)
     runner = StarmapParallelization(pool.starmap)
-    problem = MixedVariableProblem(elementwise_runner=runner)
+    problem = MultiObjectiveMixedVariableProblem(elementwise_runner=runner)
 
-    algorithm = MixedVariableGA(pop_size)
+    algorithm = MixedVariableGA(pop_size, survival=RankAndCrowding())
 
     res = minimize(problem,
                    algorithm,
@@ -288,26 +300,72 @@ def start_genetic_algorithm(data, pop_size, n_gen, n_threads):
     print("Tempo:", res.exec_time)
 
     return res, res.history
-def genetic_algorithm_graph(data):
-    plt.figure(1)
-    history = [-e.opt[0].F[0] for e in data["history"]]
-    plt.plot(history)
-    plt.title('Andamento dei valori minimi')
-    plt.xlabel('Generazione')
-    plt.ylabel('Valore in € del guadagno')
 
-    plt.figure(2)
-    respop = [-x for x in data["res"].pop.get("F")][:5]
-    plt.plot(range(1, len(respop) + 1), respop, 'o')
-    plt.xticks([1, 2, 3, 4, 5])
-    plt.title('Individui finali')
+
+def genetic_algorithm_graph_top(data, top_n_individuals, somma, quantity_delta_battery):
+    s = []
+    b = []
+    for i in range(0, top_n_individuals):
+        s.append(somma[i][23])
+        b.append(sum(abs(x) for x in quantity_delta_battery[i]))
+    x = list(range(1, len(b) + 1))
+
+    plt.figure("Confronto Costi dei Migliori individui")
+    plt.title("Confronto Costi dei Migliori individui")
+    asse_x = range(1, len(s) + 1)
+    plt.bar(asse_x, s, width=0.2)
+    plt.xticks(asse_x)
     plt.xlabel('Individuo n°')
-    plt.ylabel('Valore dell\'individuo')
-    plt.show()
+    plt.ylabel('Costo €')
+
+    plt.figure("Confronto Batteria dei Migliori individui")
+    plt.title("Confronto Batteria dei Migliori individui")
+    asse_x = range(1, len(b) + 1)
+    plt.bar(asse_x, b, width=0.2)
+    plt.xticks(asse_x)
+    plt.xlabel('Individuo n°')
+    plt.ylabel('Scambio energetico totale con batteria (Wh)')
+
+
+
+
+def genetic_algorithm_graph_cw(data, all_population):
+    scaler = MinMaxScaler()
+    def sort_key(p):
+        normalized_p = scaler.transform([p.F])[0]
+        return sum(normalized_p)
+    population_somma = []
+    population_actual_percentage = []
+    population_quantity_delta_battery = []
+    for pop in all_population:
+        objective_values = [ind.F for ind in pop]
+        normalized_values = scaler.fit_transform(objective_values)
+        sorted_population = sorted(pop, key=sort_key)
+        top_first_individual = sorted_population[:1]
+        variables_values = [ind.X for ind in top_first_individual]
+        s, a, q = evaluate(data, variables_values[0])
+        population_somma.append(s[23])
+        population_actual_percentage.append(sum(abs(x) for x in q))
+        population_quantity_delta_battery.append(q)
+
+    plt.figure("Confronto Costi per generazione")
+    plt.title("Confronto Costi per generazione")
+    x = list(range(1, len(population_somma) + 1))
+    plt.plot(x,population_somma)
+
+    plt.xlabel('Generazione n°')
+    plt.ylabel('Costo €')
+
+    plt.figure("Confronto Batteria per generazione")
+    plt.title("Confronto Batteria per generazione")
+    x = list(range(1, len(population_actual_percentage) + 1))
+    plt.plot(x, population_actual_percentage)
+
+    plt.xlabel('Generazione n°')
+    plt.ylabel('Batteria (Wh)')
+
 
 def simulation_plot(data, sum, actual_percentage, quantity_delta_battery):
-
-
     # ASCISSA TEMPORALE DEI GRAFICI
     current_datetime = datetime.now() + timedelta(hours=1)
     time_column = pd.date_range(start=current_datetime.replace(minute=0, second=0, microsecond=0), periods=24, freq='H')
@@ -354,12 +412,13 @@ def simulation_plot(data, sum, actual_percentage, quantity_delta_battery):
     plt.ylim(-300, 5000)
 
     plot_graph_hist(difference_dataframe, "datetime", "value",
-               "Stima scambio energetico con la rete elettrica (acquisto positivo)", "#43AA8B", "Wh")
+                    "Stima scambio energetico con la rete elettrica (acquisto positivo)", "#43AA8B", "Wh")
 
     plot_graph(cost_dataframe, "datetime", "value", "Stima costi in bolletta (guadagno positivo)", "#577590", "Euro €")
 
-    plot_graph_hist(quantity_delta_battery_dataframe, "datetime", "value", "Stima carica/scarica batteria (carica positiva)",
-               "#4D908E", "Wh")
+    plot_graph_hist(quantity_delta_battery_dataframe, "datetime", "value",
+                    "Stima carica/scarica batteria (carica positiva)",
+                    "#4D908E", "Wh")
 
     plot_graph(battery_wh_dataframe, "datetime", "value", "Stima energia in batteria", "#90BE6D", "Wh")
     plt.ylim(-300, data["battery_capacity"] + data["battery_capacity"] / 15)
@@ -392,7 +451,6 @@ def simulation_plot(data, sum, actual_percentage, quantity_delta_battery):
     plot_graph(pv_only_dataframe, "datetime", "value", "Stima costi in bolletta (guadagno positivo) (senza batteria)",
                "#577590", "Euro €")
 
-
     ########################################################################################
     # This is the part where we consider only the consumption and PV and the battery#########
     ########################################################################################
@@ -407,7 +465,6 @@ def simulation_plot(data, sum, actual_percentage, quantity_delta_battery):
     consumption_only_dataframe = pd.DataFrame({'datetime': time_column, 'value': consumption_list[1:]})
     plot_graph(consumption_only_dataframe, "datetime", "value",
                "Stima costi in bolletta (guadagno positivo) (senza batteria e senza PV)", "#577590", "Euro €")
-
 
     plt.figure(facecolor='#edf1ef')
 
