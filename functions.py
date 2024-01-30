@@ -329,7 +329,7 @@ def genetic_algorithm_graph_top(data, top_n_individuals, somma, quantity_delta_b
 
 
 
-def genetic_algorithm_graph_cw(data, all_population):
+def genetic_algorithm_graph_convergence(data, all_population):
     scaler = MinMaxScaler()
     def sort_key(p):
         normalized_p = scaler.transform([p.F])[0]
