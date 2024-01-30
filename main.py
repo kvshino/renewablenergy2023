@@ -1,8 +1,6 @@
 import asyncio
-
 from costi import *
 from functions import *
-
 import warnings
 
 warnings.filterwarnings("ignore", category=FutureWarning)
@@ -12,12 +10,22 @@ data = setup()
 
 async def main():
     data["prices"] = await get_intra_days_market()  # Bring the prices of energy from Mercati Elettrici
+    data["res"], data["history"] = start_genetic_algorithm(data, 500, 150, 24)
+    genetic_algorithm_graph(data)
 
-    data["res"], data["history"] = start_genetic_algorithm(data, 500, 10, 24)
+    top_individuals=2
 
-    sum, actual_percentage, quantity_delta_battery = evaluate(data)
+    all_populations = [a.pop for a in data["history"]]
+    last_population = all_populations[-1]
+    sorted_population = sorted(last_population, key=lambda p: p.F)
+    top_n_individuals = sorted_population[:top_individuals]
+    variables_values = [ind.X for ind in top_n_individuals]
 
-    simulation_plot(data, sum, actual_percentage, quantity_delta_battery)
+    for i in range(0, top_individuals):
+        sum, actual_percentage, quantity_delta_battery = evaluate(data, variables_values[i])
+        simulation_plot(data, sum, actual_percentage, quantity_delta_battery)
+
+
 
 
 if __name__ == "__main__":

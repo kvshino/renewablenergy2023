@@ -1,7 +1,6 @@
 import matplotlib.pyplot as plt
 import seaborn as sns
 import yaml
-import pandas as pd
 
 from pannello import *
 
@@ -65,9 +64,16 @@ def plot_graph(data, x, y, title, color, label):
     ax = sns.lineplot(data, x=x, y=y, color=color)
     ax.plot(data[x], data[y], color=color)
     plt.ylabel(label)
-    plt.xticks(data['datetime'], data['datetime'].dt.strftime('%d/%m Ore:%H:%M'), rotation=45)
+    plt.xticks(data['datetime'], data['datetime'].dt.strftime('%d/%m Ore:%H:%M'), rotation=90)
     plt.title(title, weight='bold')
 
+def plot_graph_hist(data, x, y, title, color, label):
+    plt.figure(title)
+    colors = ['#F94144' if value < 0 else '#90BE6D' for value in data['value']]
+    plt.bar(data['datetime'], data['value'], width=0.02, color=colors)
+    plt.xticks(data['datetime'], data['datetime'].dt.strftime('%d/%m Ore:%H:%M'), rotation=90)
+    plt.ylabel(label)
+    plt.title(title, weight='bold')
 
 def plot_subgraph(data, x, y, color, label, position):
     plt.subplot(1, 1, position)
@@ -131,7 +137,7 @@ def get_estimate_load_consumption(dataframe: pd.DataFrame):
     return df
 
 
-def evaluate(data):
+def evaluate(data, variables_values):
     sum = []
     sum.append(0)
     delta_production = difference_of_production(data)
@@ -145,8 +151,8 @@ def evaluate(data):
     quantity_delta_battery.append(0)
     # valori negativi indicano consumi ,positivi guadagni
     for j in range(24):
-        charge = data["res"].X[f"b{j}"]
-        percentage = data["res"].X[f"i{j}"]
+        charge = variables_values[f"b{j}"]
+        percentage = variables_values[f"i{j}"]
         quantity_charging_battery = None
         quantity_discharging_battery = None
         if charge:
@@ -160,6 +166,8 @@ def evaluate(data):
                     sum[j] + ((quantity_charging_battery - delta_production.iloc[j]) * sold))  # sum = sum - rimborso
 
             else:
+                if (quantity_charging_battery > data["maximum_power_absorption"] + delta_production.iloc[j]):
+                    quantity_charging_battery = data["maximum_power_absorption"] + delta_production.iloc[j]
                 sum.append(
                     sum[j] + (quantity_charging_battery - delta_production.iloc[j]) * data["prices"]["prezzo"].iloc[j])
         else:
@@ -216,6 +224,7 @@ def start_genetic_algorithm(data, pop_size, n_gen, n_threads):
                 if charge:
 
                     quantity_charging_battery = ((upper_limit - actual_percentage[j] * upper_limit) * percentage) / 100
+
                     actual_percentage.append(actual_percentage[j] + quantity_charging_battery / upper_limit)
 
                     if quantity_charging_battery - delta_production.iloc[j] < 0:
@@ -224,9 +233,12 @@ def start_genetic_algorithm(data, pop_size, n_gen, n_threads):
                             j]) * sold)  # sum = sum - rimborso
 
                     else:
+                        if( quantity_charging_battery > data["maximum_power_absorption"] + delta_production.iloc[j]):
+                            quantity_charging_battery = data["maximum_power_absorption"] + delta_production.iloc[j]
+
                         sum = sum + (quantity_charging_battery - delta_production.iloc[j]) * \
-                              data["prices"]["prezzo"].iloc[
-                                  j]
+                              data["prices"]["prezzo"].iloc[j]
+
                 else:
                     quantity_discharging_battery = ((actual_percentage[
                                                          j] * upper_limit - lower_limit) * percentage) / 100
@@ -274,13 +286,12 @@ def start_genetic_algorithm(data, pop_size, n_gen, n_threads):
                    save_history=True)
 
     print("Tempo:", res.exec_time)
-    history = [-e.opt[0].F[0] for e in res.history]
-    return res, history
 
-
-def simulation_plot(data, sum, actual_percentage, quantity_delta_battery):
+    return res, res.history
+def genetic_algorithm_graph(data):
     plt.figure(1)
-    plt.plot(data["history"])
+    history = [-e.opt[0].F[0] for e in data["history"]]
+    plt.plot(history)
     plt.title('Andamento dei valori minimi')
     plt.xlabel('Generazione')
     plt.ylabel('Valore in € del guadagno')
@@ -293,6 +304,9 @@ def simulation_plot(data, sum, actual_percentage, quantity_delta_battery):
     plt.xlabel('Individuo n°')
     plt.ylabel('Valore dell\'individuo')
     plt.show()
+
+def simulation_plot(data, sum, actual_percentage, quantity_delta_battery):
+
 
     # ASCISSA TEMPORALE DEI GRAFICI
     current_datetime = datetime.now() + timedelta(hours=1)
@@ -339,12 +353,12 @@ def simulation_plot(data, sum, actual_percentage, quantity_delta_battery):
     plot_graph(expected_load_dataframe, "datetime", "value", "Stima Carico", "#F94144", "Wh")
     plt.ylim(-300, 5000)
 
-    plot_graph(difference_dataframe, "datetime", "value",
+    plot_graph_hist(difference_dataframe, "datetime", "value",
                "Stima scambio energetico con la rete elettrica (acquisto positivo)", "#43AA8B", "Wh")
 
     plot_graph(cost_dataframe, "datetime", "value", "Stima costi in bolletta (guadagno positivo)", "#577590", "Euro €")
-    plt.ylim(-2, 2)
-    plot_graph(quantity_delta_battery_dataframe, "datetime", "value", "Stima carica/scarica batteria (carica positiva)",
+
+    plot_graph_hist(quantity_delta_battery_dataframe, "datetime", "value", "Stima carica/scarica batteria (carica positiva)",
                "#4D908E", "Wh")
 
     plot_graph(battery_wh_dataframe, "datetime", "value", "Stima energia in batteria", "#90BE6D", "Wh")
@@ -377,7 +391,6 @@ def simulation_plot(data, sum, actual_percentage, quantity_delta_battery):
 
     plot_graph(pv_only_dataframe, "datetime", "value", "Stima costi in bolletta (guadagno positivo) (senza batteria)",
                "#577590", "Euro €")
-    plt.ylim(-2, 2)
 
 
     ########################################################################################
@@ -394,15 +407,15 @@ def simulation_plot(data, sum, actual_percentage, quantity_delta_battery):
     consumption_only_dataframe = pd.DataFrame({'datetime': time_column, 'value': consumption_list[1:]})
     plot_graph(consumption_only_dataframe, "datetime", "value",
                "Stima costi in bolletta (guadagno positivo) (senza batteria e senza PV)", "#577590", "Euro €")
-    plt.ylim(-2, 2)
-    plt.show()
+
+
     plt.figure(facecolor='#edf1ef')
 
     plot_subgraph(cost_dataframe, "datetime", "value", "#577590", "With PV and battery", 1)
     plot_subgraph(pv_only_dataframe, "datetime", "value", "#90BE6D", "With PV", 1)
-    plt.ylim(-2, 2)
+
     plot_subgraph(consumption_only_dataframe, "datetime", "value", "#F94144", "Without PV", 1)
-    plt.ylim(-2, 2)
     plt.ylabel("Euro €")
+    plt.ylim(-2, 2)
     plt.legend()
     plt.show()

@@ -10,7 +10,7 @@ hours: []
 energy_grid: []
 
 
-sold: 0.00014
+sold: 0.00007
 # dati https://www.mercatoelettrico.org/It/default.aspx 30/09/23(sabato)
 
 timezone: 'Europe/Rome'
