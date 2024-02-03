@@ -170,6 +170,7 @@ def evaluate(data, variables_values):
                     quantity_charging_battery = data["maximum_power_absorption"] + delta_production.iloc[j]
                 sum.append(
                     sum[j] + (quantity_charging_battery - delta_production.iloc[j]) * data["prices"]["prezzo"].iloc[j])
+            
         else:
             quantity_discharging_battery = ((actual_percentage[j] * upper_limit - lower_limit) * percentage) / 100
             actual_percentage.append(actual_percentage[j] - quantity_discharging_battery / upper_limit)
@@ -187,6 +188,7 @@ def evaluate(data, variables_values):
             else:
                 sum.append(sum[j] + (
                         - (delta_production.iloc[j] + quantity_discharging_battery) * data["prices"]["prezzo"].iloc[j]))
+            
 
         if quantity_charging_battery != None:
             quantity_delta_battery.append(+quantity_charging_battery)
@@ -217,6 +219,7 @@ def start_genetic_algorithm(data, pop_size, n_gen, n_threads):
             upper_limit = (data["soc_max"] * data["battery_capacity"])
             lower_limit = (data["soc_min"] * data["battery_capacity"])
             actual_percentage = [data["socs"][-1]]
+            quantity_battery=0
             # valori negativi indicano consumi ,positivi guadagni
             for j in range(24):
                 charge = X[f"b{j}"]
@@ -238,6 +241,8 @@ def start_genetic_algorithm(data, pop_size, n_gen, n_threads):
 
                         sum = sum + (quantity_charging_battery - delta_production.iloc[j]) * \
                               data["prices"]["prezzo"].iloc[j]
+                    
+                    quantity_battery+=abs(quantity_charging_battery)
 
                 else:
                     quantity_discharging_battery = ((actual_percentage[
@@ -257,19 +262,24 @@ def start_genetic_algorithm(data, pop_size, n_gen, n_threads):
                     else:
                         sum = sum + (- (delta_production.iloc[j] + quantity_discharging_battery) *
                                      data["prices"]["prezzo"].iloc[j])
+                    
+                    quantity_battery+=abs(quantity_discharging_battery)
 
-            out["F"] = sum
+            
+
+            out["F"] = sum+quantity_battery/100000
+
 
     class MyOutput(Output):
 
         def __init__(self):
             super().__init__()
-            self.f_min = Column("f_min", width=13)
+            self.f_min = Column("score", width=8)
             self.columns += [self.f_min]
 
         def update(self, algorithm):
             super().update(algorithm)
-            self.f_min.set(-np.min(algorithm.pop.get("F")))
+            self.f_min.set('{:.3F}'.format(-np.min(algorithm.pop.get("F"))))
 
     pool = ThreadPool(n_threads)
     runner = StarmapParallelization(pool.starmap)
@@ -288,22 +298,50 @@ def start_genetic_algorithm(data, pop_size, n_gen, n_threads):
     print("Tempo:", res.exec_time)
 
     return res, res.history
-def genetic_algorithm_graph(data):
-    plt.figure(1)
+
+
+def genetic_algorithm_graph(data, array_sum, array_qb):
+    plt.figure("Convergenza dell'algoritmo")
     history = [-e.opt[0].F[0] for e in data["history"]]
     plt.plot(history)
-    plt.title('Andamento dei valori minimi')
+    plt.title("Convergenza dell'algoritmo")
     plt.xlabel('Generazione')
     plt.ylabel('Valore in € del guadagno')
 
-    plt.figure(2)
-    respop = [-x for x in data["res"].pop.get("F")][:5]
-    plt.plot(range(1, len(respop) + 1), respop, 'o')
-    plt.xticks([1, 2, 3, 4, 5])
-    plt.title('Individui finali')
+    asse_x= range(1, len(array_sum)+1)
+
+
+    plt.figure("Punteggio normalizzato dei primi "+ str(len(array_sum)) + " individui")
+    respop = [-x[0] for x in data["res"].pop.get("F")][:len(array_sum)]
+    plt.bar(asse_x, respop, width=0.2, color="blue")
+    plt.xticks(asse_x)
+    plt.title("Punteggio normalizzato dei primi "+ str(len(array_sum)) + " individui")
     plt.xlabel('Individuo n°')
     plt.ylabel('Valore dell\'individuo')
+    plt.ylim(-abs(min(respop))-abs(0.3*min(respop)), abs(min(respop))+abs(0.1*min(respop)))
+    
+
+    plt.figure("Costo bolletta dei primi "+ str(len(array_sum)) + " individui")
+    plt.bar(asse_x, array_sum, width=0.2, color="blue")
+    plt.xticks(asse_x)
+    plt.title("Costo bolletta dei primi "+ str(len(array_sum)) + " individui")
+    plt.xlabel('Individuo n°')
+    plt.ylabel('Costo dell\'individuo')
+    plt.ylim(-abs(min(array_sum))-abs(0.3*min(array_sum)), abs(min(array_sum))+abs(0.1*min(array_sum)))
+    
+
+    plt.figure("Flusso energetico della batteria dei primi "+ str(len(array_qb)) + " individui")
+    plt.bar(asse_x, array_qb, width=0.2, color="blue")
+    plt.xticks(asse_x)
+    plt.title("Flusso energetico della batteria dei primi "+ str(len(array_qb)) + " individui")
+    plt.xlabel('Individuo n°')
+    plt.ylabel('Costo dell\'individuo')
+    plt.ylim(-abs(min(array_qb))-abs(0.3*min(array_qb)), abs(min(array_qb))+abs(0.1*min(array_qb)))
+
     plt.show()
+
+
+
 
 def simulation_plot(data, sum, actual_percentage, quantity_delta_battery):
 
