@@ -158,7 +158,6 @@ def evaluate(data, variables_values):
         if charge:
 
             quantity_charging_battery = ((upper_limit - actual_percentage[j] * upper_limit) * percentage) / 100
-            actual_percentage.append(actual_percentage[j] + quantity_charging_battery / upper_limit)
 
             if quantity_charging_battery - delta_production.iloc[j] < 0:
                 # devo vendere
@@ -170,6 +169,8 @@ def evaluate(data, variables_values):
                     quantity_charging_battery = data["maximum_power_absorption"] + delta_production.iloc[j]
                 sum.append(
                     sum[j] + (quantity_charging_battery - delta_production.iloc[j]) * data["prices"]["prezzo"].iloc[j])
+                
+            actual_percentage.append(actual_percentage[j] + quantity_charging_battery / upper_limit)
             
         else:
             quantity_discharging_battery = ((actual_percentage[j] * upper_limit - lower_limit) * percentage) / 100
@@ -228,7 +229,6 @@ def start_genetic_algorithm(data, pop_size, n_gen, n_threads):
 
                     quantity_charging_battery = ((upper_limit - actual_percentage[j] * upper_limit) * percentage) / 100
 
-                    actual_percentage.append(actual_percentage[j] + quantity_charging_battery / upper_limit)
 
                     if quantity_charging_battery - delta_production.iloc[j] < 0:
                         # devo vendere
@@ -243,6 +243,7 @@ def start_genetic_algorithm(data, pop_size, n_gen, n_threads):
                               data["prices"]["prezzo"].iloc[j]
                     
                     quantity_battery+=abs(quantity_charging_battery)
+                    actual_percentage.append(actual_percentage[j] + quantity_charging_battery / upper_limit)
 
                 else:
                     quantity_discharging_battery = ((actual_percentage[
