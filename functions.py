@@ -306,7 +306,7 @@ def genetic_algorithm_graph_top(data, top_n_individuals, somma, quantity_delta_b
     s = []
     b = []
     for i in range(0, top_n_individuals):
-        s.append(somma[i][23])
+        s.append(-somma[i][23])
         b.append(sum(abs(x) for x in quantity_delta_battery[i]))
     x = list(range(1, len(b) + 1))
 
@@ -344,12 +344,13 @@ def genetic_algorithm_graph_convergence(data, all_population):
         top_first_individual = sorted_population[:1]
         variables_values = [ind.X for ind in top_first_individual]
         s, a, q = evaluate(data, variables_values[0])
-        population_somma.append(s[23])
+        population_somma.append(-s[23])
         population_actual_percentage.append(sum(abs(x) for x in q))
         population_quantity_delta_battery.append(q)
 
     plt.figure("Confronto Costi per generazione")
     plt.title("Confronto Costi per generazione")
+    plt.figure(facecolor='#edf1ef')
     x = list(range(1, len(population_somma) + 1))
     plt.plot(x,population_somma)
 
@@ -358,6 +359,7 @@ def genetic_algorithm_graph_convergence(data, all_population):
 
     plt.figure("Confronto Batteria per generazione")
     plt.title("Confronto Batteria per generazione")
+    plt.figure(facecolor='#edf1ef')
     x = list(range(1, len(population_actual_percentage) + 1))
     plt.plot(x, population_actual_percentage)
 
