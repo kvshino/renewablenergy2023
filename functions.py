@@ -280,7 +280,7 @@ def start_genetic_algorithm(data, pop_size, n_gen, n_threads):
             f_values = algorithm.pop.get("F")
             f_min_sum = np.min(f_values[:, 0])
             f_min_quantity_battery = np.min(f_values[:, 1])
-            self.f_min_sum.set('{:.3f}'.format(-f_min_sum) + " €")
+            self.f_min_sum.set('{:.3f}'.format(f_min_sum) + " €")
             self.f_min_quantity_battery.set('{:.0f}'.format(f_min_quantity_battery) + " Wh")
 
     pool = ThreadPool(n_threads)
@@ -310,15 +310,16 @@ def genetic_algorithm_graph_top(data, top_n_individuals, somma, quantity_delta_b
         b.append(sum(abs(x) for x in quantity_delta_battery[i]))
     x = list(range(1, len(b) + 1))
 
-    plt.figure("Confronto Costi dei Migliori individui")
+    plt.figure("Confronto Costi dei Migliori individui", facecolor='#edf1ef')
     plt.title("Confronto Costi dei Migliori individui")
+    plt.ylim(min(s)+0.3*min(s), -min(s)-0.1*min(s))
     asse_x = range(1, len(s) + 1)
     plt.bar(asse_x, s, width=0.2)
     plt.xticks(asse_x)
     plt.xlabel('Individuo n°')
     plt.ylabel('Costo €')
 
-    plt.figure("Confronto Batteria dei Migliori individui")
+    plt.figure("Confronto Batteria dei Migliori individui", facecolor='#edf1ef')
     plt.title("Confronto Batteria dei Migliori individui")
     asse_x = range(1, len(b) + 1)
     plt.bar(asse_x, b, width=0.2)
@@ -326,8 +327,22 @@ def genetic_algorithm_graph_top(data, top_n_individuals, somma, quantity_delta_b
     plt.xlabel('Individuo n°')
     plt.ylabel('Scambio energetico totale con batteria (Wh)')
 
+    scaler = MinMaxScaler()
 
+    def sort_key(p):
+        normalized_p = scaler.transform([p.F])[0]
+        return sum(normalized_p)
 
+    s_norm = scaler.fit_transform([[x] for x in s])
+    b_norm = scaler.fit_transform([[-x] for x in b])
+    normalized_sum = [(x + y)/2 for x, y in zip(s_norm, b_norm)]
+    plt.figure("Somma normalizzata dei top "+str(top_n_individuals)+ " individui", facecolor='#edf1ef')
+    plt.title("Somma normalizzata dei top "+str(top_n_individuals)+ " individui")
+    plt.xlabel('Individuo n°')
+    plt.ylabel('Punteggio')
+    asse_x = range(1, len(normalized_sum) + 1)
+    plt.plot(asse_x, normalized_sum)
+    plt.xticks(asse_x)
 
 def genetic_algorithm_graph_convergence(data, all_population):
     scaler = MinMaxScaler()
@@ -344,27 +359,25 @@ def genetic_algorithm_graph_convergence(data, all_population):
         top_first_individual = sorted_population[:1]
         variables_values = [ind.X for ind in top_first_individual]
         s, a, q = evaluate(data, variables_values[0])
-        population_somma.append(-s[23])
+        population_somma.append(s[23])
         population_actual_percentage.append(sum(abs(x) for x in q))
         population_quantity_delta_battery.append(q)
 
-    plt.figure("Confronto Costi per generazione")
-    plt.title("Confronto Costi per generazione")
-    plt.figure(facecolor='#edf1ef')
-    x = list(range(1, len(population_somma) + 1))
-    plt.plot(x,population_somma)
+    population_somma_norm = scaler.fit_transform([[x] for x in population_somma])
+    population_actual_percentage_norm = scaler.fit_transform([[x] for x in population_actual_percentage])
 
+    normalized_sum = [(x + y)/2 for x, y in zip(population_somma_norm, population_actual_percentage_norm)]
+
+    plt.figure("Convergenza totale",facecolor='#edf1ef')
+    plt.title("Convergenza totale")
     plt.xlabel('Generazione n°')
-    plt.ylabel('Costo €')
+    plt.ylabel('Valore obiettivo')
+    x = list(range(1, len(normalized_sum) + 1))
+    plt.plot(x,normalized_sum)
 
-    plt.figure("Confronto Batteria per generazione")
-    plt.title("Confronto Batteria per generazione")
-    plt.figure(facecolor='#edf1ef')
-    x = list(range(1, len(population_actual_percentage) + 1))
-    plt.plot(x, population_actual_percentage)
 
-    plt.xlabel('Generazione n°')
-    plt.ylabel('Batteria (Wh)')
+
+
 
 
 def simulation_plot(data, sum, actual_percentage, quantity_delta_battery):
