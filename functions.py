@@ -267,7 +267,7 @@ def start_genetic_algorithm(data, pop_size, n_gen, n_threads):
 
             
 
-            out["F"] = sum+quantity_battery/100000
+            out["F"] = sum+quantity_battery/(data["battery_capacity"]*5)
 
 
     class MyOutput(Output):
@@ -301,42 +301,43 @@ def start_genetic_algorithm(data, pop_size, n_gen, n_threads):
 
 
 def genetic_algorithm_graph(data, array_sum, array_qb):
-    plt.figure("Convergenza dell'algoritmo")
-    history = [-e.opt[0].F[0] for e in data["history"]]
-    plt.plot(history)
+    plt.figure("Convergenza dell'algoritmo", facecolor='#edf1ef')
+    history = [(e.opt[0].F[0]) for e in data["history"]]
+    plt.plot(history, color ="#577590")
+    #plt.xticks(range(0, len(data["history"])+1))
     plt.title("Convergenza dell'algoritmo")
     plt.xlabel('Generazione')
-    plt.ylabel('Valore in € del guadagno')
+    plt.ylabel('Score')
 
     asse_x= range(1, len(array_sum)+1)
 
 
-    plt.figure("Punteggio normalizzato dei primi "+ str(len(array_sum)) + " individui")
-    respop = [-x[0] for x in data["res"].pop.get("F")][:len(array_sum)]
-    plt.bar(asse_x, respop, width=0.2, color="blue")
+    plt.figure("Punteggio normalizzato dei primi "+ str(len(array_sum)) + " individui", facecolor='#edf1ef')
+    respop = [(2-x[0])/2 for x in data["res"].pop.get("F")][:len(array_sum)]
+    plt.bar(asse_x, respop, width=0.2, color="#577590")
     plt.xticks(asse_x)
     plt.title("Punteggio normalizzato dei primi "+ str(len(array_sum)) + " individui")
     plt.xlabel('Individuo n°')
-    plt.ylabel('Valore dell\'individuo')
-    plt.ylim(-abs(min(respop))-abs(0.3*min(respop)), abs(min(respop))+abs(0.1*min(respop)))
+    plt.ylabel('Score dell\'individuo')
+    plt.ylim(0, abs(max(respop))+abs(0.1*max(respop)))
     
 
-    plt.figure("Costo bolletta dei primi "+ str(len(array_sum)) + " individui")
-    plt.bar(asse_x, array_sum, width=0.2, color="blue")
+    plt.figure("Costo bolletta dei primi "+ str(len(array_sum)) + " individui", facecolor='#edf1ef')
+    plt.bar(asse_x, array_sum, width=0.2, color ="#577590")
     plt.xticks(asse_x)
-    plt.title("Costo bolletta dei primi "+ str(len(array_sum)) + " individui")
+    plt.title("Costo in bolletta dei primi "+ str(len(array_sum)) + " individui")
     plt.xlabel('Individuo n°')
-    plt.ylabel('Costo dell\'individuo')
+    plt.ylabel('Costo in bolletta in €')
     plt.ylim(-abs(min(array_sum))-abs(0.3*min(array_sum)), abs(min(array_sum))+abs(0.1*min(array_sum)))
     
 
-    plt.figure("Flusso energetico della batteria dei primi "+ str(len(array_qb)) + " individui")
-    plt.bar(asse_x, array_qb, width=0.2, color="blue")
+    plt.figure("Flusso energetico della batteria dei primi "+ str(len(array_qb)) + " individui", facecolor='#edf1ef')
+    plt.bar(asse_x, array_qb, width=0.2, color ="#577590")
     plt.xticks(asse_x)
     plt.title("Flusso energetico della batteria dei primi "+ str(len(array_qb)) + " individui")
     plt.xlabel('Individuo n°')
-    plt.ylabel('Costo dell\'individuo')
-    plt.ylim(-abs(min(array_qb))-abs(0.3*min(array_qb)), abs(min(array_qb))+abs(0.1*min(array_qb)))
+    plt.ylabel('Flusso energetico in Wh')
+    plt.ylim(-100, abs(max(array_qb))+abs(0.1*max(array_qb)))
 
     plt.show()
 
@@ -386,10 +387,10 @@ def simulation_plot(data, sum, actual_percentage, quantity_delta_battery):
     # Grafici
 
     plot_graph(expected_production_dataframe, "datetime", "value", "Stima Produzione PV", "#F3722C", "Wh")
-    plt.ylim(-300, 5000)
+
 
     plot_graph(expected_load_dataframe, "datetime", "value", "Stima Carico", "#F94144", "Wh")
-    plt.ylim(-300, 5000)
+
 
     plot_graph_hist(difference_dataframe, "datetime", "value",
                "Stima scambio energetico con la rete elettrica (acquisto positivo)", "#43AA8B", "Wh")
@@ -400,7 +401,7 @@ def simulation_plot(data, sum, actual_percentage, quantity_delta_battery):
                "#4D908E", "Wh")
 
     plot_graph(battery_wh_dataframe, "datetime", "value", "Stima energia in batteria", "#90BE6D", "Wh")
-    plt.ylim(-300, data["battery_capacity"] + data["battery_capacity"] / 15)
+
 
     plot_graph(actual_percentage_dataframe, "datetime", "value", "Stima percentuale batteria", "#90BE6D", "%")
     plt.ylim(-5, 100)
@@ -454,6 +455,6 @@ def simulation_plot(data, sum, actual_percentage, quantity_delta_battery):
 
     plot_subgraph(consumption_only_dataframe, "datetime", "value", "#F94144", "Without PV", 1)
     plt.ylabel("Euro €")
-    plt.ylim(-2, 2)
     plt.legend()
+    plt.ylim(-1.5,1.5)
     plt.show()

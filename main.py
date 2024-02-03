@@ -10,10 +10,10 @@ data = setup()
 
 async def main():
     data["prices"] = await get_intra_days_market()  # Bring the prices of energy from Mercati Elettrici
-    data["res"], data["history"] = start_genetic_algorithm(data, 500, 5, 24)
+    data["res"], data["history"] = start_genetic_algorithm(data, 500, 20, 24)
     
 
-    top_individuals=5
+    top_individuals = 5
 
     all_populations = [a.pop for a in data["history"]]
     last_population = all_populations[-1]
