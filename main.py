@@ -27,7 +27,7 @@ async def main():
     plt.show()
 
 
-    data["res"], data["history"] = start_genetic_algorithm(data, 500, 10, 24)
+    data["res"], data["history"] = start_genetic_algorithm(data, 500, 130, 24)
 
 
     top_individuals = 5

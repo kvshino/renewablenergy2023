@@ -68,7 +68,7 @@ def plot_graph(data, x, y, title, color, label):
     plt.title(title, weight='bold')
 
 def plot_graph_hist(data, x, y, title, color, label):
-    plt.figure(title)
+    plt.figure(title,facecolor='#edf1ef')
     colors = ['#F94144' if value < 0 else '#90BE6D' for value in data['value']]
     plt.bar(data['datetime'], data['value'], width=0.02, color=colors)
     plt.xticks(data['datetime'], data['datetime'].dt.strftime('%d/%m Ore:%H:%M'), rotation=90)
@@ -148,7 +148,7 @@ def evaluate(data, variables_values):
     actual_percentage.append(data["socs"][-1])
 
     quantity_delta_battery = []
-    quantity_delta_battery.append(0)
+
     # valori negativi indicano consumi ,positivi guadagni
     for j in range(24):
         charge = variables_values[f"b{j}"]
@@ -361,7 +361,8 @@ def simulation_plot(data, sum, actual_percentage, quantity_delta_battery):
     # STIMA DELLA PRODUZIONE NELLE PROSSIME 24 H            - Controllati OK   - Fino a 23   - Positivo
     expected_production_dataframe = pd.DataFrame(
         {'datetime': time_column, 'value': data["expected_production"]["production"].tolist()})
-
+    # QUANTA ENERGIA STIMATA ENTRA ED ESCE DALLA BATTERIA   - Controllati OK   - Fino a 23   - Positivo quando entra, negativo quando esce
+    quantity_delta_battery_dataframe = pd.DataFrame({'datetime': time_column, 'value': quantity_delta_battery})
     # QUANTA ENERGIA HO IN BATTERIA                         - Controllati OK   - Fino a 24   - Positivo
     time_column = pd.date_range(start=current_datetime.replace(minute=0, second=0, microsecond=0) - timedelta(hours=1),
                                 periods=25, freq='H')
@@ -371,8 +372,7 @@ def simulation_plot(data, sum, actual_percentage, quantity_delta_battery):
     battery_wh = [min_value + (percentage * (max_value - min_value)) for percentage in actual_percentage]
     battery_wh_dataframe = pd.DataFrame({'datetime': time_column, 'value': battery_wh})
 
-    # QUANTA ENERGIA STIMATA ENTRA ED ESCE DALLA BATTERIA   - Controllati OK   - Fino a 23   - Positivo quando entra, negativo quando esce
-    quantity_delta_battery_dataframe = pd.DataFrame({'datetime': time_column, 'value': quantity_delta_battery})
+
 
     # PERCENTUALE BATTERIA
     actual_percentage_dataframe = pd.DataFrame({'datetime': time_column, 'value': actual_percentage})
