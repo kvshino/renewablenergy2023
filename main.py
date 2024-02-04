@@ -10,8 +10,25 @@ data = setup()
 
 async def main():
     data["prices"] = await get_intra_days_market()  # Bring the prices of energy from Mercati Elettrici
+    current_datetime = datetime.now() + timedelta(hours=1)
+    time_column = pd.date_range(start=current_datetime.replace(minute=0, second=0, microsecond=0), periods=24, freq='H')
+    app_list = []
+
+
+    for value in time_column.strftime('%H'):
+        value = int(value)
+        if (value != 00):
+            app_list.append(data["prices"]["prezzo"][int(value - 1)])
+        else:
+            app_list.append(data["prices"]["prezzo"][23])
+    data["prices"]["prezzo"] = app_list
+
+    plot_GME_prices(data)
+    plt.show()
+
+
     data["res"], data["history"] = start_genetic_algorithm(data, 500, 10, 24)
-    
+
 
     top_individuals = 5
 

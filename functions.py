@@ -459,3 +459,26 @@ def simulation_plot(data, sum, actual_percentage, quantity_delta_battery):
     plt.legend()
     plt.ylim(-1.5,1.5)
     plt.show()
+
+
+def plot_GME_prices(data):
+    current_datetime = datetime.now() + timedelta(hours=1)
+    time_column = pd.date_range(start=current_datetime.replace(minute=0, second=0, microsecond=0), periods=24, freq='H')
+
+
+
+
+    plt.figure("Prezzo energia nelle successive 24 ore", facecolor='#edf1ef')
+
+    sns.set(font_scale=1.48)
+    ax = sns.lineplot(data, x=time_column, y=data["prices"]["prezzo"], color="#577590")
+    ax.plot(time_column, data["prices"]["prezzo"], color="#577590")
+
+    plt.xticks(time_column, time_column.strftime('%d/%m Ore:%H:%M'), rotation=90)
+    plt.title("Prezzo energia nelle successive 24 ore")
+    plt.xlabel('Ora')
+    plt.ylabel('Costo € per Watt')
+    plt.ylim(0, abs(max( data["prices"]["prezzo"])) + abs(0.1 * max( data["prices"]["prezzo"])))
+
+
+
