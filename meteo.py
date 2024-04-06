@@ -25,7 +25,7 @@ def get_meteo_data(latitude: float = 40.6824404, longitude: float = 14.7680965) 
     mgr = OWmanager(options, OWmanager.forecast, hourly.temperature_2m().direct_radiation().diffuse_radiation())
     meteo = mgr.get_data(1)
     pandas_meteo = pd.DataFrame(meteo["hourly"])
-    today = str(datetime.now())[:-16] + "T00:00"
+    today = str(datetime.now())[:-16] + "T00:00"   #DA RIVEDERE
     after_tomorrow = str(datetime.now() + timedelta(days=2))[:-16] + "T24:00"
 
     return pandas_meteo[(pandas_meteo['time'] > today) & (pandas_meteo['time'] < after_tomorrow)]
