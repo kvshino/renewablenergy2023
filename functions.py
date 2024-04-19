@@ -15,6 +15,8 @@ from pymoo.optimize import minimize
 from pymoo.util.display.output import Output
 from pymoo.util.display.column import Column
 
+from dateutil.relativedelta import relativedelta
+
 
 def setup() -> dict:
     """
@@ -31,12 +33,8 @@ def setup() -> dict:
     # Prendi l'ultimo valore
     data["socs"] = df.iloc[-1]
 
-    for i in range(0, 24):
-        data["hours"].append(i)
-        data["energy_grid"].append(0)
-        # data["battery_levels"].append(data["initial_battery_level"])
-    data["estimate"] = get_estimate_load_consumption(
-        get_true_load_consumption())  # It gives an estimation of the load consumption
+
+    data["estimate"] = get_estimate_load_consumption(get_true_load_consumption())  # It gives an estimation of the load consumption
     data["expected_production"] = get_expected_power_production_from_pv_24_hours_from_now(data)
     data["difference_of_production"] = difference_of_production(data)
     return data
@@ -103,7 +101,10 @@ def get_true_load_consumption():
     df_troncato = df[(pd.to_datetime(df['data'], format='%Y%m%d') < pd.to_datetime(now.strftime('%Y%m%d'))) |
                      ((pd.to_datetime(df['data'], format='%Y%m%d') == pd.to_datetime(now.strftime('%Y%m%d'))) &
                       (df['ora'] <= now.hour))]
-
+    one_month_ago=now-relativedelta(months=1) 
+    print(one_month_ago)
+    #df_troncato = df_troncato[(pd.to_datetime(df['data'], format='%Y%m%d') > pd.to_datetime(one_month_ago.strftime('%Y%m%d')))]
+    print(df_troncato)
     return df_troncato
 
 

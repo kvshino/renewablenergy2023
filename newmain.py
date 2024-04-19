@@ -2,27 +2,16 @@ import asyncio
 from costi import *
 from functions import *
 import warnings
+from update_costs import *
 
 warnings.filterwarnings("ignore", category=FutureWarning)
 
-data = setup()
 
 
 async def main():
-    data["prices"] = await get_intra_days_market()  # Change Function --> get_future_day_market
-    current_datetime = datetime.now() + timedelta(hours=1)
-    time_column = pd.date_range(start=current_datetime.replace(minute=0, second=0, microsecond=0), periods=24, freq='H')
-    app_list = []
 
-    for value in time_column.strftime('%H'):
-        value = int(value)
-        if (value != 00):
-            app_list.append(data["prices"]["prezzo"][int(value - 1)])
-        else:
-            app_list.append(data["prices"]["prezzo"][23])
-    data["prices"]["prezzo"] = app_list
-
-    print(data["prices"])
+    data = setup()
+    data["prices"] = await get_future_day_market() 
 
     plot_GME_prices(data)
     plt.show()

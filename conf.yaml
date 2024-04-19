@@ -6,8 +6,6 @@ maximum_power_absorption: 4500    # Wh
 latitude: 45.2801
 longitude: 12.2858
 aasdas: 5981, 713, 104
-hours: []
-energy_grid: []
 
 
 sold: 0.00007

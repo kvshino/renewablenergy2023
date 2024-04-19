@@ -53,7 +53,7 @@ def difference_of_production(data):
             Array with difference
     """
     twentyfour_meteo = get_expected_power_production_from_pv_24_hours_from_now(data)
-
+    print(data["estimate"]["consumo"].values)
     return twentyfour_meteo["production"] - data["estimate"]["consumo"].values
 
 
