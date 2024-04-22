@@ -211,64 +211,89 @@ def start_genetic_algorithm(data, pop_size, n_gen, n_threads):
             super().__init__(vars=variables, n_obj=1, **kwargs)
 
         def _evaluate(self, X, out, *args, **kwargs):
-            # 1 carico batteria ,0 la scarico
-            # 000 123 076 123 099 135
-            # Cosa dobbiamo fare?
-            # Ora per ora
-            sum = 0
-            delta_production = data["difference_of_production"]
-            sold = data["sold"]
-            upper_limit = (data["soc_max"] * data["battery_capacity"])
-            lower_limit = (data["soc_min"] * data["battery_capacity"])
-            actual_percentage = [data["socs"][-1]]
+            """
+            Funzione che prende in input una stringa di 24 coppie di valori (a,b) col seguente significato:
+            - a: valore booleano che indica se la batteria deve essere caricata o meno. 1-> Carica Batteria, 0-> Scarica Batteria;
+            - b: valore intero che indica la percentuale di carica/scarica (in base al valore di "a");
+            
+            Returns:
+                Un valore Float che indica il risultato della stringa di input rispetto alla funzione obiettivo. 
+                Valore negativo indica consumo, positivo guadagno
+            """
+
+            sum = 0                                                         #variabile che viene usata come contenitore per determinare l'andamento della stringa nel corso della valutazione
+            delta_production = data["difference_of_production"]             #variabile che mi dice quantitativamente se la produzione di energia supera il consumo e viceversa
+            sold = data["sold"]                                             #variabile che mi dice il prezzo della vendita dell'energia
+            upper_limit = (data["soc_max"] * data["battery_capacity"])      #una batteria ha una certa capacità, dai parametri di configurazione si capisce fino a quando l'utente vuole che si carichi
+            lower_limit = (data["soc_min"] * data["battery_capacity"])      #una batteria ha una certa capacità, dai parametri di configurazione si capisce fino a quando l'utente vuole che si scarichi
+            actual_percentage = [data["socs"][-1]]                          #viene memorizzato l'attuale livello della batteria
             quantity_battery=0
-            # valori negativi indicano consumi ,positivi guadagni
-            for j in range(24):
+
+           
+            for j in range(24):                                             #Viene eseguita una predizione per le successive 24 ore         
                 charge = X[f"b{j}"]
                 percentage = X[f"i{j}"]
-                if charge:
 
+
+                #Caso in cui si sceglie di caricare la batteria
+                if charge:                                                  
+
+
+                    #Viene calcolato di quanto caricare la batteria
                     quantity_charging_battery = ((upper_limit - actual_percentage[j] * upper_limit) * percentage) / 100
 
 
+                    #Viene controllata se la produzione dei pannelli è maggiore del consumo domestico unito al consumo della carica della batteria
                     if quantity_charging_battery - delta_production.iloc[j] < 0:
-                        # devo vendere
-                        sum = sum + ((quantity_charging_battery - delta_production.iloc[
-                            j]) * sold)  # sum = sum - rimborso
+                        
+                        #Il surplus di energia viene venduto
+                        sum = sum + ((quantity_charging_battery - delta_production.iloc[j]) * sold)  # sum = sum - rimborso
 
+
+                    #Caso in cui viene prodotto meno di quanto si consuma, di conseguenza è necessario acquistare dalla rete
                     else:
+
+                        #Viene fatto un controllo che NON permette di acquistare più energia di quanto il contratto stipulato dall'utente permette
                         if( quantity_charging_battery > data["maximum_power_absorption"] + delta_production.iloc[j]):
                             quantity_charging_battery = data["maximum_power_absorption"] + delta_production.iloc[j]
 
+                        #Viene acquistata energia
                         sum = sum + (quantity_charging_battery - delta_production.iloc[j]) * \
                               data["prices"]["prezzo"].iloc[j]
+                        
                     
+                    #Viene aggiornato il valore di carica della batteria, essendo stata caricata
                     quantity_battery+=abs(quantity_charging_battery)
                     actual_percentage.append(actual_percentage[j] + quantity_charging_battery / upper_limit)
 
+
+                #Caso in cui si sceglie di scaricare la batteria
                 else:
-                    quantity_discharging_battery = ((actual_percentage[
-                                                         j] * upper_limit - lower_limit) * percentage) / 100
+
+                    #Viene calcolato di quanto scaricare la batteria
+                    quantity_discharging_battery = ((actual_percentage[j] * upper_limit - lower_limit) * percentage) / 100
                     actual_percentage.append(actual_percentage[j] - quantity_discharging_battery / upper_limit)
 
+                    #Si controlla se si produce di più di quanto si consuma. Prendere energia dalla batteria viene considerata produzione
                     if delta_production.iloc[j] + quantity_discharging_battery > 0:
-                        # sto scaricando la batteria  con surplus di energia
-                        # vendo alla rete MA dalla batteria
-                        # if delta_production.iloc[j] > 0:
-                        #     # vendo alla rete quello del fotovoltaico
-                        #     sum = sum - delta_production.iloc[j] * sold
-                        # else:
-                        #     # in questo else teoricamente potrei vendere enegia della batteria ma invece sovrascrivo il valore
-                        #     data["socs"][j + 1] = data["socs"][j] + delta_production.iloc[j] / upper_limit  # DA VEDERE: Non superare lo 0% di socs
+
+                        #Produco di più di quanto consumo, vendo il resto
                         sum = sum - ((delta_production.iloc[j] + quantity_discharging_battery) * sold)
+
                     else:
+
+                        #Produco di meno di quanto consumo, compro il resto
                         sum = sum + (- (delta_production.iloc[j] + quantity_discharging_battery) *
                                      data["prices"]["prezzo"].iloc[j])
                     
+                    #Viene aggiornato il valore della batteria, dopo la scarica
                     quantity_battery+=abs(quantity_discharging_battery)
 
             
 
+            #Terminata la simulazione, viene attribuito un voto alla stringa in input, dato da due fattori:
+            # - Il costo
+            # - L'utilizzo della batteria, al quale è stato attribuito un costo
             out["F"] = sum+quantity_battery/(data["battery_capacity"]*5)
 
 
