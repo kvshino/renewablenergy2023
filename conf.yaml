@@ -1,7 +1,10 @@
 soc_max: 0.8                      # Adimensionale
 soc_min: 0.2                      # Adimensionale
-battery_capacity: 14000           # Wh
+battery_capacity: 10000           # Wh     https://www.tesla.com/sites/default/files/pdfs/powerwall/Powerwall_2_AC_Datasheet_2018_IT_Italy.pdf
 maximum_power_absorption: 4500    # Wh
+
+maximum_power_battery_exchange: 5000  # Wh
+
 
 latitude: 45.2801
 longitude: 12.2858

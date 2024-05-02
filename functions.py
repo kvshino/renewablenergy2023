@@ -17,6 +17,8 @@ from pymoo.util.display.column import Column
 
 from dateutil.relativedelta import relativedelta
 
+from pymoo.core.sampling import Sampling
+
 
 def setup() -> dict:
     """
@@ -101,10 +103,10 @@ def get_true_load_consumption():
     df_troncato = df[(pd.to_datetime(df['data'], format='%Y%m%d') < pd.to_datetime(now.strftime('%Y%m%d'))) |
                      ((pd.to_datetime(df['data'], format='%Y%m%d') == pd.to_datetime(now.strftime('%Y%m%d'))) &
                       (df['ora'] <= now.hour))]
-    one_month_ago=now-relativedelta(months=1) 
-    print(one_month_ago)
+    #one_month_ago=now-relativedelta(months=1) 
+    #print(one_month_ago)
     #df_troncato = df_troncato[(pd.to_datetime(df['data'], format='%Y%m%d') > pd.to_datetime(one_month_ago.strftime('%Y%m%d')))]
-    print(df_troncato)
+    #print(df_troncato)
     return df_troncato
 
 
@@ -156,9 +158,10 @@ def evaluate(data, variables_values):
         percentage = variables_values[f"i{j}"]
         quantity_charging_battery = None
         quantity_discharging_battery = None
-        if charge:
+        effettivo_in_batteria=lower_limit+(actual_percentage[j]*(upper_limit-lower_limit))
 
-            quantity_charging_battery = ((upper_limit - actual_percentage[j] * upper_limit) * percentage) / 100
+        if charge:
+            quantity_charging_battery = ((upper_limit - effettivo_in_batteria) * percentage) / 100
 
             if quantity_charging_battery - delta_production.iloc[j] < 0:
                 # devo vendere
@@ -171,11 +174,14 @@ def evaluate(data, variables_values):
                 sum.append(
                     sum[j] + (quantity_charging_battery - delta_production.iloc[j]) * data["prices"]["prezzo"].iloc[j])
                 
-            actual_percentage.append(actual_percentage[j] + quantity_charging_battery / upper_limit)
+            actual_percentage.append((effettivo_in_batteria + quantity_charging_battery - lower_limit) / ( upper_limit - lower_limit))
             
         else:
-            quantity_discharging_battery = ((actual_percentage[j] * upper_limit - lower_limit) * percentage) / 100
-            actual_percentage.append(actual_percentage[j] - quantity_discharging_battery / upper_limit)
+            
+            posso_scaricare_di=effettivo_in_batteria-lower_limit
+            quantity_discharging_battery=(posso_scaricare_di*percentage)/100
+
+            actual_percentage.append((effettivo_in_batteria - quantity_discharging_battery - lower_limit) / ( upper_limit - lower_limit))
 
             if delta_production.iloc[j] + quantity_discharging_battery > 0:
                 # sto scaricando la batteria  con surplus di energia
@@ -200,7 +206,7 @@ def evaluate(data, variables_values):
     return sum[1:], actual_percentage, quantity_delta_battery
 
 
-def start_genetic_algorithm(data, pop_size, n_gen, n_threads):
+def start_genetic_algorithm(data, pop_size, n_gen, n_threads, sampling=None,verbose=False):
     class MixedVariableProblem(ElementwiseProblem):
 
         def __init__(self, n_couples=24, **kwargs):
@@ -228,19 +234,25 @@ def start_genetic_algorithm(data, pop_size, n_gen, n_threads):
             lower_limit = (data["soc_min"] * data["battery_capacity"])      #una batteria ha una certa capacità, dai parametri di configurazione si capisce fino a quando l'utente vuole che si scarichi
             actual_percentage = [data["socs"][-1]]                          #viene memorizzato l'attuale livello della batteria
             quantity_battery=0
-
+            
            
             for j in range(24):                                             #Viene eseguita una predizione per le successive 24 ore         
                 charge = X[f"b{j}"]
                 percentage = X[f"i{j}"]
 
+                effettivo_in_batteria=lower_limit+(actual_percentage[j]*(upper_limit-lower_limit))
 
                 #Caso in cui si sceglie di caricare la batteria
                 if charge:                                                  
 
 
                     #Viene calcolato di quanto caricare la batteria
-                    quantity_charging_battery = ((upper_limit - actual_percentage[j] * upper_limit) * percentage) / 100
+                    quantity_charging_battery = ((upper_limit - effettivo_in_batteria) * percentage) / 100
+
+
+                    #Si controlla che la carica della batteria non sia maggiore di quella fisicamente ottenibile
+                    if(quantity_charging_battery > data["maximum_power_battery_exchange"]):
+                        quantity_charging_battery = data["maximum_power_battery_exchange"]
 
 
                     #Viene controllata se la produzione dei pannelli è maggiore del consumo domestico unito al consumo della carica della batteria
@@ -253,7 +265,7 @@ def start_genetic_algorithm(data, pop_size, n_gen, n_threads):
                     #Caso in cui viene prodotto meno di quanto si consuma, di conseguenza è necessario acquistare dalla rete
                     else:
 
-                        #Viene fatto un controllo che NON permette di acquistare più energia di quanto il contratto stipulato dall'utente permette
+                        #Viene fatto un controllo che NON permette di acquistare più energia di quanto il contratto stipulato dall'utente permetta
                         if( quantity_charging_battery > data["maximum_power_absorption"] + delta_production.iloc[j]):
                             quantity_charging_battery = data["maximum_power_absorption"] + delta_production.iloc[j]
 
@@ -264,15 +276,23 @@ def start_genetic_algorithm(data, pop_size, n_gen, n_threads):
                     
                     #Viene aggiornato il valore di carica della batteria, essendo stata caricata
                     quantity_battery+=abs(quantity_charging_battery)
-                    actual_percentage.append(actual_percentage[j] + quantity_charging_battery / upper_limit)
+                    actual_percentage.append((effettivo_in_batteria + quantity_charging_battery - lower_limit) / ( upper_limit - lower_limit))
 
 
                 #Caso in cui si sceglie di scaricare la batteria
                 else:
 
                     #Viene calcolato di quanto scaricare la batteria
-                    quantity_discharging_battery = ((actual_percentage[j] * upper_limit - lower_limit) * percentage) / 100
-                    actual_percentage.append(actual_percentage[j] - quantity_discharging_battery / upper_limit)
+                    posso_scaricare_di=effettivo_in_batteria-lower_limit
+                    quantity_discharging_battery=(posso_scaricare_di*percentage)/100
+
+
+
+                    #Si controlla che la scarica della batteria non sia maggiore di quella fisicamente ottenibile
+                    if(quantity_discharging_battery > data["maximum_power_battery_exchange"]):
+                        quantity_discharging_battery = data["maximum_power_battery_exchange"]
+                    
+                    actual_percentage.append((effettivo_in_batteria - quantity_discharging_battery - lower_limit) / ( upper_limit - lower_limit))
 
                     #Si controlla se si produce di più di quanto si consuma. Prendere energia dalla batteria viene considerata produzione
                     if delta_production.iloc[j] + quantity_discharging_battery > 0:
@@ -308,19 +328,42 @@ def start_genetic_algorithm(data, pop_size, n_gen, n_threads):
             super().update(algorithm)
             self.f_min.set('{:.3F}'.format(-np.min(algorithm.pop.get("F"))))
 
+
+    class MySampling(Sampling):
+
+        def _do(self, problem, n_samples=24, **kwargs):
+            X = np.full(pop_size, 1, dtype=object)
+            
+            
+            for k in range(pop_size):
+                dict={}
+                for i in range(24):
+                    dict[f"b{i}"] = sampling.pop.get("X")[k][f"b{i}"]
+                    dict[f"i{i}"] = sampling.pop.get("X")[k][f"i{i}"]
+
+                X[k] = dict
+
+            return X
+
+
+
     pool = ThreadPool(n_threads)
     runner = StarmapParallelization(pool.starmap)
     problem = MixedVariableProblem(elementwise_runner=runner)
-
-    algorithm = MixedVariableGA(pop_size)
-
+    
+    if sampling == None:
+        algorithm = MixedVariableGA(pop_size)
+    else:
+        algorithm = MixedVariableGA(pop_size, sampling=MySampling())
+        
     res = minimize(problem,
                    algorithm,
                    termination=('n_gen', n_gen),
                    seed=104,  # random.randint(0, 99999),
-                   verbose=True,
+                   verbose=verbose,
                    output=MyOutput(),
                    save_history=True)
+    
 
     print("Tempo:", res.exec_time)
 
@@ -507,4 +550,39 @@ def plot_GME_prices(data):
     plt.ylim(0, abs(max( data["prices"]["prezzo"])) + abs(0.1 * max( data["prices"]["prezzo"])))
 
 
+def update_battery_value(data, file_name, carica, percentuale):
+    with open(file_name, 'r+') as file:
+        # Leggi tutte le linee e trova l'ultimo valore numerico
+        lines = file.read().split()
 
+        upper_limit = (data["soc_max"] * data["battery_capacity"])
+        lower_limit = (data["soc_min"] * data["battery_capacity"])
+        effettivo_in_batteria=lower_limit+(float(lines[-1])*(upper_limit-lower_limit))
+
+
+
+        if carica == 0:
+            posso_scaricare_di=effettivo_in_batteria-lower_limit
+            scarico=(posso_scaricare_di*percentuale)/100
+            batteria= (effettivo_in_batteria-scarico) 
+        else:
+            carico = ((upper_limit - effettivo_in_batteria) * percentuale) / 100
+            batteria=effettivo_in_batteria+carico
+
+
+        result=(batteria-lower_limit)/(upper_limit-lower_limit) 
+        file.write('\n' + str(result))
+
+
+def shifting_individuals(data):
+    for individuo in data["res"].pop.get("X"):
+        for i in range(23):
+            individuo[f"b{i}"] = individuo[f"b{i+1}"]
+            individuo[f"i{i}"] = individuo[f"i{i+1}"]
+
+        random_bit =  random.choice([True, False])
+        random_number = random.randint(0, 100)
+        individuo["b23"] = random_bit
+        individuo["i23"] = random_number
+    
+    return data

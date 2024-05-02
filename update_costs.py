@@ -8,7 +8,7 @@ from mercati_energetici import MercatiElettrici
 
 
 
-async def get_future_day_market(mercato="MI-A2", zona= 'SUD') -> pd.core.frame.DataFrame:
+async def get_future_day_market(mercato="MI-A1", zona= 'SUD') -> pd.core.frame.DataFrame:
     """
         Fetches future price datas from mercatoelettrico.com.
 
