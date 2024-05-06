@@ -12,9 +12,6 @@ warnings.filterwarnings("ignore", category=FutureWarning)
 
 
 async def main():
-    
-    istante=datetime.now()
-
     with freeze_time(datetime.now()) as frozen_datetime:
 
         dict={}
@@ -32,9 +29,9 @@ async def main():
 
 
             if i == 0:
-                data["res"], data["history"] = start_genetic_algorithm(data=data, pop_size=200, n_gen=100, n_threads=12, sampling=None, verbose=False)  #Checked OK
+                data["res"], data["history"] = start_genetic_algorithm(data=data, pop_size=1, n_gen=1, n_threads=12, sampling=None, verbose=False)  #Checked OK
             else:
-                data["res"], data["history"] = start_genetic_algorithm(data=data, pop_size=200, n_gen=100, n_threads=12, sampling=sampling, verbose=False)
+                data["res"], data["history"] = start_genetic_algorithm(data=data, pop_size=1, n_gen=1, n_threads=12, sampling=sampling, verbose=False)
 
             
 
@@ -44,6 +41,7 @@ async def main():
             sorted_population = sorted(last_population, key=lambda p: p.F)
             top_n_individuals = sorted_population[:top_individuals]
             variables_values = [ind.X for ind in top_n_individuals]
+            
             
 
             dict[f"b{i}"]=variables_values[0]["b0"]
@@ -58,18 +56,8 @@ async def main():
             frozen_datetime.tick(delta=timedelta(hours=1))
 
 
-        sum, actual_percentage, quantity_delta_battery = evaluate(data, dict)
-        #simulation_plot(data, sum, actual_percentage, quantity_delta_battery)
-    
-    istante2=datetime.now()
-
-            
-    print(istante2-istante)
-
-                
-            
-
-    
+        #sum, actual_percentage, quantity_delta_battery = evaluate(data, dict)
+        #simulation_plot(data, sum, actual_percentage, quantity_delta_battery) 
 
 
 

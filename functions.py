@@ -172,7 +172,7 @@ def evaluate(data, variables_values):
     upper_limit = (data["soc_max"] * data["battery_capacity"])
     lower_limit = (data["soc_min"] * data["battery_capacity"])
     actual_percentage = []
-    actual_percentage.append(data["socs"][-1])
+    actual_percentage.append(float(data["socs"][-1]))
 
     quantity_delta_battery = []
 
@@ -282,11 +282,12 @@ def start_genetic_algorithm(data, pop_size, n_gen, n_threads, sampling=None,verb
             sold = data["sold"]                                             #variabile che mi dice il prezzo della vendita dell'energia
             upper_limit = (data["soc_max"] * data["battery_capacity"])      #una batteria ha una certa capacità, dai parametri di configurazione si capisce fino a quando l'utente vuole che si carichi
             lower_limit = (data["soc_min"] * data["battery_capacity"])      #una batteria ha una certa capacità, dai parametri di configurazione si capisce fino a quando l'utente vuole che si scarichi
-            actual_percentage = [data["socs"][-1]]                          #viene memorizzato l'attuale livello della batteria
+            actual_percentage = [float(data["socs"][-1])]                          #viene memorizzato l'attuale livello della batteria
             quantity_battery=0
 
             
-            
+            # print("PRIMA")
+            # print(X)
            
             for j in range(24):                                             #Viene eseguita una predizione per le successive 24 ore         
                 charge = X[f"b{j}"]
@@ -311,6 +312,7 @@ def start_genetic_algorithm(data, pop_size, n_gen, n_threads, sampling=None,verb
 
                     if(quantity_charging_battery > data["maximum_power_absorption"]):
                         quantity_charging_battery = data["maximum_power_absorption"]
+                    
 
 
                     #Viene controllata se la produzione dei pannelli è maggiore del consumo domestico unito al consumo della carica della batteria
@@ -329,8 +331,9 @@ def start_genetic_algorithm(data, pop_size, n_gen, n_threads, sampling=None,verb
 
                         #Viene acquistata energia
                         sum = sum + (quantity_charging_battery - delta_production.iloc[j]) * data["prices"]["prezzo"].iloc[j]
-                        
-                    
+
+
+                    X[f"i{j}"] = int((100*quantity_charging_battery)/(upper_limit-effettivo_in_batteria+0.001))
                     #Viene aggiornato il valore di carica della batteria, essendo stata caricata
                     quantity_battery+=abs(quantity_charging_battery)
                     actual_percentage.append((effettivo_in_batteria + quantity_charging_battery - lower_limit) / ( upper_limit - lower_limit))
@@ -342,7 +345,6 @@ def start_genetic_algorithm(data, pop_size, n_gen, n_threads, sampling=None,verb
                     #Viene calcolato di quanto scaricare la batteria
                     posso_scaricare_di=effettivo_in_batteria-lower_limit
                     quantity_discharging_battery=(posso_scaricare_di*percentage)/100
-
 
 
                     #Si controlla che la scarica della batteria non sia maggiore di quella fisicamente ottenibile
@@ -374,12 +376,14 @@ def start_genetic_algorithm(data, pop_size, n_gen, n_threads, sampling=None,verb
                         #Produco di meno di quanto consumo, compro il resto
                         sum = sum + (- (delta_production.iloc[j] + quantity_discharging_battery) *
                                      data["prices"]["prezzo"].iloc[j])
-                    
+
+
+                    X[f"i{j}"] = int((100*quantity_discharging_battery)/(posso_scaricare_di))
                     #Viene aggiornato il valore della batteria, dopo la scarica
                     actual_percentage.append((effettivo_in_batteria - quantity_discharging_battery - lower_limit) / ( upper_limit - lower_limit))
                     quantity_battery+=abs(quantity_discharging_battery)
 
-            
+
 
             #Terminata la simulazione, viene attribuito un voto alla stringa in input, dato da due fattori:
             # - Il costo
@@ -430,7 +434,7 @@ def start_genetic_algorithm(data, pop_size, n_gen, n_threads, sampling=None,verb
         
     res = minimize(problem,
                    algorithm,
-                   termination= termination, #('n_gen', n_gen),
+                   termination= termination, 
                    seed=17,  # random.randint(0, 99999),
                    verbose=verbose,
                    output=MyOutput(),
