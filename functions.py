@@ -15,12 +15,13 @@ from pymoo.optimize import minimize
 from pymoo.util.display.output import Output
 from pymoo.util.display.column import Column
 
-from dateutil.relativedelta import relativedelta
+from pymoo.termination.default import DefaultMultiObjectiveTermination
+
 
 from pymoo.core.sampling import Sampling
 
 
-def setup() -> dict:
+def setup(prices) -> dict:
     """
     Takes the datas from the conf.yaml and stores them in data.
 
@@ -35,10 +36,21 @@ def setup() -> dict:
     # Prendi l'ultimo valore
     data["socs"] = df.iloc[-1]
 
-
+    #Checked OK, anche con grafico
     data["estimate"] = get_estimate_load_consumption(get_true_load_consumption())  # It gives an estimation of the load consumption
+    
+    
+    # current_datetime = datetime.now() + timedelta()
+    # time_column = pd.date_range(start=current_datetime.replace(minute=0, second=0, microsecond=0), periods=24, freq='H')
+    # p = pd.DataFrame({'datetime': time_column, 'value': data["estimate"]["consumo"]})
+    
+    # plot_graph(p, "datetime", "value", "", "#F3722C", "")
+    # plt.show()
+    
     data["expected_production"] = get_expected_power_production_from_pv_24_hours_from_now(data)
     data["difference_of_production"] = difference_of_production(data)
+    data["prices"] = prices
+
     return data
 
 
@@ -94,19 +106,31 @@ def get_true_load_consumption():
         """
 
     # Legge il CSV in un DataFrame
-    df = pd.read_csv("csv/loadnew.csv")
+    try:
+        df = pd.read_csv("csv/consumptions.csv")
+    
 
-    # Ottiene la data e l'ora attuali
-    now = datetime.now()
+        # Ottiene la data e l'ora attuali
+        now = datetime.now()
 
-    # Filtra il DataFrame fino alla data e all'ora attuali
-    df_troncato = df[(pd.to_datetime(df['data'], format='%Y%m%d') < pd.to_datetime(now.strftime('%Y%m%d'))) |
-                     ((pd.to_datetime(df['data'], format='%Y%m%d') == pd.to_datetime(now.strftime('%Y%m%d'))) &
-                      (df['ora'] <= now.hour))]
-    #one_month_ago=now-relativedelta(months=1) 
-    #print(one_month_ago)
-    #df_troncato = df_troncato[(pd.to_datetime(df['data'], format='%Y%m%d') > pd.to_datetime(one_month_ago.strftime('%Y%m%d')))]
-    #print(df_troncato)
+        one_month_ago = datetime.now() - timedelta(days=30)
+
+        # Filtra il DataFrame fino alla data e all'ora attuali
+        df_troncato = df[((pd.to_datetime(df['data'], format='%Y%m%d') < pd.to_datetime(now.strftime('%Y%m%d'))) |
+                        ((pd.to_datetime(df['data'], format='%Y%m%d') == pd.to_datetime(now.strftime('%Y%m%d'))) &
+                        (df['ora'] <= now.hour))) &
+                            (pd.to_datetime(df['data'], format='%Y%m%d') > pd.to_datetime(one_month_ago.strftime('%Y%m%d')))]
+        
+        if(df_troncato.empty == True):
+            create_dummy_database_consumption("csv/consumptions.csv")
+            df_troncato = pd.read_csv("csv/consumptions.csv")
+
+    except(Exception):
+            create_dummy_database_consumption("csv/consumptions.csv")
+            df_troncato = pd.read_csv("csv/consumptions.csv")
+        
+
+
     return df_troncato
 
 
@@ -118,7 +142,6 @@ def get_estimate_load_consumption(dataframe: pd.DataFrame):
 
         From the next hour up to the 24h.
     """
-
     media_oraria = dataframe.groupby("ora")["consumo"].mean()
 
     dataframe['data'] = pd.to_datetime(dataframe['data'], format='%Y%m%d')
@@ -137,6 +160,7 @@ def get_estimate_load_consumption(dataframe: pd.DataFrame):
     df = pd.concat([df.iloc[next_hour.hour:], df.iloc[:next_hour.hour]])
 
     df.reset_index(drop=True, inplace=True)
+
     return df
 
 
@@ -161,7 +185,17 @@ def evaluate(data, variables_values):
         effettivo_in_batteria=lower_limit+(actual_percentage[j]*(upper_limit-lower_limit))
 
         if charge:
+
             quantity_charging_battery = ((upper_limit - effettivo_in_batteria) * percentage) / 100
+            
+
+            #Si controlla che la carica della batteria non sia maggiore di quella fisicamente ottenibile
+            if(quantity_charging_battery > data["maximum_power_battery_exchange"]):
+                quantity_charging_battery = data["maximum_power_battery_exchange"]
+
+            if(quantity_charging_battery > data["maximum_power_absorption"]):
+                quantity_charging_battery = data["maximum_power_absorption"]
+
 
             if quantity_charging_battery - delta_production.iloc[j] < 0:
                 # devo vendere
@@ -169,8 +203,11 @@ def evaluate(data, variables_values):
                     sum[j] + ((quantity_charging_battery - delta_production.iloc[j]) * sold))  # sum = sum - rimborso
 
             else:
-                if (quantity_charging_battery > data["maximum_power_absorption"] + delta_production.iloc[j]):
+
+                #Viene fatto un controllo che NON permette di acquistare più energia di quanto il contratto stipulato dall'utente permetta
+                if( quantity_charging_battery > data["maximum_power_absorption"] + delta_production.iloc[j]):
                     quantity_charging_battery = data["maximum_power_absorption"] + delta_production.iloc[j]
+
                 sum.append(
                     sum[j] + (quantity_charging_battery - delta_production.iloc[j]) * data["prices"]["prezzo"].iloc[j])
                 
@@ -181,22 +218,35 @@ def evaluate(data, variables_values):
             posso_scaricare_di=effettivo_in_batteria-lower_limit
             quantity_discharging_battery=(posso_scaricare_di*percentage)/100
 
-            actual_percentage.append((effettivo_in_batteria - quantity_discharging_battery - lower_limit) / ( upper_limit - lower_limit))
+            #Si controlla che la scarica della batteria non sia maggiore di quella fisicamente ottenibile
+            if(quantity_discharging_battery > data["maximum_power_battery_exchange"]):
+                quantity_discharging_battery = data["maximum_power_battery_exchange"]
+            
+            if(quantity_discharging_battery > data["maximum_power_absorption"]):
+                quantity_discharging_battery = data["maximum_power_absorption"]
+
 
             if delta_production.iloc[j] + quantity_discharging_battery > 0:
-                # sto scaricando la batteria  con surplus di energia
-                # vendo alla rete MA dalla batteria
-                # if delta_production.iloc[j] > 0:
-                #     # vendo alla rete quello del fotovoltaico
-                #     sum = sum - delta_production.iloc[j] * sold
-                # else:
-                #     # in questo else teoricamente potrei vendere enegia della batteria ma invece sovrascrivo il valore
-                #     data["socs"][j + 1] = data["socs"][j] + delta_production.iloc[j] / upper_limit  # DA VEDERE: Non superare lo 0% di socs
+
+                #Si controlla di non prendere più energia dalla batteria di quanto il contatore sia in grado di gestire
+                if(quantity_discharging_battery + delta_production.iloc[j] > data["maximum_power_absorption"]):
+                    if(delta_production.iloc[j] > 0):
+                        quantity_discharging_battery = data["maximum_power_absorption"] - delta_production.iloc[j]
+                    else:
+                        quantity_discharging_battery = data["maximum_power_absorption"] + delta_production.iloc[j]
+
+                    if(quantity_discharging_battery < 0): #controllo di SICUREZZA, solo se l'impianto è dimensionato male
+                        quantity_discharging_battery = 0
+
                 sum.append(sum[j] - ((delta_production.iloc[j] + quantity_discharging_battery) * sold))
+
             else:
+
                 sum.append(sum[j] + (
                         - (delta_production.iloc[j] + quantity_discharging_battery) * data["prices"]["prezzo"].iloc[j]))
             
+            actual_percentage.append((effettivo_in_batteria - quantity_discharging_battery - lower_limit) / ( upper_limit - lower_limit))
+
 
         if quantity_charging_battery != None:
             quantity_delta_battery.append(+quantity_charging_battery)
@@ -234,11 +284,16 @@ def start_genetic_algorithm(data, pop_size, n_gen, n_threads, sampling=None,verb
             lower_limit = (data["soc_min"] * data["battery_capacity"])      #una batteria ha una certa capacità, dai parametri di configurazione si capisce fino a quando l'utente vuole che si scarichi
             actual_percentage = [data["socs"][-1]]                          #viene memorizzato l'attuale livello della batteria
             quantity_battery=0
+
+            
             
            
             for j in range(24):                                             #Viene eseguita una predizione per le successive 24 ore         
                 charge = X[f"b{j}"]
                 percentage = X[f"i{j}"]
+
+                # X[f"b{j}"]=True
+                # X[f"i{j}"]=1
 
                 effettivo_in_batteria=lower_limit+(actual_percentage[j]*(upper_limit-lower_limit))
 
@@ -253,6 +308,9 @@ def start_genetic_algorithm(data, pop_size, n_gen, n_threads, sampling=None,verb
                     #Si controlla che la carica della batteria non sia maggiore di quella fisicamente ottenibile
                     if(quantity_charging_battery > data["maximum_power_battery_exchange"]):
                         quantity_charging_battery = data["maximum_power_battery_exchange"]
+
+                    if(quantity_charging_battery > data["maximum_power_absorption"]):
+                        quantity_charging_battery = data["maximum_power_absorption"]
 
 
                     #Viene controllata se la produzione dei pannelli è maggiore del consumo domestico unito al consumo della carica della batteria
@@ -270,8 +328,7 @@ def start_genetic_algorithm(data, pop_size, n_gen, n_threads, sampling=None,verb
                             quantity_charging_battery = data["maximum_power_absorption"] + delta_production.iloc[j]
 
                         #Viene acquistata energia
-                        sum = sum + (quantity_charging_battery - delta_production.iloc[j]) * \
-                              data["prices"]["prezzo"].iloc[j]
+                        sum = sum + (quantity_charging_battery - delta_production.iloc[j]) * data["prices"]["prezzo"].iloc[j]
                         
                     
                     #Viene aggiornato il valore di carica della batteria, essendo stata caricata
@@ -292,14 +349,26 @@ def start_genetic_algorithm(data, pop_size, n_gen, n_threads, sampling=None,verb
                     if(quantity_discharging_battery > data["maximum_power_battery_exchange"]):
                         quantity_discharging_battery = data["maximum_power_battery_exchange"]
                     
-                    actual_percentage.append((effettivo_in_batteria - quantity_discharging_battery - lower_limit) / ( upper_limit - lower_limit))
+                    if(quantity_discharging_battery > data["maximum_power_absorption"]):
+                        quantity_discharging_battery = data["maximum_power_absorption"]
 
                     #Si controlla se si produce di più di quanto si consuma. Prendere energia dalla batteria viene considerata produzione
                     if delta_production.iloc[j] + quantity_discharging_battery > 0:
 
+                        #Si controlla di non prendere più energia dalla batteria di quanto il contatore sia in grado di gestire
+                        if(quantity_discharging_battery + delta_production.iloc[j] > data["maximum_power_absorption"]):
+                            if(delta_production.iloc[j] > 0):
+                                quantity_discharging_battery = data["maximum_power_absorption"] - delta_production.iloc[j]
+                            else:
+                                quantity_discharging_battery = data["maximum_power_absorption"] + delta_production.iloc[j]
+
+                            if(quantity_discharging_battery < 0): #controllo di SICUREZZA, solo se l'impianto è dimensionato male
+                                quantity_discharging_battery = 0
+
                         #Produco di più di quanto consumo, vendo il resto
                         sum = sum - ((delta_production.iloc[j] + quantity_discharging_battery) * sold)
 
+                    #Produco poco e consumo di più
                     else:
 
                         #Produco di meno di quanto consumo, compro il resto
@@ -307,6 +376,7 @@ def start_genetic_algorithm(data, pop_size, n_gen, n_threads, sampling=None,verb
                                      data["prices"]["prezzo"].iloc[j])
                     
                     #Viene aggiornato il valore della batteria, dopo la scarica
+                    actual_percentage.append((effettivo_in_batteria - quantity_discharging_battery - lower_limit) / ( upper_limit - lower_limit))
                     quantity_battery+=abs(quantity_discharging_battery)
 
             
@@ -350,6 +420,8 @@ def start_genetic_algorithm(data, pop_size, n_gen, n_threads, sampling=None,verb
     pool = ThreadPool(n_threads)
     runner = StarmapParallelization(pool.starmap)
     problem = MixedVariableProblem(elementwise_runner=runner)
+
+    termination= DefaultMultiObjectiveTermination(xtol=0.001, n_max_gen=n_gen, n_skip=1, period=20)
     
     if sampling == None:
         algorithm = MixedVariableGA(pop_size)
@@ -358,13 +430,14 @@ def start_genetic_algorithm(data, pop_size, n_gen, n_threads, sampling=None,verb
         
     res = minimize(problem,
                    algorithm,
-                   termination=('n_gen', n_gen),
-                   seed=104,  # random.randint(0, 99999),
+                   termination= termination, #('n_gen', n_gen),
+                   seed=17,  # random.randint(0, 99999),
                    verbose=verbose,
                    output=MyOutput(),
                    save_history=True)
     
-
+    pool.close()
+    pool.join()
     print("Tempo:", res.exec_time)
 
     return res, res.history
@@ -571,7 +644,9 @@ def update_battery_value(data, file_name, carica, percentuale):
 
 
         result=(batteria-lower_limit)/(upper_limit-lower_limit) 
+        result=round(result, 4)
         file.write('\n' + str(result))
+        file.close()
 
 
 def shifting_individuals(data):
@@ -580,9 +655,71 @@ def shifting_individuals(data):
             individuo[f"b{i}"] = individuo[f"b{i+1}"]
             individuo[f"i{i}"] = individuo[f"i{i+1}"]
 
-        random_bit =  random.choice([True, False])
-        random_number = random.randint(0, 100)
-        individuo["b23"] = random_bit
-        individuo["i23"] = random_number
+        individuo["b23"] =  random.choice([True, False])
+        individuo["i23"] = random.randint(0, 100)
     
     return data
+
+
+def create_dummy_database_consumption(file_name="csv/dummy_database.csv"):
+
+    one_month_ago = datetime.now() - timedelta(days=30)
+
+    with open(file_name, 'w+') as file:
+        file.write("data,ora,consumo")
+
+        for i in range(30):
+            for j in range(24):
+                    match(j):
+                        case 0:
+                            value = random.randint(150, 200)
+                        case 1:
+                            value = random.randint(500, 600)
+                        case 2:
+                            value = random.randint(250, 300)
+                        case 3:
+                            value = random.randint(150, 220)
+                        case 4:
+                            value = random.randint(150, 200)
+                        case 5:
+                            value = random.randint(150, 200)
+                        case 6:
+                            value = random.randint(150, 200)
+                        case 7:
+                            value = random.randint(550, 650)
+                        case 8:
+                            value = random.randint(250, 300)
+                        case 9:
+                            value = random.randint(250, 300)
+                        case 10:
+                            value = random.randint(170, 200)
+                        case 11:
+                            value = random.randint(170, 200)
+                        case 12:
+                            value = random.randint(170, 200)
+                        case 13:
+                            value = random.randint(1100, 1250)
+                        case 14:
+                            value = random.randint(700, 800)
+                        case 15:
+                            value = random.randint(650, 700)
+                        case 16:
+                            value = random.randint(250, 350)
+                        case 17:
+                            value = random.randint(250, 350)
+                        case 18:
+                            value = random.randint(1100, 1200)
+                        case 19:
+                            value = random.randint(1250, 1300)
+                        case 20:
+                            value = random.randint(650, 700)
+                        case 21:
+                            value = random.randint(800, 900)
+                        case 22:
+                            value = random.randint(550, 600)
+                        case 23:
+                            value = random.randint(280, 320)
+
+
+                    file.write('\n' + str((one_month_ago + timedelta(days=i)).strftime('%Y%m%d')) + "," + str(j) + "," + str(value))
+        file.close()

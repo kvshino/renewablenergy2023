@@ -8,7 +8,7 @@ from mercati_energetici import MercatiElettrici
 
 
 
-async def get_future_day_market(mercato="MI-A1", zona= 'SUD') -> pd.core.frame.DataFrame:
+async def get_future_day_market(mercato="MI-A1", zona= 'CSUD') -> pd.core.frame.DataFrame:
     """
         Fetches future price datas from mercatoelettrico.com.
 
@@ -17,7 +17,7 @@ async def get_future_day_market(mercato="MI-A1", zona= 'SUD') -> pd.core.frame.D
             the first row is the next hour from the simulation hour
             the last row is the last hour from the simulation hour
     """
-    iva=0,34
+    iva=0.34
 
     async with MercatiElettrici() as mercati_elettrici:
         await mercati_elettrici.get_general_conditions()
@@ -38,18 +38,15 @@ async def get_future_day_market(mercato="MI-A1", zona= 'SUD') -> pd.core.frame.D
             price_tomorrow = await mercati_elettrici.get_prices(mercato, (datetime.now() + timedelta(days=1)).strftime("%Y%m%d"))
             price_tomorrow_df = pd.DataFrame(price_tomorrow)
             price_tomorrow_filtered = price_tomorrow_df[price_tomorrow_df["zona"] == zona]
-
             #Concatenazione dei prezzi di oggi e domani
             final=pd.DataFrame(price_filtered[price_filtered["ora"] >=(datetime.now().hour+1)%25])
             final= pd.concat([final,price_tomorrow_filtered[price_tomorrow_filtered["ora"] < (datetime.now().hour+1)%25]], axis=0)
-
             #Modellazione del risultato
             final= pd.DataFrame(final).drop(["mercato", "zona"], axis=1)
-            final["prezzo"] = final["prezzo"]/1000/1000
-            final["prezzo"] += final["prezzo"] * iva
+            final["prezzo"] = final["prezzo"]/1000/1000  
+            final['prezzo'] = final['prezzo'] * iva
             final=final.reset_index(drop=True)
-
-        
+                    
         except:
             # tipo_eccezione, valore, traccia = sys.exc_info()
             # print(f"Errore di tipo {tipo_eccezione}: {valore}")
@@ -65,7 +62,7 @@ async def get_future_day_market(mercato="MI-A1", zona= 'SUD') -> pd.core.frame.D
             final["prezzo"] = final["prezzo"]/1000/1000
             final["prezzo"] += final["prezzo"] * 0.34
             final=final.reset_index(drop=True)
-        
 
+        
         return final
 
