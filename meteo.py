@@ -100,12 +100,7 @@ def get_meteo_data_24_hours_from_now(latitude: float = 40.6824404, longitude: fl
     meteo = mgr.get_data(1)
     pandas_meteo = pd.DataFrame(meteo["hourly"])
     
-    
-
     now=str(datetime.now() + timedelta(hours=1) - timedelta(minutes=datetime.now().minute))[:-10].replace(" ", "T")
     twentyfour=str(datetime.now() + timedelta(hours=23) +  timedelta(hours=1) - timedelta(minutes=datetime.now().minute))[:-10].replace(" ", "T")
     
-   
-
-
     return pandas_meteo[(pandas_meteo['time'] >= now) & (pandas_meteo['time'] <= twentyfour)]

@@ -28,15 +28,15 @@ async def main():
             data = setup(prices) #Checked OK, solo le formule predizione di produzione e load da controllare
             if(i==0):
                 first_battery_value=data["socs"][-1]
-
+                print(first_battery_value)
             # plot_GME_prices(data)
             # plt.show()
 
 
             if i == 0:
-                data["res"], data["history"] = start_genetic_algorithm(data=data, pop_size=100, n_gen=100, n_threads=12, sampling=None, verbose=False)  #Checked OK
+                data["res"], data["history"] = start_genetic_algorithm(data=data, pop_size=50, n_gen=50, n_threads=24, sampling=None, verbose=False)  #Checked OK
             else:
-                data["res"], data["history"] = start_genetic_algorithm(data=data, pop_size=100, n_gen=100, n_threads=12, sampling=sampling, verbose=False)
+                data["res"], data["history"] = start_genetic_algorithm(data=data, pop_size=50, n_gen=50, n_threads=24, sampling=sampling, verbose=False)
 
             
 

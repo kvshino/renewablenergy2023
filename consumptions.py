@@ -9,12 +9,9 @@ def get_true_load_consumption():
         From the actual hour back to the earliest ones.
         """
 
-    # Legge il CSV in un DataFrame
     try:
         df = pd.read_csv("csv/consumptions.csv")
     
-
-        # Ottiene la data e l'ora attuali
         now = datetime.now()
 
         one_month_ago = datetime.now() - timedelta(days=30)
@@ -33,7 +30,6 @@ def get_true_load_consumption():
             create_dummy_database_consumption("csv/consumptions.csv")
             df_troncato = pd.read_csv("csv/consumptions.csv")
         
-
 
     return df_troncato
 

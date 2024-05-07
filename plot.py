@@ -128,7 +128,9 @@ def simulation_plot(data, sum, actual_percentage, quantity_delta_battery):
 
     # PERCENTUALE BATTERIA
     actual_percentage_dataframe = pd.DataFrame({'datetime': time_column, 'value': actual_percentage})
-    actual_percentage_dataframe["value"] = actual_percentage_dataframe["value"].multiply(100 * data["soc_max"])
+    actual_percentage_dataframe["value"] = actual_percentage_dataframe["value"].multiply(data["soc_max"] - data["soc_min"])
+    actual_percentage_dataframe["value"] = actual_percentage_dataframe["value"].add(data["soc_min"])
+    actual_percentage_dataframe["value"] = actual_percentage_dataframe["value"].multiply(100)
 
     # SCAMBIO ENERGETICO CON LA RETE                        - Controllati OK   - Fino a 23   - Positivo quando prendo, negativo quando vendo
     quantity_delta_battery_dataframe2 = quantity_delta_battery_dataframe[1:].reset_index()
