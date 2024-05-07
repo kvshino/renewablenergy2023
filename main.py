@@ -1,65 +1,71 @@
 import asyncio
-from costi import *
 from functions import *
 import warnings
+from update_costs import *
+from genetic import *
+from consumptions import *
+from plot import *
+
+from freezegun import freeze_time
+
 
 warnings.filterwarnings("ignore", category=FutureWarning)
 
-data = setup()
 
 
 async def main():
-    data["prices"] = await get_intra_days_market()  # Change Function --> get_future_day_market
-    current_datetime = datetime.now() + timedelta(hours=1)
-    time_column = pd.date_range(start=current_datetime.replace(minute=0, second=0, microsecond=0), periods=24, freq='H')
-    app_list = []
+    ora=datetime.now()
+    with freeze_time(datetime.now()) as frozen_datetime:
 
-    for value in time_column.strftime('%H'):
-        value = int(value)
-        if (value != 00):
-            app_list.append(data["prices"]["prezzo"][int(value - 1)])
-        else:
-            app_list.append(data["prices"]["prezzo"][23])
-    data["prices"]["prezzo"] = app_list
+        dict={}
+        prices = await get_future_day_market() #Checked OK
 
-    print(data["prices"])
+        sampling=0
+        first_battery_value=0
 
-    plot_GME_prices(data)
-    plt.show()
+        for i in range(24):
 
+            data = setup(prices) #Checked OK, solo le formule predizione di produzione e load da controllare
+            if(i==0):
+                first_battery_value=data["socs"][-1]
 
-    data["res"], data["history"] = start_genetic_algorithm(data, 500, 130, 24)
+            # plot_GME_prices(data)
+            # plt.show()
 
 
-    top_individuals = 5
+            if i == 0:
+                data["res"], data["history"] = start_genetic_algorithm(data=data, pop_size=100, n_gen=100, n_threads=12, sampling=None, verbose=False)  #Checked OK
+            else:
+                data["res"], data["history"] = start_genetic_algorithm(data=data, pop_size=100, n_gen=100, n_threads=12, sampling=sampling, verbose=False)
 
-    all_populations = [a.pop for a in data["history"]]
-    last_population = all_populations[-1]
-    sorted_population = sorted(last_population, key=lambda p: p.F)
-    top_n_individuals = sorted_population[:top_individuals]
-    variables_values = [ind.X for ind in top_n_individuals]
+            
 
-    array_sum=[]
-    array_qb=[]
-    for i in range(0, top_individuals):
-        sum, actual_percentage, quantity_delta_battery = evaluate(data, variables_values[i])
-        array_sum.append(-sum[23])
+            top_individuals = 5
+            all_populations = [a.pop for a in data["history"]]
+            last_population = all_populations[-1]
+            sorted_population = sorted(last_population, key=lambda p: p.F)
+            top_n_individuals = sorted_population[:top_individuals]
+            variables_values = [ind.X for ind in top_n_individuals]
+            
+            
 
-        app=0
-        for value in quantity_delta_battery:
-            app+=abs(value)
-
-        array_qb.append(app)
-
-    genetic_algorithm_graph(data, array_sum, array_qb)
+            dict[f"b{i}"]=variables_values[0]["b0"]
+            dict[f"i{i}"]=variables_values[0]["i0"]
 
 
-    for i in range(0, top_individuals):
-        sum, actual_percentage, quantity_delta_battery = evaluate(data, variables_values[i])
-        simulation_plot(data, sum, actual_percentage, quantity_delta_battery)
+            data = shifting_individuals(data)
 
 
+            update_battery_value(data, "csv/socs.csv", variables_values[0]["b0"], variables_values[0]["i0"])
+            sampling=data["res"]
+            frozen_datetime.tick(delta=timedelta(hours=1))
 
+        print(dict)
+        sum, actual_percentage, quantity_delta_battery = evaluate(data, dict, first_battery_value)
+        simulation_plot(data, sum, actual_percentage, quantity_delta_battery) 
+
+
+    print(datetime.now()-ora)
 
 if __name__ == "__main__":
     asyncio.run(main())
