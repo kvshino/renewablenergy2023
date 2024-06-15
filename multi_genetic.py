@@ -12,13 +12,13 @@ from pymoo.util.display.output import Output
 from pymoo.util.display.column import Column
 
 from pymoo.termination.default import DefaultMultiObjectiveTermination
-
+from pymoo.algorithms.moo.nsga2 import RankAndCrowdingSurvival
 
 from pymoo.core.sampling import Sampling
 
-
-
-
+from pymoo.visualization.scatter import Scatter
+import matplotlib.pyplot as plt
+from pymoo.problems import get_problem
 
 def evaluate(data, variables_values, first_battery_value):
     sum = []
@@ -85,12 +85,16 @@ def evaluate(data, variables_values, first_battery_value):
 def start_genetic_algorithm(data, pop_size, n_gen, n_threads, sampling=None,verbose=False):
     class MixedVariableProblem(ElementwiseProblem):
 
+        pi=0
         def __init__(self, n_couples=24, **kwargs):
             variables = {}
             for j in range(n_couples):
                 variables[f"b{j}"] = Binary()
                 variables[f"i{j}"] = Integer(bounds=(0, 100))
-            super().__init__(vars=variables, n_obj=1, **kwargs)
+            super().__init__(vars=variables, n_obj=2, n_ieq_constr=0, **kwargs)
+
+        def lower():
+            return "mixedvariableproblem"
 
         def _evaluate(self, X, out, *args, **kwargs):
             """
@@ -112,8 +116,9 @@ def start_genetic_algorithm(data, pop_size, n_gen, n_threads, sampling=None,verb
             quantity_battery=0
 
             # print("PRIMA")
-            # print(X)
-           
+            print("PRIMA EVALUATE")
+            print(X)
+            print("FINE PRIMA"*10)
             for j in range(24):                                             #Viene eseguita una predizione per le successive 24 ore         
                 charge = X[f"b{j}"]
                 percentage = X[f"i{j}"]
@@ -208,24 +213,32 @@ def start_genetic_algorithm(data, pop_size, n_gen, n_threads, sampling=None,verb
                     actual_percentage.append((effettivo_in_batteria - quantity_discharging_battery - lower_limit) / ( upper_limit - lower_limit))
                     quantity_battery+=abs(quantity_discharging_battery)
 
-
-
+            print("DOPO EVALUATE")
+            print(X)
+            print("FINE DOPO"*10)
             #Terminata la simulazione, viene attribuito un voto alla stringa in input, dato da due fattori:
             # - Il costo
             # - L'utilizzo della batteria, al quale è stato attribuito un costo
-            out["F"] = sum+quantity_battery/(data["battery_capacity"]*4)
+            out["F"] = [sum, (quantity_battery/(data["battery_capacity"]*4))]
+            
 
 
     class MyOutput(Output):
-
         def __init__(self):
             super().__init__()
-            self.f_min = Column("score", width=8)
-            self.columns += [self.f_min]
+            # self.costi = Column("costi", width=8)
+            # self.batteria = Column("batteria", width=8)
+            self.columns += [] #self.costi, self.batteria]
 
         def update(self, algorithm):
             super().update(algorithm)
-            self.f_min.set('{:.3F}'.format(-np.min(algorithm.pop.get("F"))))
+            
+            # Per esempio, se costi e batteria sono calcolati in base alla popolazione attuale
+            # Qui si assume che costi e batteria siano memorizzati nelle colonne di F
+            # Sostituisci con i calcoli corretti per il tuo caso specifico
+            #print(np.min(algorithm.pop.get("F")[0, 1]))
+            # self.costi.set('{:.3f}'.format(np.min(algorithm.pop.get("F")[:, 0])))  # Media della seconda colonna di F
+            # self.batteria.set('{:.3f}'.format(np.min(algorithm.pop.get("F")[:, 0])))  # Media della terza colonna di F
 
 
     class MySampling(Sampling):
@@ -251,24 +264,28 @@ def start_genetic_algorithm(data, pop_size, n_gen, n_threads, sampling=None,verb
     problem = MixedVariableProblem(elementwise_runner=runner)
 
     termination= DefaultMultiObjectiveTermination(xtol=0.001, n_max_gen=n_gen, n_skip=1, period=20)
-    
+
     if sampling is None:
-        algorithm = MixedVariableGA(pop_size)
+        print("SONO QUI")
+        algorithm = MixedVariableGA(pop_size, survival=RankAndCrowdingSurvival())
     else:
-        algorithm = MixedVariableGA(pop_size, sampling=MySampling())
+        algorithm = MixedVariableGA(pop_size, sampling=MySampling(), survival=RankAndCrowdingSurvival())
         
     res = minimize(problem,
                    algorithm,
                    termination= termination, 
-                   seed=17,  # random.randint(0, 99999),
-                   verbose=verbose,
+                   seed=123,  # random.randint(0, 99999),
+                   verbose=True,
                    output=MyOutput(),
                    save_history=True)
     
     pool.close()
     pool.join()
     print("Tempo:", res.exec_time)
-
+    # plot = Scatter()
+    # plot.add(problem.pareto_front(), plot_type="line", color="black", alpha=0.7)
+    # plot.add(res.F, facecolor="none", edgecolor="red")
+    # plot.show()
     return res, res.history
 
 
