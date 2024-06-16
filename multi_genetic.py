@@ -79,6 +79,8 @@ def evaluate(data, variables_values, first_battery_value):
         else:
             quantity_delta_battery.append(-quantity_discharging_battery)
 
+        
+
     return sum[1:], actual_percentage, quantity_delta_battery
 
 
@@ -116,9 +118,6 @@ def start_genetic_algorithm(data, pop_size, n_gen, n_threads, sampling=None,verb
             quantity_battery=0
 
             # print("PRIMA")
-            print("PRIMA EVALUATE")
-            print(X)
-            print("FINE PRIMA"*10)
             for j in range(24):                                             #Viene eseguita una predizione per le successive 24 ore         
                 charge = X[f"b{j}"]
                 percentage = X[f"i{j}"]
@@ -213,9 +212,6 @@ def start_genetic_algorithm(data, pop_size, n_gen, n_threads, sampling=None,verb
                     actual_percentage.append((effettivo_in_batteria - quantity_discharging_battery - lower_limit) / ( upper_limit - lower_limit))
                     quantity_battery+=abs(quantity_discharging_battery)
 
-            print("DOPO EVALUATE")
-            print(X)
-            print("FINE DOPO"*10)
             #Terminata la simulazione, viene attribuito un voto alla stringa in input, dato da due fattori:
             # - Il costo
             # - L'utilizzo della batteria, al quale è stato attribuito un costo
@@ -266,7 +262,6 @@ def start_genetic_algorithm(data, pop_size, n_gen, n_threads, sampling=None,verb
     termination= DefaultMultiObjectiveTermination(xtol=0.001, n_max_gen=n_gen, n_skip=1, period=20)
 
     if sampling is None:
-        print("SONO QUI")
         algorithm = MixedVariableGA(pop_size, survival=RankAndCrowdingSurvival())
     else:
         algorithm = MixedVariableGA(pop_size, sampling=MySampling(), survival=RankAndCrowdingSurvival())
@@ -274,18 +269,21 @@ def start_genetic_algorithm(data, pop_size, n_gen, n_threads, sampling=None,verb
     res = minimize(problem,
                    algorithm,
                    termination= termination, 
-                   seed=123,  # random.randint(0, 99999),
-                   verbose=True,
+                   seed= random.randint(0, 99999),
+                   verbose=False,
                    output=MyOutput(),
                    save_history=True)
     
     pool.close()
     pool.join()
     print("Tempo:", res.exec_time)
-    # plot = Scatter()
-    # plot.add(problem.pareto_front(), plot_type="line", color="black", alpha=0.7)
-    # plot.add(res.F, facecolor="none", edgecolor="red")
-    # plot.show()
+
+
+    plot = Scatter()
+    print(problem.pareto_front())
+    plot.add(res.F, facecolor="none", edgecolor="red")
+    plot.show()
+    
     return res, res.history
 
 
