@@ -29,7 +29,6 @@ def evaluate(data, variables_values, first_battery_value):
     lower_limit = (data["soc_min"] * data["battery_capacity"])
     actual_percentage = []
     actual_percentage.append(first_battery_value)
-    print(actual_percentage)
 
     quantity_delta_battery = []
 
@@ -114,7 +113,7 @@ def start_genetic_algorithm(data, pop_size, n_gen, n_threads, sampling=None,verb
             sold = data["sold"]                                             #variabile che mi dice il prezzo della vendita dell'energia
             upper_limit = (data["soc_max"] * data["battery_capacity"])      #una batteria ha una certa capacità, dai parametri di configurazione si capisce fino a quando l'utente vuole che si carichi
             lower_limit = (data["soc_min"] * data["battery_capacity"])      #una batteria ha una certa capacità, dai parametri di configurazione si capisce fino a quando l'utente vuole che si scarichi
-            actual_percentage = [float(data["socs"][-1])]                          #viene memorizzato l'attuale livello della batteria
+            actual_percentage = [float(data["socs"])]                          #viene memorizzato l'attuale livello della batteria
             quantity_battery=0
 
             # print("PRIMA")
@@ -165,6 +164,7 @@ def start_genetic_algorithm(data, pop_size, n_gen, n_threads, sampling=None,verb
                     X[f"i{j}"] = int((100*quantity_charging_battery)/(upper_limit-effettivo_in_batteria+0.001))
                     #Viene aggiornato il valore di carica della batteria, essendo stata caricata
                     quantity_battery+=abs(quantity_charging_battery)
+                    quantity_charging_battery = quantity_charging_battery * data["battery_charging_efficiency"]
                     actual_percentage.append((effettivo_in_batteria + quantity_charging_battery - lower_limit) / ( upper_limit - lower_limit))
 
 
@@ -174,7 +174,11 @@ def start_genetic_algorithm(data, pop_size, n_gen, n_threads, sampling=None,verb
                     #Viene calcolato di quanto scaricare la batteria
                     posso_scaricare_di=effettivo_in_batteria-lower_limit+0.001
                     quantity_discharging_battery=(posso_scaricare_di*percentage)/100
+                    quantity_discharging_battery = quantity_discharging_battery / data["battery_discharging_efficiency"]
 
+                    #Visto che per prelevare x, devo prelevarne in realtà x+tot, allora devo controllare se prendo di più do quanto fisicamente ottenibile
+                    if(quantity_discharging_battery > effettivo_in_batteria - lower_limit):
+                        quantity_discharging_battery = effettivo_in_batteria - lower_limit
 
                     #Si controlla che la scarica della batteria non sia maggiore di quella fisicamente ottenibile
                     if(quantity_discharging_battery > data["maximum_power_battery_exchange"]):
@@ -210,12 +214,12 @@ def start_genetic_algorithm(data, pop_size, n_gen, n_threads, sampling=None,verb
                     X[f"i{j}"] = int((100*quantity_discharging_battery)/(posso_scaricare_di))
                     #Viene aggiornato il valore della batteria, dopo la scarica
                     actual_percentage.append((effettivo_in_batteria - quantity_discharging_battery - lower_limit) / ( upper_limit - lower_limit))
-                    quantity_battery+=abs(quantity_discharging_battery)
+                    #quantity_battery+=abs(quantity_discharging_battery)
 
             #Terminata la simulazione, viene attribuito un voto alla stringa in input, dato da due fattori:
             # - Il costo
-            # - L'utilizzo della batteria, al quale è stato attribuito un costo
-            out["F"] = [sum, (quantity_battery/(data["battery_capacity"]*4))]
+            # - L'utilizzo della batteria
+            out["F"] = [sum, (quantity_battery/(data["battery_capacity"]))]
             
 
 
@@ -279,11 +283,10 @@ def start_genetic_algorithm(data, pop_size, n_gen, n_threads, sampling=None,verb
     print("Tempo:", res.exec_time)
 
 
-    plot = Scatter()
-    print(problem.pareto_front())
-    plot.add(res.F, facecolor="none", edgecolor="red")
-    plot.show()
-    
+    # plot = Scatter()
+    # plot.add(res.F, facecolor="none", edgecolor="red")
+    # plot.show()
+
     return res, res.history
 
 

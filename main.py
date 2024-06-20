@@ -5,6 +5,7 @@ from update_costs import *
 from genetic import *
 from consumptions import *
 from plot import *
+from update_battery import *
 
 from freezegun import freeze_time
 
@@ -15,6 +16,7 @@ warnings.filterwarnings("ignore", category=FutureWarning)
 
 async def main():
     ora=datetime.now()
+    battery_coeff = battery_function()
     with freeze_time(datetime.now()) as frozen_datetime:
 
         dict={}
@@ -27,41 +29,38 @@ async def main():
 
             data = setup(prices) #Checked OK, solo le formule predizione di produzione e load da controllare
             if(i==0):
-                first_battery_value=data["socs"][-1]
+                first_battery_value=data["socs"]
                 print(first_battery_value)
             # plot_GME_prices(data)
             # plt.show()
 
 
             if i == 0:
-                data["res"], data["history"] = start_genetic_algorithm(data=data, pop_size=50, n_gen=50, n_threads=24, sampling=None, verbose=False)  #Checked OK
+                data["res"], data["history"] = start_genetic_algorithm(data=data, pop_size=50, n_gen=10, n_threads=1, sampling=None, verbose=False)  #Checked OK
             else:
-                data["res"], data["history"] = start_genetic_algorithm(data=data, pop_size=50, n_gen=50, n_threads=24, sampling=sampling, verbose=False)
+                data["res"], data["history"] = start_genetic_algorithm(data=data, pop_size=50, n_gen=10, n_threads=1, sampling=sampling, verbose=False)
 
-            
-
-            top_individuals = 5
-            all_populations = [a.pop for a in data["history"]]
-            last_population = all_populations[-1]
-            sorted_population = sorted(last_population, key=lambda p: p.F)
-            top_n_individuals = sorted_population[:top_individuals]
-            variables_values = [ind.X for ind in top_n_individuals]
+            # top_individuals = 5
+            # all_populations = [a.pop for a in data["history"]]
+            # last_population = all_populations[-1]
+            # sorted_population = sorted(last_population, key=lambda p: p.F)
+            # top_n_individuals = sorted_population[:top_individuals]
+            # variables_values = [ind.X for ind in top_n_individuals]
             
             
 
-            dict[f"b{i}"]=variables_values[0]["b0"]
-            dict[f"i{i}"]=variables_values[0]["i0"]
+            dict[f"b{i}"]=data["res"].X["b0"]
+            dict[f"i{i}"]=data["res"].X["i0"]
 
-
+        
             data = shifting_individuals(data)
 
 
-            update_battery_value(data, "csv/socs.csv", variables_values[0]["b0"], variables_values[0]["i0"])
+            update_battery_values(data, "csv/socs.csv",  dict[f"b{i}"], dict[f"i{i}"], battery_coeff)
             all_populations = [a.pop for a in data["history"]]
             sampling=all_populations[-1]
             frozen_datetime.tick(delta=timedelta(hours=1))
 
-        print(dict)
         sum, actual_percentage, quantity_delta_battery = evaluate(data, dict, first_battery_value)
         simulation_plot(data, sum, actual_percentage, quantity_delta_battery) 
 

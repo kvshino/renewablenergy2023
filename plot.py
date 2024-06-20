@@ -124,7 +124,6 @@ def simulation_plot(data, sum, actual_percentage, quantity_delta_battery):
     battery_wh = [min_value + (percentage * (max_value - min_value)) for percentage in actual_percentage]
     battery_wh_dataframe = pd.DataFrame({'datetime': time_column, 'value': battery_wh})
 
-    print(battery_wh_dataframe)
 
     # PERCENTUALE BATTERIA
     actual_percentage_dataframe = pd.DataFrame({'datetime': time_column, 'value': actual_percentage})

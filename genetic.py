@@ -108,11 +108,10 @@ def start_genetic_algorithm(data, pop_size, n_gen, n_threads, sampling=None,verb
             sold = data["sold"]                                             #variabile che mi dice il prezzo della vendita dell'energia
             upper_limit = (data["soc_max"] * data["battery_capacity"])      #una batteria ha una certa capacità, dai parametri di configurazione si capisce fino a quando l'utente vuole che si carichi
             lower_limit = (data["soc_min"] * data["battery_capacity"])      #una batteria ha una certa capacità, dai parametri di configurazione si capisce fino a quando l'utente vuole che si scarichi
-            actual_percentage = [float(data["socs"][-1])]                          #viene memorizzato l'attuale livello della batteria
+            actual_percentage = [float(data["socs"])]                          #viene memorizzato l'attuale livello della batteria
             quantity_battery=0
 
-            # print("PRIMA")
-            # print(X)
+            
            
             for j in range(24):                                             #Viene eseguita una predizione per le successive 24 ore         
                 charge = X[f"b{j}"]
@@ -260,7 +259,7 @@ def start_genetic_algorithm(data, pop_size, n_gen, n_threads, sampling=None,verb
     res = minimize(problem,
                    algorithm,
                    termination= termination, 
-                   seed=17,  # random.randint(0, 99999),
+                   seed=10,  # random.randint(0, 99999),
                    verbose=verbose,
                    output=MyOutput(),
                    save_history=True)
