@@ -16,7 +16,7 @@ warnings.filterwarnings("ignore", category=FutureWarning)
 
 async def main():
     ora=datetime.now()
-    battery_coeff = battery_function()
+    polynomial = battery_function()
     with freeze_time(datetime.now()) as frozen_datetime:
 
         dict={}
@@ -32,13 +32,11 @@ async def main():
                 first_battery_value=data["socs"]            
 
             if i == 0:
-                data["res"], data["history"] = start_genetic_algorithm(data=data, pop_size=100, n_gen=30, n_threads=24, sampling=None, verbose=False)  #Checked OK
+                data["res"], data["history"] = start_genetic_algorithm(data=data, pop_size=200, n_gen=30, n_threads=24, sampling=None, verbose=False)  #Checked OK
             else:
-                data["res"], data["history"] = start_genetic_algorithm(data=data, pop_size=100, n_gen=30, n_threads=24, sampling=sampling, verbose=False)
+                data["res"], data["history"] = start_genetic_algorithm(data=data, pop_size=200, n_gen=30, n_threads=24, sampling=sampling, verbose=False)
 
             
-            
-
             distance = (data["res"].F[0][0]**2) + ((data["res"].F[0][1]**2))
             number = 0
             for j,coordinate in enumerate(data["res"].F[1:]):
@@ -50,12 +48,10 @@ async def main():
             dict[f"b{i}"]=data["res"].X[number]["b0"]
             dict[f"i{i}"]=data["res"].X[number]["i0"]
 
-            data = shifting_individuals(data)
-
-
-            update_battery_values(data, "csv/socs.csv", dict[f"b{i}"], dict[f"i{i}"], battery_coeff)
             all_populations = [a.pop for a in data["history"]]
-            sampling=all_populations[-1]
+            sampling = shifting_individuals(all_populations[-1])
+
+            update_battery_values(data, "csv/socs.csv", dict[f"b{i}"], dict[f"i{i}"], polynomial)
 
             frozen_datetime.tick(delta=timedelta(hours=1))
 

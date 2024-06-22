@@ -86,7 +86,6 @@ def evaluate(data, variables_values, first_battery_value):
 def start_genetic_algorithm(data, pop_size, n_gen, n_threads, sampling=None,verbose=False):
     class MixedVariableProblem(ElementwiseProblem):
 
-        pi=0
         def __init__(self, n_couples=24, **kwargs):
             variables = {}
             for j in range(n_couples):
@@ -116,7 +115,7 @@ def start_genetic_algorithm(data, pop_size, n_gen, n_threads, sampling=None,verb
             actual_percentage = [float(data["socs"])]                          #viene memorizzato l'attuale livello della batteria
             quantity_battery=0
 
-            # print("PRIMA")
+
             for j in range(24):                                             #Viene eseguita una predizione per le successive 24 ore         
                 charge = X[f"b{j}"]
                 percentage = X[f"i{j}"]
@@ -163,9 +162,9 @@ def start_genetic_algorithm(data, pop_size, n_gen, n_threads, sampling=None,verb
 
                     X[f"i{j}"] = int((100*quantity_charging_battery)/(upper_limit-effettivo_in_batteria+0.001))
                     #Viene aggiornato il valore di carica della batteria, essendo stata caricata
-                    quantity_battery+=abs(quantity_charging_battery)
-                    quantity_charging_battery = quantity_charging_battery * data["battery_charging_efficiency"]
+                    #quantity_charging_battery = quantity_charging_battery * data["battery_charging_efficiency"]
                     actual_percentage.append((effettivo_in_batteria + quantity_charging_battery - lower_limit) / ( upper_limit - lower_limit))
+                    #quantity_battery+=abs(quantity_charging_battery)
 
 
                 #Caso in cui si sceglie di scaricare la batteria
@@ -174,11 +173,11 @@ def start_genetic_algorithm(data, pop_size, n_gen, n_threads, sampling=None,verb
                     #Viene calcolato di quanto scaricare la batteria
                     posso_scaricare_di=effettivo_in_batteria-lower_limit+0.001
                     quantity_discharging_battery=(posso_scaricare_di*percentage)/100
-                    quantity_discharging_battery = quantity_discharging_battery / data["battery_discharging_efficiency"]
+                    # quantity_discharging_battery = quantity_discharging_battery / data["battery_discharging_efficiency"]
 
-                    #Visto che per prelevare x, devo prelevarne in realtà x+tot, allora devo controllare se prendo di più do quanto fisicamente ottenibile
-                    if(quantity_discharging_battery > effettivo_in_batteria - lower_limit):
-                        quantity_discharging_battery = effettivo_in_batteria - lower_limit
+                    # #Visto che per prelevare x, devo prelevarne in realtà x+tot, allora devo controllare se prendo di più do quanto fisicamente ottenibile
+                    # if(quantity_discharging_battery > effettivo_in_batteria - lower_limit):
+                    #     quantity_discharging_battery = effettivo_in_batteria - lower_limit
 
                     #Si controlla che la scarica della batteria non sia maggiore di quella fisicamente ottenibile
                     if(quantity_discharging_battery > data["maximum_power_battery_exchange"]):
@@ -214,7 +213,7 @@ def start_genetic_algorithm(data, pop_size, n_gen, n_threads, sampling=None,verb
                     X[f"i{j}"] = int((100*quantity_discharging_battery)/(posso_scaricare_di))
                     #Viene aggiornato il valore della batteria, dopo la scarica
                     actual_percentage.append((effettivo_in_batteria - quantity_discharging_battery - lower_limit) / ( upper_limit - lower_limit))
-                    #quantity_battery+=abs(quantity_discharging_battery)
+                    quantity_battery+=abs(quantity_discharging_battery)
 
             #Terminata la simulazione, viene attribuito un voto alla stringa in input, dato da due fattori:
             # - Il costo
@@ -274,7 +273,7 @@ def start_genetic_algorithm(data, pop_size, n_gen, n_threads, sampling=None,verb
                    algorithm,
                    termination= termination, 
                    seed= random.randint(0, 99999),
-                   verbose=False,
+                   verbose=verbose,
                    output=MyOutput(),
                    save_history=True)
     
@@ -290,13 +289,13 @@ def start_genetic_algorithm(data, pop_size, n_gen, n_threads, sampling=None,verb
     return res, res.history
 
 
-def shifting_individuals(data):
-    for individuo in data["res"].pop.get("X"):
+def shifting_individuals(population):
+    for individuo in population:
         for i in range(23):
-            individuo[f"b{i}"] = individuo[f"b{i+1}"]
-            individuo[f"i{i}"] = individuo[f"i{i+1}"]
+            individuo.X[f"b{i}"] = individuo.X[f"b{i+1}"]
+            individuo.X[f"i{i}"] = individuo.X[f"i{i+1}"]
 
-        individuo["b23"] =  random.choice([True, False])
-        individuo["i23"] = random.randint(0, 100)
+        individuo.X["b23"] =  random.choice([True, False])
+        individuo.X["i23"] = random.randint(0, 100)
     
-    return data
+    return population

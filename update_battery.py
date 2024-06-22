@@ -36,11 +36,11 @@ def battery_function():
     x = np.array([0, 1000, 2000, 3000, 4000, 5000, 6000])
     y = np.array([100, 97, 93, 89, 85, 82, 80]) / 100
     coeff = np.polyfit(x, y, deg=1)  # deg=1 per una regressione lineare
-    #polynomial = np.poly1d(coeff)
-    return coeff
+    polynomial = np.poly1d(coeff)
+    return polynomial
 
 
-def update_battery_values(data, file_name, carica, percentuale, coeff):
+def update_battery_values(data, file_name, carica, percentuale, polynomial):
     with open(file_name, 'r+') as file:
         # Leggi tutte le linee e trova l'ultimo valore numerico
         lines = file.read().split()
@@ -49,9 +49,6 @@ def update_battery_values(data, file_name, carica, percentuale, coeff):
         lower_limit = (data["soc_min"] * data["battery_capacity"])
         effettivo_in_batteria=lower_limit+(float(lines[-3].replace(",", ""))*(upper_limit-lower_limit))
         cycles = float(lines[-2].replace(",", ""))
-
-        polynomial = np.poly1d(coeff)
-
 
         if carica == 0:
             posso_scaricare_di=effettivo_in_batteria-lower_limit
