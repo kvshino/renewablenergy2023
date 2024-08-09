@@ -164,14 +164,17 @@ def start_genetic_algorithm(data, pop_size, n_gen, n_threads, sampling=None,verb
                     #Viene aggiornato il valore di carica della batteria, essendo stata caricata
                     #quantity_charging_battery = quantity_charging_battery * data["battery_charging_efficiency"]
                     actual_percentage.append((effettivo_in_batteria + quantity_charging_battery - lower_limit) / ( upper_limit - lower_limit))
-                    #quantity_battery+=abs(quantity_charging_battery)
+                    # quantity_battery-=abs(quantity_charging_battery*0.2)
+                    # quantity_battery= max(quantity_battery, 0)
 
 
                 #Caso in cui si sceglie di scaricare la batteria
                 else:
 
                     #Viene calcolato di quanto scaricare la batteria
-                    posso_scaricare_di=effettivo_in_batteria-lower_limit+0.001
+                    posso_scaricare_di=effettivo_in_batteria-lower_limit
+                    if posso_scaricare_di < 0:
+                        posso_scaricare_di = 0
                     quantity_discharging_battery=(posso_scaricare_di*percentage)/100
                     # quantity_discharging_battery = quantity_discharging_battery / data["battery_discharging_efficiency"]
 
@@ -209,16 +212,19 @@ def start_genetic_algorithm(data, pop_size, n_gen, n_threads, sampling=None,verb
                         sum = sum + (- (delta_production.iloc[j] + quantity_discharging_battery) *
                                      data["prices"]["prezzo"].iloc[j])
 
-
-                    X[f"i{j}"] = int((100*quantity_discharging_battery)/(posso_scaricare_di))
+                    if posso_scaricare_di != 0:
+                        X[f"i{j}"] = int((100*quantity_discharging_battery)/(posso_scaricare_di))
+                    else:
+                        X[f"i{j}"] = 0
                     #Viene aggiornato il valore della batteria, dopo la scarica
                     actual_percentage.append((effettivo_in_batteria - quantity_discharging_battery - lower_limit) / ( upper_limit - lower_limit))
                     quantity_battery+=abs(quantity_discharging_battery)
+                #print(str(X[f"b{j}"]) + "  " + str(X[f"i{j}"]) + ":  " + str(sum) + "  " + str(quantity_battery))
 
             #Terminata la simulazione, viene attribuito un voto alla stringa in input, dato da due fattori:
             # - Il costo
             # - L'utilizzo della batteria
-            out["F"] = [sum, (quantity_battery/(data["battery_capacity"]))]
+            out["F"] = [sum, (quantity_battery/40000)]
             
 
 

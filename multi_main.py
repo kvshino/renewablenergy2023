@@ -20,7 +20,7 @@ async def main():
     with freeze_time(datetime.now()) as frozen_datetime:
 
         dict={}
-        prices = await get_future_day_market(mercato="MI-A1") #Checked OK
+        prices = await get_future_day_market(mercato="MI-A2") #Checked OK
 
         sampling=0
         first_battery_value=0
@@ -32,21 +32,27 @@ async def main():
                 first_battery_value=data["socs"]            
 
             if i == 0:
-                data["res"], data["history"] = start_genetic_algorithm(data=data, pop_size=200, n_gen=30, n_threads=24, sampling=None, verbose=False)  #Checked OK
+                data["res"], data["history"] = start_genetic_algorithm(data=data, pop_size=130, n_gen=20, n_threads=24, sampling=None, verbose=False)  #Checked OK
             else:
-                data["res"], data["history"] = start_genetic_algorithm(data=data, pop_size=200, n_gen=30, n_threads=24, sampling=sampling, verbose=False)
+                data["res"], data["history"] = start_genetic_algorithm(data=data, pop_size=130, n_gen=20, n_threads=24, sampling=sampling, verbose=False)
 
             
-            distance = (data["res"].F[0][0]**2) + ((data["res"].F[0][1]**2))
-            number = 0
-            for j,coordinate in enumerate(data["res"].F[1:]):
-                distance2 = (coordinate[0]**2) + (coordinate[1]**2)
-                if(distance2 < distance):
-                    distance = distance2
-                    number = j+1
-
+            # distance = (data["res"].F[0][0]**2) + ((data["res"].F[0][1]**2))
+            # number = 0
+            # for j,coordinate in enumerate(data["res"].F[1:]):
+            #     distance2 = (coordinate[0]**2) + (coordinate[1]**2)
+            #     if(distance2 < distance):
+            #         distance = distance2
+            #         number = j+1
+            
+            number = int(len(data["res"].F)/2)
             dict[f"b{i}"]=data["res"].X[number]["b0"]
             dict[f"i{i}"]=data["res"].X[number]["i0"]
+            print(str(dict[f"b{i}"]) + "  " + str(dict[f"i{i}"]))
+            
+            # plot = Scatter()
+            # plot.add(data["res"].F, facecolor="none", edgecolor="red")
+            # plot.show()
 
             all_populations = [a.pop for a in data["history"]]
             sampling = shifting_individuals(all_populations[-1])
