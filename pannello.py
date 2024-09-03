@@ -35,28 +35,7 @@ def get_expected_power_production_from_pv(data, direct_radiation, diffuse_radiat
     return (irradiance / 1000) * data["pmax"] * (1 + data["gamma"] * (temp_cell - data["temp_ref"]))
 
 
-def get_expected_power_production_from_pv_of_tomorrow(data):
-    tomorrow_meteo = get_tomorrow_meteo_data()
-    tomorrow_meteo["production"] = get_expected_power_production_from_pv(data, tomorrow_meteo["direct_radiation"],
-                                                                         tomorrow_meteo["diffuse_radiation"],
-                                                                         tomorrow_meteo["temperature_2m"])
 
-    return tomorrow_meteo
-
-
-def difference_of_production(data):
-    """
-        Estimate the difference between the future production
-        and the future load
-
-        Returns :
-            Array with difference
-    """
-    return data["expected_production"]["production"] - data["estimate"]["consumo"].values
-
-
-
-####################################################################
 
 def get_expected_power_production_from_pv_24_hours_from_now(data):
     twentyfour_meteo = get_meteo_data_24_hours_from_now(data["latitude"], data["longitude"])

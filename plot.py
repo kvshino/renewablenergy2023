@@ -97,7 +97,7 @@ def genetic_algorithm_graph(data, array_sum, array_qb):
 
 
 
-def simulation_plot(data, sum, actual_percentage, quantity_delta_battery):
+def simulation_plot(data, sum, actual_percentage, quantity_delta_battery, co2_emissions):
 
 
     # ASCISSA TEMPORALE DEI GRAFICI
@@ -109,6 +109,11 @@ def simulation_plot(data, sum, actual_percentage, quantity_delta_battery):
     cost_dataframe["value"] = cost_dataframe["value"].multiply(-1)
     # STIMA DEL CARICO NELLE PROSSIME 24H                   - Controllati OK   - Fino a 23   - Positivo
     expected_load_dataframe = pd.DataFrame({'datetime': time_column, 'value': data["estimate"]["consumo"].tolist()})
+    #CO2 EMISSIONS
+
+    for j in range(len(co2_emissions)-1, 0, -1):
+        co2_emissions[j] = co2_emissions[j] - co2_emissions[j-1]
+    co2_dataframe = pd.DataFrame({'datetime': time_column, 'value': co2_emissions})
 
     # STIMA DELLA PRODUZIONE NELLE PROSSIME 24 H            - Controllati OK   - Fino a 23   - Positivo
     expected_production_dataframe = pd.DataFrame(
@@ -156,6 +161,7 @@ def simulation_plot(data, sum, actual_percentage, quantity_delta_battery):
 
     plot_graph(battery_wh_dataframe, "datetime", "value", "Stima energia in batteria", "#90BE6D", "Wh")
 
+    plot_graph_hist(co2_dataframe, "datetime", "value", "Emissioni CO2", "#577590", "Wh")
 
     plot_graph(actual_percentage_dataframe, "datetime", "value", "Stima percentuale batteria", "#90BE6D", "%")
     plt.ylim(-5, 100)
@@ -164,7 +170,7 @@ def simulation_plot(data, sum, actual_percentage, quantity_delta_battery):
     # This is the part where we consider only the pv without taking into account the battery#
     ########################################################################################
 
-    result_only_pv = difference_of_production(data)
+    result_only_pv = data["difference_of_production"]
     result = []
     result.append(0)
     if result_only_pv[0] < 0:

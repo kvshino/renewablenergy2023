@@ -8,8 +8,8 @@ maximum_power_absorption: 4500    # Wh
 maximum_power_battery_exchange: 5000  # Wh
 
 
-latitude: 45.2801
-longitude: 12.2858
+latitude: 40.6824404
+longitude: 14.7680965
 
 
 sold: 0.00007
@@ -26,3 +26,7 @@ f2: 1           #funzione che descrive come i raggi cadono sul pannello. Un valo
 pmax: 3700
 gamma: -0.0026   #γ for power: around -0.3% to -0.5% per degree Celsius. -0.4% is -0.004
 temp_ref: 25
+
+#Entsoe (Dati non ancora usati)
+api_key: '634ab8da-8c97-452b-b4c8-1e73462d9b7b'
+entsoe_timezone: "IT_CSUD"
