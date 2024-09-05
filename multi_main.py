@@ -5,6 +5,8 @@ from update_costs import *
 from multi_genetic import *
 from consumptions import *
 from plot import *
+from gui import *
+from test_inv import *
 
 from freezegun import freeze_time
 
@@ -18,6 +20,8 @@ warnings.filterwarnings("ignore", category=FutureWarning)
 async def main():
     ora=datetime.now()
     polynomial = battery_function()
+    polynomial_inverter = inverter_function()
+
     with freeze_time(datetime.now()) as frozen_datetime:
 
         dictionary={}
@@ -25,14 +29,14 @@ async def main():
         sampling=0
         first_battery_value=0
 
-        pop_size=200
-        n_gen=40
+        pop_size=10
+        n_gen=5
 
         for i in range(24):
 
-            data = setup()
-            data["prices"] = await get_future_day_italian_market()  
-            
+            data = setup(polynomial_inverter)
+            data["prices"] = await get_future_day_italian_market(data)  
+
             if(i==0):
                 first_battery_value=data["socs"]            
 
@@ -69,8 +73,8 @@ async def main():
             frozen_datetime.tick(delta=timedelta(hours=1))
 
         sum, actual_percentage, quantity_delta_battery, co2_emissions = evaluate(data, dictionary, first_battery_value)
-        simulation_plot(data, sum, actual_percentage, quantity_delta_battery, co2_emissions) 
-
+        # simulation_plot(data, sum, actual_percentage, quantity_delta_battery, co2_emissions) 
+    init_gui(data, sum, actual_percentage, quantity_delta_battery)
 
     print(datetime.now()-ora)
 

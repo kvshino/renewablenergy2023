@@ -67,7 +67,7 @@ async def get_future_day_market(mercato="MI-A1", zona= 'CSUD') -> pd.core.frame.
         return final
 
 
-async def get_future_day_italian_market(zona = 'CSUD') -> pd.core.frame.DataFrame:
+async def get_future_day_italian_market(data, zona = 'CSUD') -> pd.core.frame.DataFrame:
 
     async with MercatiElettrici() as mercati_elettrici:
         await mercati_elettrici.get_general_conditions()
@@ -143,9 +143,11 @@ async def get_future_day_italian_market(zona = 'CSUD') -> pd.core.frame.DataFram
                 # MERCATO A2 o A1 DI DOMANI DISPONIBILE
                 final=pd.DataFrame(price_filtered[price_filtered["ora"] >=(datetime.now().hour+1)%25])
                 final= pd.concat([final,price_tomorrow_filtered[price_tomorrow_filtered["ora"] < (datetime.now().hour+1)%25]], axis=0)
-
+        
         final = pd.DataFrame(final).drop(["mercato", "zona"], axis=1)
         final["prezzo"] = final["prezzo"]/1000/1000
+        final["prezzo"] = final["prezzo"] + (final["prezzo"] * data["iva"])
         final=final.reset_index(drop=True)
+
 
     return final

@@ -35,6 +35,21 @@ def get_expected_power_production_from_pv(data, direct_radiation, diffuse_radiat
     return (irradiance / 1000) * data["pmax"] * (1 + data["gamma"] * (temp_cell - data["temp_ref"]))
 
 
+def difference_of_production(data):
+    """
+        Estimate the difference between the future production
+        and the future load
+
+        Returns :
+            Array with difference
+    """
+
+    ratio =  data["expected_production"]["production"]/data["inverter_nominal_power"]
+    #rimetto il valore in expected per facilità di plot
+    data["expected_production"]["production"] = data["expected_production"]["production"] * data["polynomial_inverter"](ratio)
+    return data["expected_production"]["production"] - data["estimate"]["consumo"].values
+
+
 
 
 def get_expected_power_production_from_pv_24_hours_from_now(data):

@@ -11,8 +11,10 @@ maximum_power_battery_exchange: 5000  # Wh
 latitude: 40.6824404
 longitude: 14.7680965
 
+inverter_nominal_power: 3680
 
 sold: 0.00007
+iva: 0.34
 # dati https://www.mercatoelettrico.org/It/default.aspx 30/09/23(sabato)
 
 timezone: 'Europe/Rome'

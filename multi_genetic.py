@@ -44,7 +44,10 @@ def evaluate(data, variables_values, first_battery_value):
 
         if charge:
 
-            quantity_charging_battery = ((upper_limit - effettivo_in_batteria) * percentage) / 100
+            posso_caricare_di = upper_limit - effettivo_in_batteria
+
+            #Viene calcolato di quanto caricare la batteria
+            quantity_charging_battery = min(((posso_caricare_di * percentage) / 100) / data["battery_charging_efficiency"], posso_caricare_di)
             
             if quantity_charging_battery - variables_values[f"difference_of_production{j}"] < 0:
                 # devo vendere
@@ -63,7 +66,7 @@ def evaluate(data, variables_values, first_battery_value):
         else:
             
             posso_scaricare_di=effettivo_in_batteria-lower_limit
-            quantity_discharging_battery=(posso_scaricare_di*percentage)/100
+            quantity_discharging_battery=((posso_scaricare_di*percentage)/100)*data["battery_discharging_efficiency"]
 
             if variables_values[f"difference_of_production{j}"] + quantity_discharging_battery > 0:
                 co2_emissions.append( co2_emissions[j] )
@@ -73,7 +76,7 @@ def evaluate(data, variables_values, first_battery_value):
                 co2_emissions.append( co2_emissions[j] + ((- (variables_values[f"difference_of_production{j}"] + quantity_discharging_battery)) * percentage_production_not_renewable["Difference"][j]))
                 
                 sum.append(sum[j] + (
-                        - (variables_values[f"difference_of_production{j}"] + quantity_discharging_battery) * data["prices"]["prezzo"].iloc[j]))
+                        - (variables_values[f"difference_of_production{j}"] + quantity_discharging_battery/data["battery_discharging_efficiency"]) * data["prices"]["prezzo"].iloc[j]))
             
 
             actual_percentage.append((effettivo_in_batteria - quantity_discharging_battery - lower_limit) / ( upper_limit - lower_limit))
@@ -123,6 +126,8 @@ def start_genetic_algorithm(data, pop_size, n_gen, n_threads, sampling=None,verb
             co2_emissions=0
             percentage_production_not_renewable = data["production_not_rs"]
 
+            
+
             for j in range(24):                                             #Viene eseguita una predizione per le successive 24 ore         
                 charge = X[f"b{j}"]
                 percentage = X[f"i{j}"]
@@ -132,9 +137,10 @@ def start_genetic_algorithm(data, pop_size, n_gen, n_threads, sampling=None,verb
                 #Caso in cui si sceglie di caricare la batteria
                 if charge:                                                  
 
+                    posso_caricare_di = upper_limit - effettivo_in_batteria
 
                     #Viene calcolato di quanto caricare la batteria
-                    quantity_charging_battery = ((upper_limit - effettivo_in_batteria) * percentage) / 100
+                    quantity_charging_battery = min(((posso_caricare_di * percentage) / 100) / data["battery_charging_efficiency"], posso_caricare_di)
 
 
                     #Si controlla che la carica della batteria non sia maggiore di quella fisicamente ottenibile
@@ -183,15 +189,7 @@ def start_genetic_algorithm(data, pop_size, n_gen, n_threads, sampling=None,verb
                     posso_scaricare_di=effettivo_in_batteria-lower_limit
                     if posso_scaricare_di < 0:
                         posso_scaricare_di = 0
-                    quantity_discharging_battery=(posso_scaricare_di*percentage)/100
-
-
-                    # quantity_discharging_battery = quantity_discharging_battery / data["battery_discharging_efficiency"]
-
-                    # #Visto che per prelevare x, devo prelevarne in realtà x+tot, allora devo controllare se prendo di più do quanto fisicamente ottenibile
-                    # if(quantity_discharging_battery > effettivo_in_batteria - lower_limit):
-                    #     quantity_discharging_battery = effettivo_in_batteria - lower_limit
-
+                    quantity_discharging_battery=((posso_scaricare_di*percentage)/100)*data["battery_discharging_efficiency"]              
 
 
                     #Si controlla che la scarica della batteria non sia maggiore di quella fisicamente ottenibile
@@ -199,7 +197,7 @@ def start_genetic_algorithm(data, pop_size, n_gen, n_threads, sampling=None,verb
                         quantity_discharging_battery = data["maximum_power_battery_exchange"]
                     
                     if(quantity_discharging_battery > data["maximum_power_absorption"]):
-                        quantity_discharging_battery = data["maximum_power_absorption"]
+                        quantity_disczharging_battery = data["maximum_power_absorption"]
 
                     #Si controlla se si produce di più di quanto si consuma. Prendere energia dalla batteria viene considerata produzione
                     if delta_production.iloc[j] + quantity_discharging_battery > 0:
@@ -222,7 +220,7 @@ def start_genetic_algorithm(data, pop_size, n_gen, n_threads, sampling=None,verb
                         co2_emissions += (- (delta_production.iloc[j] + quantity_discharging_battery)) * percentage_production_not_renewable["Difference"][j]
 
                         #Produco di meno di quanto consumo, compro il resto
-                        sum = sum + (- (delta_production.iloc[j] + quantity_discharging_battery) *
+                        sum = sum + (- (delta_production.iloc[j] + quantity_discharging_battery/data["battery_discharging_efficiency"]) *
                                      data["prices"]["prezzo"].iloc[j])
 
                     if posso_scaricare_di != 0:

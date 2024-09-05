@@ -1,9 +1,7 @@
 from datetime import *
-
 from pannello import *
 import matplotlib.pyplot as plt
 import seaborn as sns
-
 import pandas as pd
 
 
@@ -95,32 +93,112 @@ def genetic_algorithm_graph(data, array_sum, array_qb):
     plt.show()
 
 
+def simulation_plot(data, sum, actual_percentage, quantity_delta_battery):
+
+    ########################################################################################
+    # This is the part where we consider the whole plant#
+    ########################################################################################
+    plot_production(data)
+    plot_load(data)
+    plot_costi_plant(data,sum)
+    plot_scambio_rete(data,quantity_delta_battery)
+    plot_energia_batteria(data,actual_percentage)
+    plot_percentage_battery(data,actual_percentage)
+    plot_battery_status(data,quantity_delta_battery)
+    plot_co2_plant(data,quantity_delta_battery)
+
+    ########################################################################################
+    # This is the part where we consider only the pv without taking into account the battery#
+    ########################################################################################
+    
+    plot_costi_plant_nobattery(data)
+
+    ########################################################################################
+    # This is the part where we consider only the consumption and no PV and the battery#########
+    ########################################################################################
+
+    plot_co2_noplant(data)
+    plot_costi_noplant(data)
+    plot_cost_comparison(data,sum)
+   
+def simulation_plant(data, sum, actual_percentage, quantity_delta_battery):
+    plot_load(data)
+    plot_production(data)
+    plot_costi_plant(data,sum)
+    plot_scambio_rete(data,quantity_delta_battery)
+    plot_energia_batteria(data,actual_percentage)
+    plot_percentage_battery(data,actual_percentage)
+    plot_battery_status(data,quantity_delta_battery)
+    plot_co2_plant(data,quantity_delta_battery)
+    plot_cost_comparison(data,sum)
+
+def simulation_plant_nobattery(data):
+    plot_load(data)
+    plot_production(data)
+    plot_costi_plant_nobattery(data)
+
+def simulation_noplant(data):
+    plot_load(data)
+    plot_costi_noplant(data)
+    plot_co2_noplant(data)
 
 
-def simulation_plot(data, sum, actual_percentage, quantity_delta_battery, co2_emissions):
 
-
-    # ASCISSA TEMPORALE DEI GRAFICI
+def plot_GME_prices(data):
     current_datetime = datetime.now() + timedelta(hours=1)
     time_column = pd.date_range(start=current_datetime.replace(minute=0, second=0, microsecond=0), periods=24, freq='H')
+    plt.figure("Prezzo energia nelle successive 24 ore", facecolor='#edf1ef')
 
-    # COSTI ESPRESSI IN EURO                                - Controllati OK   - Fino a 23  - Negativo quando pago, Positivo quando mi rimborsano  -  Ogni punto è la somma dei precedenti
+    sns.set(font_scale=1.48)
+    ax = sns.lineplot(data, x=time_column, y=data["prices"]["prezzo"], color="#577590")
+    ax.plot(time_column, data["prices"]["prezzo"], color="#577590")
+
+    plt.xticks(time_column, time_column.strftime('%d/%m Ore:%H:%M'), rotation=90)
+    plt.title("Prezzo energia nelle successive 24 ore")
+    plt.xlabel('Ora')
+    plt.ylabel('Costo € per Watt')
+    plt.ylim(0, abs(max( data["prices"]["prezzo"])) + abs(0.1 * max( data["prices"]["prezzo"])))
+
+
+def plot_production(data):
+    current_datetime = datetime.now() + timedelta(hours=1)
+    time_column =pd.date_range(start=current_datetime.replace(minute=0, second=0, microsecond=0), periods=24, freq='H')
+    expected_production_dataframe = pd.DataFrame({'datetime': time_column, 'value': data["expected_production"]["production"].tolist()})
+    plot_graph(expected_production_dataframe, "datetime", "value", "Stima Produzione PV", "#F3722C", "Wh")
+
+def plot_load(data):
+    current_datetime = datetime.now() + timedelta(hours=1)
+    time_column =pd.date_range(start=current_datetime.replace(minute=0, second=0, microsecond=0), periods=24, freq='H')
+    expected_load_dataframe = pd.DataFrame({'datetime': time_column, 'value': data["estimate"]["consumo"].tolist()})
+    plot_graph(expected_load_dataframe, "datetime", "value", "Stima Carico", "#F94144", "Wh")
+
+def plot_costi_plant(data,sum):
+    current_datetime = datetime.now() + timedelta(hours=1)
+    time_column =pd.date_range(start=current_datetime.replace(minute=0, second=0, microsecond=0), periods=24, freq='H')
     cost_dataframe = pd.DataFrame({'datetime': time_column, 'value': sum})
     cost_dataframe["value"] = cost_dataframe["value"].multiply(-1)
-    # STIMA DEL CARICO NELLE PROSSIME 24H                   - Controllati OK   - Fino a 23   - Positivo
-    expected_load_dataframe = pd.DataFrame({'datetime': time_column, 'value': data["estimate"]["consumo"].tolist()})
-    #CO2 EMISSIONS
+    plot_graph(cost_dataframe, "datetime", "value", "Stima costi in bolletta (guadagno positivo)", "#577590", "Euro €")
 
-    for j in range(len(co2_emissions)-1, 0, -1):
-        co2_emissions[j] = co2_emissions[j] - co2_emissions[j-1]
-    co2_dataframe = pd.DataFrame({'datetime': time_column, 'value': co2_emissions})
+def plot_scambio_rete(data,quantity_delta_battery):
 
-    # STIMA DELLA PRODUZIONE NELLE PROSSIME 24 H            - Controllati OK   - Fino a 23   - Positivo
-    expected_production_dataframe = pd.DataFrame(
-        {'datetime': time_column, 'value': data["expected_production"]["production"].tolist()})
-    # QUANTA ENERGIA STIMATA ENTRA ED ESCE DALLA BATTERIA   - Controllati OK   - Fino a 23   - Positivo quando entra, negativo quando esce
+    current_datetime = datetime.now() + timedelta(hours=1)
+    time_column =pd.date_range(start=current_datetime.replace(minute=0, second=0, microsecond=0), periods=24, freq='H')
+
     quantity_delta_battery_dataframe = pd.DataFrame({'datetime': time_column, 'value': quantity_delta_battery})
-    # QUANTA ENERGIA HO IN BATTERIA                         - Controllati OK   - Fino a 24   - Positivo
+    expected_load_dataframe = pd.DataFrame({'datetime': time_column, 'value': data["estimate"]["consumo"].tolist()})
+    expected_production_dataframe = pd.DataFrame({'datetime': time_column, 'value': data["expected_production"]["production"].tolist()})
+
+    quantity_delta_battery_dataframe2 = quantity_delta_battery_dataframe[1:].reset_index()    
+    difference = expected_load_dataframe["value"] - (
+            expected_production_dataframe["value"] - quantity_delta_battery_dataframe2["value"])
+    
+    difference_dataframe = pd.DataFrame({'datetime': time_column, 'value': difference})
+
+    plot_graph_hist(difference_dataframe, "datetime", "value",
+               "Stima scambio energetico con la rete elettrica (acquisto positivo)", "#43AA8B", "Wh")
+
+def plot_energia_batteria(data,actual_percentage):
+    current_datetime = datetime.now() + timedelta(hours=1)
     time_column = pd.date_range(start=current_datetime.replace(minute=0, second=0, microsecond=0) - timedelta(hours=1),
                                 periods=25, freq='H')
 
@@ -128,49 +206,47 @@ def simulation_plot(data, sum, actual_percentage, quantity_delta_battery, co2_em
     max_value = float(data["soc_max"] * data["battery_capacity"])
     battery_wh = [min_value + (percentage * (max_value - min_value)) for percentage in actual_percentage]
     battery_wh_dataframe = pd.DataFrame({'datetime': time_column, 'value': battery_wh})
+    plot_graph(battery_wh_dataframe, "datetime", "value", "Stima energia in batteria", "#90BE6D", "Wh")
 
 
-    # PERCENTUALE BATTERIA
+def plot_percentage_battery(data,actual_percentage):
+      
+    current_datetime = datetime.now() + timedelta(hours=1)
+    time_column = pd.date_range(start=current_datetime.replace(minute=0, second=0, microsecond=0) - timedelta(hours=1),
+                                periods=25, freq='H')
+    
     actual_percentage_dataframe = pd.DataFrame({'datetime': time_column, 'value': actual_percentage})
     actual_percentage_dataframe["value"] = actual_percentage_dataframe["value"].multiply(data["soc_max"] - data["soc_min"])
     actual_percentage_dataframe["value"] = actual_percentage_dataframe["value"].add(data["soc_min"])
     actual_percentage_dataframe["value"] = actual_percentage_dataframe["value"].multiply(100)
+    plot_graph(actual_percentage_dataframe, "datetime", "value", "Stima percentuale batteria", "#90BE6D", "%")
 
-    # SCAMBIO ENERGETICO CON LA RETE                        - Controllati OK   - Fino a 23   - Positivo quando prendo, negativo quando vendo
-    quantity_delta_battery_dataframe2 = quantity_delta_battery_dataframe[1:].reset_index()
-    time_column = pd.date_range(start=current_datetime.replace(minute=0, second=0, microsecond=0), periods=24, freq='H')
-    difference = expected_load_dataframe["value"] - (
-            expected_production_dataframe["value"] - quantity_delta_battery_dataframe2["value"])
-    difference_dataframe = pd.DataFrame({'datetime': time_column, 'value': difference})
-
-    # Grafici
-
-    plot_graph(expected_production_dataframe, "datetime", "value", "Stima Produzione PV", "#F3722C", "Wh")
-
-
-    plot_graph(expected_load_dataframe, "datetime", "value", "Stima Carico", "#F94144", "Wh")
-
-
-    plot_graph_hist(difference_dataframe, "datetime", "value",
-               "Stima scambio energetico con la rete elettrica (acquisto positivo)", "#43AA8B", "Wh")
-
-    plot_graph(cost_dataframe, "datetime", "value", "Stima costi in bolletta (guadagno positivo)", "#577590", "Euro €")
-
+def plot_battery_status(data,quantity_delta_battery):
+    current_datetime = datetime.now() + timedelta(hours=1)
+    time_column =pd.date_range(start=current_datetime.replace(minute=0, second=0, microsecond=0), periods=24, freq='H')  
+    quantity_delta_battery_dataframe = pd.DataFrame({'datetime': time_column, 'value': quantity_delta_battery})
     plot_graph_hist(quantity_delta_battery_dataframe, "datetime", "value", "Stima carica/scarica batteria (carica positiva)",
                "#4D908E", "Wh")
 
-    plot_graph(battery_wh_dataframe, "datetime", "value", "Stima energia in batteria", "#90BE6D", "Wh")
+def plot_co2_plant(data,quantity_delta_battery):
+    current_datetime = datetime.now() + timedelta(hours=1)
+    time_column =pd.date_range(start=current_datetime.replace(minute=0, second=0, microsecond=0), periods=24, freq='H') 
 
-    plot_graph_hist(co2_dataframe, "datetime", "value", "Emissioni CO2", "#577590", "Wh")
+    quantity_delta_battery_dataframe = pd.DataFrame({'datetime': time_column, 'value': quantity_delta_battery})
+    expected_load_dataframe = pd.DataFrame({'datetime': time_column, 'value': data["estimate"]["consumo"].tolist()})
+    expected_production_dataframe = pd.DataFrame({'datetime': time_column, 'value': data["expected_production"]["production"].tolist()})
 
-    plot_graph(actual_percentage_dataframe, "datetime", "value", "Stima percentuale batteria", "#90BE6D", "%")
-    plt.ylim(-5, 100)
+    quantity_delta_battery_dataframe2 = quantity_delta_battery_dataframe[1:].reset_index()    
+    difference = expected_load_dataframe["value"] - (
+            expected_production_dataframe["value"] - quantity_delta_battery_dataframe2["value"]) 
+    
+    co2_plant_dataframe = pd.DataFrame({'datetime': time_column, 'value': co2_datas(difference)})
+    plot_graph(co2_plant_dataframe, "datetime", "value",
+                "Co2 immessa con impianto ", "#577590", "Grammi")
 
-    ########################################################################################
-    # This is the part where we consider only the pv without taking into account the battery#
-    ########################################################################################
+def plot_costi_plant_nobattery(data):
 
-    result_only_pv = data["difference_of_production"]
+    result_only_pv = difference_of_production(data)
     result = []
     result.append(0)
     if result_only_pv[0] < 0:
@@ -191,14 +267,33 @@ def simulation_plot(data, sum, actual_percentage, quantity_delta_battery, co2_em
     plot_graph(pv_only_dataframe, "datetime", "value", "Stima costi in bolletta (guadagno positivo) (senza batteria)",
                "#577590", "Euro €")
 
-
-    ########################################################################################
-    # This is the part where we consider only the consumption and PV and the battery#########
-    ########################################################################################
-
+def plot_co2_noplant(data):
+    current_datetime = datetime.now() + timedelta(hours=1)
+    time_column =pd.date_range(start=current_datetime.replace(minute=0, second=0, microsecond=0), periods=24, freq='H') 
     consumption_list = []
     consumption_list.append(0)
+    co2_list = []
+    co2_list.append(0)
     i = 0
+    consumo=0
+    for value in data["estimate"]["consumo"].values:
+        consumption_list.append((-value * data["prices"]["prezzo"][i]) + consumption_list[i])
+
+        carbone = value * 0.0527 * 0.82     #mix energetico * quanto quel mix inquina(dati da cambaire forse)
+        gas = value * 0.43 * 0.315
+        co2_list.append(  carbone + gas +co2_list[i])
+        i = i + 1
+    co2_dataframe = pd.DataFrame({'datetime': time_column, 'value': co2_list[1:]})
+    plot_graph(co2_dataframe, "datetime", "value",
+               "Co2 immessa senza impianto ", "#577590", "Grammi ")
+
+def plot_costi_noplant(data):
+    current_datetime = datetime.now() + timedelta(hours=1)
+    time_column =pd.date_range(start=current_datetime.replace(minute=0, second=0, microsecond=0), periods=24, freq='H')
+    consumption_list = []
+    consumption_list.append(0)
+    i=0
+    
     for value in data["estimate"]["consumo"].values:
         consumption_list.append((-value * data["prices"]["prezzo"][i]) + consumption_list[i])
         i = i + 1
@@ -207,35 +302,94 @@ def simulation_plot(data, sum, actual_percentage, quantity_delta_battery, co2_em
     plot_graph(consumption_only_dataframe, "datetime", "value",
                "Stima costi in bolletta (guadagno positivo) (senza batteria e senza PV)", "#577590", "Euro €")
 
+def plot_cost_comparison(data,sum):
+    current_datetime = datetime.now() + timedelta(hours=1)
+    time_column =pd.date_range(start=current_datetime.replace(minute=0, second=0, microsecond=0), periods=24, freq='H')
 
-    plt.figure(facecolor='#edf1ef')
+    consumption_list = []
+    consumption_list.append(0)
+    i=0
+    for value in data["estimate"]["consumo"].values:
+        consumption_list.append((-value * data["prices"]["prezzo"][i]) + consumption_list[i])
+        i = i + 1
+
+    consumption_only_dataframe = pd.DataFrame({'datetime': time_column, 'value': consumption_list[1:]})
+
+    result_only_pv = difference_of_production(data)
+    result = []
+    result.append(0)
+    if result_only_pv[0] < 0:
+        result.append((result_only_pv[0]) * data["prices"]["prezzo"][0])
+    else:
+        result.append((result_only_pv[0]) * data["sold"])
+
+    for i in range(1, 24):
+        if result_only_pv[i] < 0:
+            result.append((result_only_pv[i]) * data["prices"]["prezzo"][i] + result[i])
+        else:
+            result.append((result_only_pv[i]) * data["sold"] + result[i])
+
+    pv_only_dataframe = pd.DataFrame({'datetime': time_column, 'value': result[1:]})
+
+    cost_dataframe = pd.DataFrame({'datetime': time_column, 'value': sum})
+    cost_dataframe["value"] = cost_dataframe["value"].multiply(-1)
 
     plot_subgraph(cost_dataframe, "datetime", "value", "#577590", "With PV and battery", 1)
     plot_subgraph(pv_only_dataframe, "datetime", "value", "#90BE6D", "With PV", 1)
-
     plot_subgraph(consumption_only_dataframe, "datetime", "value", "#F94144", "Without PV", 1)
     plt.ylabel("Euro €")
     plt.legend()
-    plt.ylim(-1.5,1.5)
-    plt.show()
+    plt.ylim(-3,3)
 
+def plot_co2_comparison(data,quantity_delta_battery):
 
-def plot_GME_prices(data):
     current_datetime = datetime.now() + timedelta(hours=1)
-    time_column = pd.date_range(start=current_datetime.replace(minute=0, second=0, microsecond=0), periods=24, freq='H')
+    time_column =pd.date_range(start=current_datetime.replace(minute=0, second=0, microsecond=0), periods=24, freq='H') 
+    consumption_list = []
+    consumption_list.append(0)
+    co2_list = []
+    co2_list.append(0)
+    i = 0
+    consumo=0
+    for value in data["estimate"]["consumo"].values:
+        consumption_list.append((-value * data["prices"]["prezzo"][i]) + consumption_list[i])
+
+        carbone = value * 0.0527 * 0.82     #mix energetico * quanto quel mix inquina(dati da cambaire forse)
+        gas = value * 0.43 * 0.315
+        co2_list.append(  carbone + gas +co2_list[i])
+        i = i + 1
+    co2_dataframe = pd.DataFrame({'datetime': time_column, 'value': co2_list[1:]})
+
+    quantity_delta_battery_dataframe = pd.DataFrame({'datetime': time_column, 'value': quantity_delta_battery})
+    expected_load_dataframe = pd.DataFrame({'datetime': time_column, 'value': data["estimate"]["consumo"].tolist()})
+    expected_production_dataframe = pd.DataFrame({'datetime': time_column, 'value': data["expected_production"]["production"].tolist()})
+
+    quantity_delta_battery_dataframe2 = quantity_delta_battery_dataframe[1:].reset_index()    
+    difference = expected_load_dataframe["value"] - (
+            expected_production_dataframe["value"] - quantity_delta_battery_dataframe2["value"]) 
+
+    co2_plant_dataframe = pd.DataFrame({'datetime': time_column, 'value': co2_datas(difference)})
+
+    plot_subgraph(co2_dataframe, "datetime", "value", "#577590", "Without PV and battery", 1)
+    plot_subgraph(co2_plant_dataframe, "datetime", "value", "#90BE6D", "With PV and battery", 1)
+    plt.ylabel("Co2 in Grammi")
+    plt.legend()
+    plt.ylim(-10,3800)
 
 
 
 
-    plt.figure("Prezzo energia nelle successive 24 ore", facecolor='#edf1ef')
-
-    sns.set(font_scale=1.48)
-    ax = sns.lineplot(data, x=time_column, y=data["prices"]["prezzo"], color="#577590")
-    ax.plot(time_column, data["prices"]["prezzo"], color="#577590")
-
-    plt.xticks(time_column, time_column.strftime('%d/%m Ore:%H:%M'), rotation=90)
-    plt.title("Prezzo energia nelle successive 24 ore")
-    plt.xlabel('Ora')
-    plt.ylabel('Costo € per Watt')
-    plt.ylim(0, abs(max( data["prices"]["prezzo"])) + abs(0.1 * max( data["prices"]["prezzo"])))
-
+def co2_datas(difference):
+    
+    co2_list_plant = []
+    co2_list_plant.append(0)
+    i=0
+    for value in difference:
+        if value > 0:
+            carbone = value * 0.0527 * 0.82     #mix energetico * quanto quel mix inquina(dati da cambaire forse)
+            gas = value * 0.43 * 0.315
+            co2_list_plant.append(  carbone + gas +co2_list_plant[i])
+        else:
+            co2_list_plant.append(co2_list_plant[i])
+        i=i+1
+    return co2_list_plant[1:]

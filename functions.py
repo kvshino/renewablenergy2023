@@ -15,7 +15,7 @@ from datetime import datetime, timedelta
 import pandas as pd
 
 
-def setup() -> dict:
+def setup(polynomial_inverter) -> dict:
     """
     Takes the datas from the conf.yaml and stores them in data.
 
@@ -35,9 +35,9 @@ def setup() -> dict:
     #Checked OK, anche con grafico
     data["estimate"] = get_estimate_load_consumption(get_true_load_consumption())  # It gives an estimation of the load consumption
     
-    
+    data["polynomial_inverter"] = polynomial_inverter
     data["expected_production"] = get_expected_power_production_from_pv_24_hours_from_now(data)
-    data["difference_of_production"] = data["expected_production"]["production"] - data["estimate"]["consumo"].values
+    data["difference_of_production"] = difference_of_production(data)
 
 
     data["production_not_rs"] = forecast_percentage_production_from_not_renewable_sources(api_key=data["api_key"])
