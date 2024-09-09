@@ -32,3 +32,16 @@ temp_ref: 25
 #Entsoe (Dati non ancora usati)
 api_key: '634ab8da-8c97-452b-b4c8-1e73462d9b7b'
 entsoe_timezone: "IT_CSUD"
+
+#0.0527 * 0.82 Carbone  
+#0.43 * 0.315  Gas
+#0.09 * 0.756  Petrolio
+
+#Gse
+coal_percentage: 0.11
+gas_percentage:  0.86
+oil_percentage:  0.02
+#Rapporto Ispra
+coal_pollution: 0.9301
+gas_pollution:  0.3948
+oil_pollution:  0.7244

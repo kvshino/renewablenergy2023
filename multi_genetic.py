@@ -59,8 +59,8 @@ def evaluate(data, variables_values, first_battery_value):
                 sum.append(
                     sum[j] + ((quantity_charging_battery - variables_values[f"difference_of_production{j}"]) * sold))  # sum = sum - rimborso
             else:
-
-                co2_emissions.append( co2_emissions[j] + ((quantity_charging_battery - variables_values[f"difference_of_production{j}"]) * variables_values[f"production_not_rs{j}"]))
+                quantity_bought_from_not_renewable_sources = ((quantity_charging_battery - variables_values[f"difference_of_production{j}"]) * variables_values[f"production_not_rs{j}"])
+                co2_emissions.append( co2_emissions[j] + (quantity_bought_from_not_renewable_sources * data["coal_percentage"] * data["coal_pollution"]) + (quantity_bought_from_not_renewable_sources * data["gas_percentage"] * data["gas_pollution"]) + (quantity_bought_from_not_renewable_sources * data["oil_percentage"] * data["oil_pollution"] ))
                 
                 sum.append(
                     sum[j] + (quantity_charging_battery - variables_values[f"difference_of_production{j}"]) * variables_values[f"prices{j}"])
@@ -77,7 +77,8 @@ def evaluate(data, variables_values, first_battery_value):
                 sum.append(sum[j] - ((variables_values[f"difference_of_production{j}"] + quantity_discharging_battery) * sold))
 
             else:
-                co2_emissions.append( co2_emissions[j] + ((- (variables_values[f"difference_of_production{j}"] + quantity_discharging_battery)) * variables_values[f"production_not_rs{j}"]))
+                quantity_bought_from_not_renewable_sources = ((- (variables_values[f"difference_of_production{j}"] + quantity_discharging_battery)) * variables_values[f"production_not_rs{j}"])
+                co2_emissions.append( co2_emissions[j] + (quantity_bought_from_not_renewable_sources * data["coal_percentage"] * data["coal_pollution"]) + (quantity_bought_from_not_renewable_sources * data["gas_percentage"] * data["gas_pollution"]) + (quantity_bought_from_not_renewable_sources * data["oil_percentage"] * data["oil_pollution"] ))
                 
                 sum.append(sum[j] + (
                         - (variables_values[f"difference_of_production{j}"] + quantity_discharging_battery/data["battery_discharging_efficiency"]) * variables_values[f"prices{j}"]))
@@ -92,7 +93,6 @@ def evaluate(data, variables_values, first_battery_value):
         else:
             quantity_delta_battery.append(-quantity_discharging_battery)
 
-        
     return sum[1:], actual_percentage, quantity_delta_battery, co2_emissions[1:]
 
 
@@ -165,8 +165,10 @@ def start_genetic_algorithm(data, pop_size, n_gen, n_threads, sampling=None,verb
 
                     #Caso in cui viene prodotto meno di quanto si consuma, di conseguenza è necessario acquistare dalla rete
                     else:
+                        
+                        quantity_bought_from_not_renewable_sources =  (quantity_charging_battery - delta_production.iloc[j]) * percentage_production_not_renewable["Difference"][j]
+                        co2_emissions += (quantity_bought_from_not_renewable_sources * data["coal_percentage"] * data["coal_pollution"]) + (quantity_bought_from_not_renewable_sources * data["gas_percentage"] * data["gas_pollution"]) + (quantity_bought_from_not_renewable_sources * data["oil_percentage"] * data["oil_pollution"])
 
-                        co2_emissions +=  (quantity_charging_battery - delta_production.iloc[j]) * percentage_production_not_renewable["Difference"][j]
 
                         #Viene fatto un controllo che NON permette di acquistare più energia di quanto il contratto stipulato dall'utente permetta
                         if( quantity_charging_battery > data["maximum_power_absorption"] + delta_production.iloc[j]):
@@ -179,13 +181,10 @@ def start_genetic_algorithm(data, pop_size, n_gen, n_threads, sampling=None,verb
                         X[f"i{j}"] = int((100*quantity_charging_battery)/(upper_limit-effettivo_in_batteria))
                     else:
                         X[f"i{j}"] = 0
-                    #Viene aggiornato il valore di carica della batteria, essendo stata caricata
-                    #quantity_charging_battery = quantity_charging_battery * data["battery_charging_efficiency"]
+                    
                     actual_percentage.append((effettivo_in_batteria + quantity_charging_battery - lower_limit) / ( upper_limit - lower_limit))
-                    # quantity_battery-=abs(quantity_charging_battery*0.2)
-                    # quantity_battery= max(quantity_battery, 0)
-
-
+                    
+                    
                 #Caso in cui si sceglie di scaricare la batteria
                 else:
 
@@ -221,7 +220,8 @@ def start_genetic_algorithm(data, pop_size, n_gen, n_threads, sampling=None,verb
 
                     #Produco poco e consumo di più
                     else:
-                        co2_emissions += (- (delta_production.iloc[j] + quantity_discharging_battery)) * percentage_production_not_renewable["Difference"][j]
+                        quantity_bought_from_not_renewable_sources = (- (delta_production.iloc[j] + quantity_discharging_battery)) * percentage_production_not_renewable["Difference"][j]
+                        co2_emissions += (quantity_bought_from_not_renewable_sources * data["coal_percentage"] * data["coal_pollution"]) + (quantity_bought_from_not_renewable_sources * data["gas_percentage"] * data["gas_pollution"]) + (quantity_bought_from_not_renewable_sources * data["oil_percentage"] * data["oil_pollution"])
 
                         #Produco di meno di quanto consumo, compro il resto
                         sum = sum + (- (delta_production.iloc[j] + quantity_discharging_battery/data["battery_discharging_efficiency"]) *
@@ -234,6 +234,8 @@ def start_genetic_algorithm(data, pop_size, n_gen, n_threads, sampling=None,verb
                     #Viene aggiornato il valore della batteria, dopo la scarica
                     actual_percentage.append((effettivo_in_batteria - quantity_discharging_battery - lower_limit) / ( upper_limit - lower_limit))
                     quantity_battery+=abs(quantity_discharging_battery)
+
+
 
             #Terminata la simulazione, viene attribuito un voto alla stringa in input, dato da tre fattori:
             # - Il costo

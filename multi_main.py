@@ -34,9 +34,8 @@ async def main():
 
         data = setup(polynomial_inverter)
         prices = await get_future_day_italian_market(data)
-        production_not_rs = forecast_percentage_production_from_not_renewable_sources(api_key=data["api_key"])
+        production_not_rs = forecast_percentage_production_from_not_renewable_sources(api_key=data["api_key"], zona=data["entsoe_timezone"])
 
-        prices = shift_ciclico(prices)
         for i in range(24):
 
             data = setup(polynomial_inverter)
@@ -65,7 +64,7 @@ async def main():
             # plot.add(F_norm, facecolor="none", edgecolor="red")
             # plot.show()
 
-            
+
 
             dictionary[f"b{i}"]=data["res"].X[best_index]["b0"]
             dictionary[f"i{i}"]=data["res"].X[best_index]["i0"]
@@ -89,7 +88,7 @@ async def main():
             frozen_datetime.tick(delta=timedelta(hours=1))
 
         sum, actual_percentage, quantity_delta_battery, co2_emissions = evaluate(data, dictionary, first_battery_value)
-        # simulation_plot(data, sum, actual_percentage, quantity_delta_battery, co2_emissions) 
+
     dictionary["co2_emissions"] = co2_emissions
     dictionary["soc_min"] = data["soc_min"]
     dictionary["soc_max"] = data["soc_max"]

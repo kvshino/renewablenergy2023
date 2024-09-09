@@ -30,6 +30,7 @@ def setup(polynomial_inverter) -> dict:
     
 
     data["socs"] = df.iloc[-1][-3]
+    data["cycles"] = df.iloc[-1][-2]
     
 
     #Checked OK, anche con grafico
@@ -130,3 +131,53 @@ def shift_ciclico(df):
     df.iloc[len(df)-1] = app
 
     return df
+
+
+def battery_no_algorithm(dictionary, first_battery_value_in_w, cycles, polynomial):
+    sum = []
+    sum.append(0)
+    co2_emissions = []
+    co2_emissions.append(0)
+    sold = dictionary["sold"]
+        
+    battery_level = []
+    battery_level.append(first_battery_value_in_w)
+
+    battery_capacity = polynomial(cycles) * dictionary["battery_nominal_capacity"]
+
+    for j in range(24):
+        
+
+        upper_limit = (dictionary["soc_max"] * battery_capacity)
+        lower_limit = (dictionary["soc_min"] * battery_capacity)
+        effettivo_in_batteria= battery_level[j]
+
+        if variables_values[f"difference_of_production{j}"] > 0:
+
+            posso_caricare_di = upper_limit - effettivo_in_batteria
+
+            if posso_caricare_di - variables_values[f"difference_of_production{j}"] >= 0:
+                battery_level.append(effettivo_in_batteria+variables_values[f"difference_of_production{j}"])
+            else:
+                sum.append(
+                    sum[j] + ((variables_values[f"difference_of_production{j}"] - posso_caricare_di) * sold))
+                battery_function.append(upper_limit)
+
+        else:
+            
+            posso_scaricare_di=effettivo_in_batteria-lower_limit
+
+            if posso_scaricare_di + variables_values[f"difference_of_production{j}"] > 0:
+                app = effettivo_in_batteria+variables_values[f"difference_of_production{j}"]
+                battery_level.append(effettivo_in_batteria+variables_values[f"difference_of_production{j}"])
+            else:
+                app = posso_scaricare_di
+                battery_level.append(lower_limit)
+                sum.append( (posso_scaricare_di + variables_values[f"difference_of_production{j}"]) * sold )
+
+
+            new_cycles = round(cycles+(app/battery_capacity), 5)
+            battery_capacity = polynomial(new_cycles) * dictionary["battery_nominal_capacity"]
+
+
+    return sum[1:], battery_level
