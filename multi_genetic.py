@@ -20,18 +20,19 @@ from pymoo.visualization.scatter import Scatter
 import matplotlib.pyplot as plt
 from pymoo.problems import get_problem
 
+#Capacità della batteria
+#
+
 def evaluate(data, variables_values, first_battery_value):
     sum = []
     sum.append(0)
     co2_emissions = []
     co2_emissions.append(0)
     sold = data["sold"]
-    upper_limit = (data["soc_max"] * data["battery_capacity"])
-    lower_limit = (data["soc_min"] * data["battery_capacity"])
-    percentage_production_not_renewable = data["production_not_rs"]
+    
     actual_percentage = []
     actual_percentage.append(first_battery_value)
-
+    
     quantity_delta_battery = []
 
     # valori negativi indicano consumi ,positivi guadagni
@@ -40,6 +41,9 @@ def evaluate(data, variables_values, first_battery_value):
         percentage = variables_values[f"i{j}"]
         quantity_charging_battery = None
         quantity_discharging_battery = None
+
+        upper_limit = (data["soc_max"] * variables_values[f"battery_capacity{j}"])
+        lower_limit = (data["soc_min"] * variables_values[f"battery_capacity{j}"])
         effettivo_in_batteria=lower_limit+(actual_percentage[j]*(upper_limit-lower_limit))
 
         if charge:
@@ -56,10 +60,10 @@ def evaluate(data, variables_values, first_battery_value):
                     sum[j] + ((quantity_charging_battery - variables_values[f"difference_of_production{j}"]) * sold))  # sum = sum - rimborso
             else:
 
-                co2_emissions.append( co2_emissions[j] + ((quantity_charging_battery - variables_values[f"difference_of_production{j}"]) * percentage_production_not_renewable["Difference"][j]))
-
+                co2_emissions.append( co2_emissions[j] + ((quantity_charging_battery - variables_values[f"difference_of_production{j}"]) * variables_values[f"production_not_rs{j}"]))
+                
                 sum.append(
-                    sum[j] + (quantity_charging_battery - variables_values[f"difference_of_production{j}"]) * data["prices"]["prezzo"].iloc[j])
+                    sum[j] + (quantity_charging_battery - variables_values[f"difference_of_production{j}"]) * variables_values[f"prices{j}"])
                 
             actual_percentage.append((effettivo_in_batteria + quantity_charging_battery - lower_limit) / ( upper_limit - lower_limit))
             
@@ -73,10 +77,10 @@ def evaluate(data, variables_values, first_battery_value):
                 sum.append(sum[j] - ((variables_values[f"difference_of_production{j}"] + quantity_discharging_battery) * sold))
 
             else:
-                co2_emissions.append( co2_emissions[j] + ((- (variables_values[f"difference_of_production{j}"] + quantity_discharging_battery)) * percentage_production_not_renewable["Difference"][j]))
+                co2_emissions.append( co2_emissions[j] + ((- (variables_values[f"difference_of_production{j}"] + quantity_discharging_battery)) * variables_values[f"production_not_rs{j}"]))
                 
                 sum.append(sum[j] + (
-                        - (variables_values[f"difference_of_production{j}"] + quantity_discharging_battery/data["battery_discharging_efficiency"]) * data["prices"]["prezzo"].iloc[j]))
+                        - (variables_values[f"difference_of_production{j}"] + quantity_discharging_battery/data["battery_discharging_efficiency"]) * variables_values[f"prices{j}"]))
             
 
             actual_percentage.append((effettivo_in_batteria - quantity_discharging_battery - lower_limit) / ( upper_limit - lower_limit))

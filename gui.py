@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from plot import *
 
-def init_gui(data, sum, actual_percentage, quantity_delta_battery):
+def init_gui(dictionary, sum, actual_percentage, quantity_delta_battery, first_battery_value):
 
     def on_graph_select(event):
         selected_graph_1 = combo1.get()
@@ -15,95 +15,95 @@ def init_gui(data, sum, actual_percentage, quantity_delta_battery):
         if event.widget == combo1:
             match selected_graph_1:
                 case "Grafico 1: Simulazione Completa":
-                    simulation_plot(data, sum, actual_percentage, quantity_delta_battery)
+                    simulation_plot(dictionary, sum, actual_percentage, quantity_delta_battery, first_battery_value)
                     plt.show()
 
                 case "Grafico 2: Prezzi dell'energia":
-                    plot_GME_prices(data)
+                    plot_GME_prices(dictionary, "prices")
                     plt.show()
 
                 case "Grafico 3: Consumi":
-                    plot_load(data)
+                    plot_load(dictionary, "load")
                     plt.show()
 
                 case "Grafico 4: Produzione":
-                    plot_production(data)
+                    plot_production(dictionary, "production")
                     plt.show()
 
                 case "Grafico 5: Costo":
-                    plot_costi_plant(data,sum)
+                    plot_costi_plant(sum)
                     plt.show()
 
                 case "Grafico 6: Scambio con la Rete":
-                    plot_scambio_rete(data,quantity_delta_battery)
+                    plot_scambio_rete(dictionary, "load", "production",quantity_delta_battery)
                     plt.show()
                 
                 case "Grafico 7: Energia in Batteria":
-                    plot_energia_batteria(data,actual_percentage)
+                    plot_energia_batteria(dictionary,actual_percentage, first_battery_value)
                     plt.show()
 
                 case "Grafico 8: Percentuale Energia in Batteria":
-                    plot_percentage_battery(data,actual_percentage)
+                    plot_percentage_battery(dictionary,actual_percentage)
                     plt.show()
 
                 case "Grafico 9: Scambio Energia in Batteria":
-                    plot_battery_status(data,quantity_delta_battery)
+                    plot_battery_status(quantity_delta_battery)
                     plt.show()
 
                 case "Grafico 10: Co2 immessa con Impianto":
-                    plot_co2_plant(data,quantity_delta_battery)   
+                    plot_co2_plant(dictionary, "load", "production", quantity_delta_battery)   
                     plt.show()
             
                 case "Grafico 11: Confronto costi":
-                    plot_cost_comparison(data,sum)
+                    plot_cost_comparison(dictionary, "load", "prices", sum)
                     plt.show()
                 case "Grafico 12: Confronto Co2":
-                    plot_co2_comparison(data,quantity_delta_battery)
+                    plot_co2_comparison(dictionary, "load", "prices",quantity_delta_battery)
                     plt.show()
 
         elif event.widget == combo2:
             match selected_graph_2:
                 case "Grafico 1: Simulazione Completa":
-                    simulation_plant_nobattery(data)
+                    simulation_plant_nobattery(dictionary)
                     plt.show()
 
                 case "Grafico 2: Prezzi dell'energia":
-                    plot_GME_prices(data)
+                    plot_GME_prices(dictionary, "prices")
                     plt.show()
 
                 case "Grafico 3: Consumi":
-                    plot_load(data)
+                    plot_load(dictionary, "load")
                     plt.show()
 
                 case "Grafico 4: Produzione":
-                    plot_production(data)
+                    plot_production(dictionary, "production")
                     plt.show()
 
                 case "Grafico 5: Costo":
-                    plot_costi_plant_nobattery(data)
+                    plot_costi_plant_nobattery(dictionary)
                     plt.show()
                
                     
         elif event.widget == combo3:
             match selected_graph_3:
                 case "Grafico 1: Simulazione Completa":
-                    simulation_noplant(data)
+                    simulation_noplant(dictionary)
                     plt.show()
 
                 case "Grafico 2: Prezzi dell'energia":
-                    plot_GME_prices(data)
+                    plot_GME_prices(dictionary, "prices")
                     plt.show()
 
                 case "Grafico 3: Consumi":
-                    plot_load(data)
+                    plot_load(dictionary, "load")
                     plt.show()
                     
                 case "Grafico 4: Costo":
-                    plot_costi_plant_nobattery(data)
+                    plot_costi_plant_nobattery(dictionary)
                     plt.show()
 
                 case "Grafico 5: Co2 senza impianto":
-                    plot_co2_noplant(data)
+                    plot_co2_noplant(dictionary, "load")
                     plt.show()
 
     # Creazione della finestra principale

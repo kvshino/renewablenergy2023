@@ -3,6 +3,7 @@ from pannello import *
 import matplotlib.pyplot as plt
 import seaborn as sns
 import pandas as pd
+from functions import *
 
 
 
@@ -93,100 +94,102 @@ def genetic_algorithm_graph(data, array_sum, array_qb):
     plt.show()
 
 
-def simulation_plot(data, sum, actual_percentage, quantity_delta_battery):
+def simulation_plot(dictionary, sum, actual_percentage, quantity_delta_battery, first_battery_value):
 
     ########################################################################################
     # This is the part where we consider the whole plant#
     ########################################################################################
-    plot_production(data)
-    plot_load(data)
-    plot_costi_plant(data,sum)
-    plot_scambio_rete(data,quantity_delta_battery)
-    plot_energia_batteria(data,actual_percentage)
-    plot_percentage_battery(data,actual_percentage)
-    plot_battery_status(data,quantity_delta_battery)
-    plot_co2_plant(data,quantity_delta_battery)
+    plot_production(dictionary, "production")
+    plot_load(dictionary, "load")
+    plot_costi_plant(sum)
+    plot_scambio_rete(dictionary, "load", "production", quantity_delta_battery)
+    plot_energia_batteria(dictionary,actual_percentage, first_battery_value)
+    plot_percentage_battery(dictionary, actual_percentage)
+    plot_battery_status(quantity_delta_battery)
+    plot_co2_plant(dictionary, "load", "production", quantity_delta_battery)
 
     ########################################################################################
     # This is the part where we consider only the pv without taking into account the battery#
     ########################################################################################
     
-    plot_costi_plant_nobattery(data)
+    plot_costi_plant_nobattery(dictionary)
 
     ########################################################################################
     # This is the part where we consider only the consumption and no PV and the battery#########
     ########################################################################################
 
-    plot_co2_noplant(data)
-    plot_costi_noplant(data)
-    plot_cost_comparison(data,sum)
+    plot_co2_noplant(dictionary, "load")
+    plot_costi_noplant(dictionary, "load")
+    plt.figure("Cost Comparison",facecolor='#edf1ef')
+    plot_cost_comparison(dictionary, "load", "prices", sum)
    
-def simulation_plant(data, sum, actual_percentage, quantity_delta_battery):
-    plot_load(data)
-    plot_production(data)
-    plot_costi_plant(data,sum)
-    plot_scambio_rete(data,quantity_delta_battery)
-    plot_energia_batteria(data,actual_percentage)
-    plot_percentage_battery(data,actual_percentage)
-    plot_battery_status(data,quantity_delta_battery)
-    plot_co2_plant(data,quantity_delta_battery)
-    plot_cost_comparison(data,sum)
+def simulation_plant(dictionary, sum, actual_percentage, quantity_delta_battery, first_battery_value):
+    plot_load(dictionary, "load")
+    plot_production(dictionary, "production")
+    plot_costi_plant(sum)
+    plot_scambio_rete(dictionary, "load", "production", quantity_delta_battery)
+    plot_energia_batteria(dictionary,actual_percentage, first_battery_value)
+    plot_percentage_battery(dictionary,actual_percentage)
+    plot_battery_status(quantity_delta_battery)
+    plot_co2_plant(dictionary, "load", "production", quantity_delta_battery)
+    plot_cost_comparison(dictionary, "load", "prices", sum)
 
-def simulation_plant_nobattery(data):
-    plot_load(data)
-    plot_production(data)
-    plot_costi_plant_nobattery(data)
+def simulation_plant_nobattery(dictionary):
+    plot_load(dictionary, "load")
+    plot_production(dictionary, "production")
+    plot_costi_plant_nobattery(dictionary)
 
-def simulation_noplant(data):
-    plot_load(data)
-    plot_costi_noplant(data)
-    plot_co2_noplant(data)
-
-
-
-def plot_GME_prices(data):
-    current_datetime = datetime.now() + timedelta(hours=1)
-    time_column = pd.date_range(start=current_datetime.replace(minute=0, second=0, microsecond=0), periods=24, freq='H')
-    plt.figure("Prezzo energia nelle successive 24 ore", facecolor='#edf1ef')
-
-    sns.set(font_scale=1.48)
-    ax = sns.lineplot(data, x=time_column, y=data["prices"]["prezzo"], color="#577590")
-    ax.plot(time_column, data["prices"]["prezzo"], color="#577590")
-
-    plt.xticks(time_column, time_column.strftime('%d/%m Ore:%H:%M'), rotation=90)
-    plt.title("Prezzo energia nelle successive 24 ore")
-    plt.xlabel('Ora')
-    plt.ylabel('Costo € per Watt')
-    plt.ylim(0, abs(max( data["prices"]["prezzo"])) + abs(0.1 * max( data["prices"]["prezzo"])))
+def simulation_noplant(dictionary):
+    plot_load(dictionary, "load")
+    plot_costi_noplant(dictionary, "load")
+    plot_co2_noplant(dictionary, "load")
 
 
-def plot_production(data):
+
+def plot_GME_prices(dictionary, string):
     current_datetime = datetime.now() + timedelta(hours=1)
     time_column =pd.date_range(start=current_datetime.replace(minute=0, second=0, microsecond=0), periods=24, freq='H')
-    expected_production_dataframe = pd.DataFrame({'datetime': time_column, 'value': data["expected_production"]["production"].tolist()})
+    prices_list = dictionary_to_list(dictionary, string)
+
+    expected_prices_dataframe = pd.DataFrame({'datetime': time_column, 'value':prices_list})
+    plot_graph(expected_prices_dataframe, "datetime", "value", "Stima Prezzi Energia", "#F3722C", "€")
+
+
+def plot_production(dictionary, string):
+    current_datetime = datetime.now() + timedelta(hours=1)
+    time_column =pd.date_range(start=current_datetime.replace(minute=0, second=0, microsecond=0), periods=24, freq='H')
+
+    lista = dictionary_to_list(dictionary, string)
+    expected_production_dataframe = pd.DataFrame({'datetime': time_column, 'value': lista})
     plot_graph(expected_production_dataframe, "datetime", "value", "Stima Produzione PV", "#F3722C", "Wh")
 
-def plot_load(data):
+def plot_load(dictionary, string):
     current_datetime = datetime.now() + timedelta(hours=1)
     time_column =pd.date_range(start=current_datetime.replace(minute=0, second=0, microsecond=0), periods=24, freq='H')
-    expected_load_dataframe = pd.DataFrame({'datetime': time_column, 'value': data["estimate"]["consumo"].tolist()})
+
+    lista = dictionary_to_list(dictionary, string)
+    expected_load_dataframe = pd.DataFrame({'datetime': time_column, 'value': lista})
     plot_graph(expected_load_dataframe, "datetime", "value", "Stima Carico", "#F94144", "Wh")
 
-def plot_costi_plant(data,sum):
+def plot_costi_plant(sum):
     current_datetime = datetime.now() + timedelta(hours=1)
     time_column =pd.date_range(start=current_datetime.replace(minute=0, second=0, microsecond=0), periods=24, freq='H')
     cost_dataframe = pd.DataFrame({'datetime': time_column, 'value': sum})
     cost_dataframe["value"] = cost_dataframe["value"].multiply(-1)
     plot_graph(cost_dataframe, "datetime", "value", "Stima costi in bolletta (guadagno positivo)", "#577590", "Euro €")
 
-def plot_scambio_rete(data,quantity_delta_battery):
+def plot_scambio_rete(dictionary, string_load, string_production, quantity_delta_battery):
 
     current_datetime = datetime.now() + timedelta(hours=1)
     time_column =pd.date_range(start=current_datetime.replace(minute=0, second=0, microsecond=0), periods=24, freq='H')
 
+    lista_load = dictionary_to_list(dictionary, string_load)
+    lista_production = dictionary_to_list(dictionary, string_production)
+
+
     quantity_delta_battery_dataframe = pd.DataFrame({'datetime': time_column, 'value': quantity_delta_battery})
-    expected_load_dataframe = pd.DataFrame({'datetime': time_column, 'value': data["estimate"]["consumo"].tolist()})
-    expected_production_dataframe = pd.DataFrame({'datetime': time_column, 'value': data["expected_production"]["production"].tolist()})
+    expected_load_dataframe = pd.DataFrame({'datetime': time_column, 'value': lista_load})
+    expected_production_dataframe = pd.DataFrame({'datetime': time_column, 'value': lista_production})
 
     quantity_delta_battery_dataframe2 = quantity_delta_battery_dataframe[1:].reset_index()    
     difference = expected_load_dataframe["value"] - (
@@ -197,44 +200,52 @@ def plot_scambio_rete(data,quantity_delta_battery):
     plot_graph_hist(difference_dataframe, "datetime", "value",
                "Stima scambio energetico con la rete elettrica (acquisto positivo)", "#43AA8B", "Wh")
 
-def plot_energia_batteria(data,actual_percentage):
+def plot_energia_batteria(dictionary,actual_percentage, first_battery_value):
     current_datetime = datetime.now() + timedelta(hours=1)
     time_column = pd.date_range(start=current_datetime.replace(minute=0, second=0, microsecond=0) - timedelta(hours=1),
                                 periods=25, freq='H')
 
-    min_value = float(data["soc_min"] * data["battery_capacity"])
-    max_value = float(data["soc_max"] * data["battery_capacity"])
-    battery_wh = [min_value + (percentage * (max_value - min_value)) for percentage in actual_percentage]
+    app = {}
+    app["battery_capacity0"] = first_battery_value * dictionary["battery_capacity0"]
+    for i in range(24):
+        app[f"battery_capacity{i+1}"] = dictionary[f"battery_capacity{i}"]
+
+    battery_wh = [float(dictionary["soc_min"] * app[f"battery_capacity{i}"]) + (percentage * (float(dictionary["soc_max"] * app[f"battery_capacity{i}"]) - float(dictionary["soc_min"] * app[f"battery_capacity{i}"]))) for i,percentage in enumerate(actual_percentage)]
     battery_wh_dataframe = pd.DataFrame({'datetime': time_column, 'value': battery_wh})
     plot_graph(battery_wh_dataframe, "datetime", "value", "Stima energia in batteria", "#90BE6D", "Wh")
 
 
-def plot_percentage_battery(data,actual_percentage):
+def plot_percentage_battery(dictionary,actual_percentage):
       
     current_datetime = datetime.now() + timedelta(hours=1)
     time_column = pd.date_range(start=current_datetime.replace(minute=0, second=0, microsecond=0) - timedelta(hours=1),
                                 periods=25, freq='H')
     
     actual_percentage_dataframe = pd.DataFrame({'datetime': time_column, 'value': actual_percentage})
-    actual_percentage_dataframe["value"] = actual_percentage_dataframe["value"].multiply(data["soc_max"] - data["soc_min"])
-    actual_percentage_dataframe["value"] = actual_percentage_dataframe["value"].add(data["soc_min"])
+    actual_percentage_dataframe["value"] = actual_percentage_dataframe["value"].multiply(dictionary["soc_max"] - dictionary["soc_min"])
+    actual_percentage_dataframe["value"] = actual_percentage_dataframe["value"].add(dictionary["soc_min"])
     actual_percentage_dataframe["value"] = actual_percentage_dataframe["value"].multiply(100)
     plot_graph(actual_percentage_dataframe, "datetime", "value", "Stima percentuale batteria", "#90BE6D", "%")
 
-def plot_battery_status(data,quantity_delta_battery):
+def plot_battery_status(quantity_delta_battery):
     current_datetime = datetime.now() + timedelta(hours=1)
     time_column =pd.date_range(start=current_datetime.replace(minute=0, second=0, microsecond=0), periods=24, freq='H')  
+
+
     quantity_delta_battery_dataframe = pd.DataFrame({'datetime': time_column, 'value': quantity_delta_battery})
     plot_graph_hist(quantity_delta_battery_dataframe, "datetime", "value", "Stima carica/scarica batteria (carica positiva)",
                "#4D908E", "Wh")
 
-def plot_co2_plant(data,quantity_delta_battery):
+def plot_co2_plant(dictionary, string_load, string_production, quantity_delta_battery):
     current_datetime = datetime.now() + timedelta(hours=1)
     time_column =pd.date_range(start=current_datetime.replace(minute=0, second=0, microsecond=0), periods=24, freq='H') 
 
+    lista_load = dictionary_to_list(dictionary, string_load)
+    lista_production = dictionary_to_list(dictionary, string_production)
+
     quantity_delta_battery_dataframe = pd.DataFrame({'datetime': time_column, 'value': quantity_delta_battery})
-    expected_load_dataframe = pd.DataFrame({'datetime': time_column, 'value': data["estimate"]["consumo"].tolist()})
-    expected_production_dataframe = pd.DataFrame({'datetime': time_column, 'value': data["expected_production"]["production"].tolist()})
+    expected_load_dataframe = pd.DataFrame({'datetime': time_column, 'value': lista_load})
+    expected_production_dataframe = pd.DataFrame({'datetime': time_column, 'value': lista_production})
 
     quantity_delta_battery_dataframe2 = quantity_delta_battery_dataframe[1:].reset_index()    
     difference = expected_load_dataframe["value"] - (
@@ -244,21 +255,20 @@ def plot_co2_plant(data,quantity_delta_battery):
     plot_graph(co2_plant_dataframe, "datetime", "value",
                 "Co2 immessa con impianto ", "#577590", "Grammi")
 
-def plot_costi_plant_nobattery(data):
+def plot_costi_plant_nobattery(dictionary):
 
-    result_only_pv = difference_of_production(data)
     result = []
     result.append(0)
-    if result_only_pv[0] < 0:
-        result.append((result_only_pv[0]) * data["prices"]["prezzo"][0])
+    if dictionary["difference_of_production0"] < 0:
+        result.append((dictionary["difference_of_production0"]) * dictionary["prices0"])
     else:
-        result.append((result_only_pv[0]) * data["sold"])
+        result.append((dictionary["difference_of_production0"]) * dictionary["sold"])
 
     for i in range(1, 24):
-        if result_only_pv[i] < 0:
-            result.append((result_only_pv[i]) * data["prices"]["prezzo"][i] + result[i])
+        if dictionary[f"difference_of_production{i}"] < 0:
+            result.append((dictionary[f"difference_of_production{i}"]) * dictionary[f"prices{i}"] + result[i])
         else:
-            result.append((result_only_pv[i]) * data["sold"] + result[i])
+            result.append((dictionary[f"difference_of_production{i}"]) * dictionary["sold"] + result[i])
 
     current_datetime = datetime.now() + timedelta(hours=1)
     time_column = pd.date_range(start=current_datetime.replace(minute=0, second=0, microsecond=0), periods=24, freq='H')
@@ -267,7 +277,7 @@ def plot_costi_plant_nobattery(data):
     plot_graph(pv_only_dataframe, "datetime", "value", "Stima costi in bolletta (guadagno positivo) (senza batteria)",
                "#577590", "Euro €")
 
-def plot_co2_noplant(data):
+def plot_co2_noplant(dictionary, string_load):
     current_datetime = datetime.now() + timedelta(hours=1)
     time_column =pd.date_range(start=current_datetime.replace(minute=0, second=0, microsecond=0), periods=24, freq='H') 
     consumption_list = []
@@ -276,8 +286,11 @@ def plot_co2_noplant(data):
     co2_list.append(0)
     i = 0
     consumo=0
-    for value in data["estimate"]["consumo"].values:
-        consumption_list.append((-value * data["prices"]["prezzo"][i]) + consumption_list[i])
+
+    lista = dictionary_to_list(dictionary, string_load)
+
+    for value in lista:
+        consumption_list.append((-value * dictionary[f"prices{i}"]) + consumption_list[i])
 
         carbone = value * 0.0527 * 0.82     #mix energetico * quanto quel mix inquina(dati da cambaire forse)
         gas = value * 0.43 * 0.315
@@ -287,47 +300,52 @@ def plot_co2_noplant(data):
     plot_graph(co2_dataframe, "datetime", "value",
                "Co2 immessa senza impianto ", "#577590", "Grammi ")
 
-def plot_costi_noplant(data):
+def plot_costi_noplant(dictionary, string_load):
     current_datetime = datetime.now() + timedelta(hours=1)
     time_column =pd.date_range(start=current_datetime.replace(minute=0, second=0, microsecond=0), periods=24, freq='H')
     consumption_list = []
     consumption_list.append(0)
     i=0
+
+    lista = dictionary_to_list(dictionary, string_load)
     
-    for value in data["estimate"]["consumo"].values:
-        consumption_list.append((-value * data["prices"]["prezzo"][i]) + consumption_list[i])
+    for value in lista:
+        consumption_list.append((-value * dictionary[f"prices{i}"]) + consumption_list[i])
         i = i + 1
 
     consumption_only_dataframe = pd.DataFrame({'datetime': time_column, 'value': consumption_list[1:]})
     plot_graph(consumption_only_dataframe, "datetime", "value",
                "Stima costi in bolletta (guadagno positivo) (senza batteria e senza PV)", "#577590", "Euro €")
 
-def plot_cost_comparison(data,sum):
+def plot_cost_comparison(dictionary, string_load, string_prices, sum):
     current_datetime = datetime.now() + timedelta(hours=1)
     time_column =pd.date_range(start=current_datetime.replace(minute=0, second=0, microsecond=0), periods=24, freq='H')
 
     consumption_list = []
     consumption_list.append(0)
     i=0
-    for value in data["estimate"]["consumo"].values:
-        consumption_list.append((-value * data["prices"]["prezzo"][i]) + consumption_list[i])
+
+    lista_load = dictionary_to_list(dictionary, string_load)
+    lista_prices = dictionary_to_list(dictionary, string_prices)
+
+    for value in lista_load:
+        consumption_list.append((-value * lista_prices[i]) + consumption_list[i])
         i = i + 1
 
     consumption_only_dataframe = pd.DataFrame({'datetime': time_column, 'value': consumption_list[1:]})
 
-    result_only_pv = difference_of_production(data)
     result = []
     result.append(0)
-    if result_only_pv[0] < 0:
-        result.append((result_only_pv[0]) * data["prices"]["prezzo"][0])
+    if dictionary["difference_of_production0"] < 0:
+        result.append((dictionary["difference_of_production0"]) * dictionary["prices0"])
     else:
-        result.append((result_only_pv[0]) * data["sold"])
+        result.append((dictionary["difference_of_production0"]) * dictionary["sold"])
 
     for i in range(1, 24):
-        if result_only_pv[i] < 0:
-            result.append((result_only_pv[i]) * data["prices"]["prezzo"][i] + result[i])
+        if dictionary[f"difference_of_production{i}"] < 0:
+            result.append((dictionary[f"difference_of_production{i}"]) * dictionary[f"prices{i}"] + result[i])
         else:
-            result.append((result_only_pv[i]) * data["sold"] + result[i])
+            result.append((dictionary[f"difference_of_production{i}"]) * dictionary["sold"] + result[i])
 
     pv_only_dataframe = pd.DataFrame({'datetime': time_column, 'value': result[1:]})
 
@@ -341,7 +359,7 @@ def plot_cost_comparison(data,sum):
     plt.legend()
     plt.ylim(-3,3)
 
-def plot_co2_comparison(data,quantity_delta_battery):
+def plot_co2_comparison(dictionary, string_load, string_prices,quantity_delta_battery):
 
     current_datetime = datetime.now() + timedelta(hours=1)
     time_column =pd.date_range(start=current_datetime.replace(minute=0, second=0, microsecond=0), periods=24, freq='H') 
@@ -351,8 +369,13 @@ def plot_co2_comparison(data,quantity_delta_battery):
     co2_list.append(0)
     i = 0
     consumo=0
-    for value in data["estimate"]["consumo"].values:
-        consumption_list.append((-value * data["prices"]["prezzo"][i]) + consumption_list[i])
+
+    lista_load = dictionary_to_list(dictionary, string_load)
+    lista_prices = dictionary_to_list(dictionary, string_prices)
+
+
+    for value in lista_load:
+        consumption_list.append((-value * lista_prices[i]) + consumption_list[i])
 
         carbone = value * 0.0527 * 0.82     #mix energetico * quanto quel mix inquina(dati da cambaire forse)
         gas = value * 0.43 * 0.315
@@ -361,8 +384,8 @@ def plot_co2_comparison(data,quantity_delta_battery):
     co2_dataframe = pd.DataFrame({'datetime': time_column, 'value': co2_list[1:]})
 
     quantity_delta_battery_dataframe = pd.DataFrame({'datetime': time_column, 'value': quantity_delta_battery})
-    expected_load_dataframe = pd.DataFrame({'datetime': time_column, 'value': data["estimate"]["consumo"].tolist()})
-    expected_production_dataframe = pd.DataFrame({'datetime': time_column, 'value': data["expected_production"]["production"].tolist()})
+    expected_load_dataframe = pd.DataFrame({'datetime': time_column, 'value': lista_load})
+    expected_production_dataframe = pd.DataFrame({'datetime': time_column, 'value': lista_prices})
 
     quantity_delta_battery_dataframe2 = quantity_delta_battery_dataframe[1:].reset_index()    
     difference = expected_load_dataframe["value"] - (

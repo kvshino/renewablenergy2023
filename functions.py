@@ -40,7 +40,7 @@ def setup(polynomial_inverter) -> dict:
     data["difference_of_production"] = difference_of_production(data)
 
 
-    data["production_not_rs"] = forecast_percentage_production_from_not_renewable_sources(api_key=data["api_key"])
+    #data["production_not_rs"] = forecast_percentage_production_from_not_renewable_sources(api_key=data["api_key"])
     
 
     with open('csv/socs.csv', 'r+') as file:
@@ -111,3 +111,22 @@ def forecast_percentage_production_from_not_renewable_sources(api_key, zona="IT_
     result["Difference"] = result["Difference"] / final_total["Generation"]
     
     return result
+
+
+def dictionary_to_list(dictionary, string, number=24):
+    lista = []
+    for i in range(number):
+        lista.append(dictionary[string + str(i)])
+    
+    return lista
+
+
+def shift_ciclico(df):
+    # Shift ciclico di una colonna
+    app = df.iloc[0].copy()
+    for i in range(len(df)):
+        df.iloc[i] = df.iloc[(i+1) % len(df)] 
+
+    df.iloc[len(df)-1] = app
+
+    return df

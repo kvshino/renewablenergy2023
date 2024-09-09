@@ -71,5 +71,7 @@ def update_battery_values(data, file_name, carica, percentuale, polynomial):
 
         file.close()
 
+    return round(data["battery_capacity"],4)
+
         
 
