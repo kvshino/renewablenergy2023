@@ -22,13 +22,10 @@ async def main():
     with freeze_time(datetime.now()) as frozen_datetime:
 
         dict={}
-       
-
         sampling=0
         first_battery_value=0
-
-        pop_size =50
-        gen = 12
+        pop_size =130
+        gen = 45
 
         data = setup(polynomial_inverter)
         prices = await get_future_day_italian_market(data)
@@ -75,14 +72,25 @@ async def main():
 
             frozen_datetime.tick(delta=timedelta(hours=1))
 
-        sum, actual_percentage, quantity_delta_battery = evaluate(data, dict, first_battery_value)
-        #simulation_plot(data, sum, actual_percentage, quantity_delta_battery) 
+    sum, actual_percentage, quantity_delta_battery = evaluate(data, dict, first_battery_value)
+    
     dict["soc_min"] = data["soc_min"]
     dict["soc_max"] = data["soc_max"]
     dict["sold"] = data["sold"]
     dict["battery_nominal_capacity"] = data["battery_nominal_capacity"]
+   
+
+    sum_noalgo, actual_battery_level_noalgo, quantity_battery_degradation_noalgo,co2_noalgo = simulation_no_algorithm(data,dict, first_battery_value, cycles, polynomial_batt)
+    plot_costi_noalgo(sum_noalgo)
+    plt.show()
+    print(actual_battery_level_noalgo)
+    print(quantity_battery_degradation_noalgo)
+    print(co2_noalgo)
+
+
     init_gui(dict, sum, actual_percentage, quantity_delta_battery, first_battery_value)
     print(datetime.now()-ora)
+
 
 if __name__ == "__main__":
     asyncio.run(main())

@@ -400,8 +400,22 @@ def plot_co2_comparison(dictionary, string_load, string_prices,quantity_delta_ba
     plt.ylim(-10,3800)
 
 
+def plot_costi_noalgo(sum):
+    current_datetime = datetime.now() + timedelta(hours=1)
+    time_column =pd.date_range(start=current_datetime.replace(minute=0, second=0, microsecond=0), periods=24, freq='H')
+    cost_dataframe = pd.DataFrame({'datetime': time_column, 'value': sum})
+    cost_dataframe["value"] = cost_dataframe["value"].multiply(-1)
+    plot_graph(cost_dataframe, "datetime", "value", "Stima costi in bolletta (guadagno positivo) senza Algoritmo", "#577590", "Euro €")
+
+def battery_level_noalgo():
+    current_datetime = datetime.now() + timedelta(hours=1)
+    time_column =pd.date_range(start=current_datetime.replace(minute=0, second=0, microsecond=0), periods=24, freq='H')  
 
 
+    quantity_delta_battery_dataframe = pd.DataFrame({'datetime': time_column, 'value': quantity_delta_battery})
+    plot_graph_hist(quantity_delta_battery_dataframe, "datetime", "value", "Stima carica/scarica batteria (carica positiva)",
+               "#4D908E", "Wh")
+    
 def co2_datas(difference):
     
     co2_list_plant = []

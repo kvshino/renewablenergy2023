@@ -77,9 +77,7 @@ async def main():
 
             prices = shift_ciclico(prices)
             production_not_rs = shift_ciclico(production_not_rs)
-
-
-
+            
             all_populations = [a.pop for a in data["history"]]
             sampling = shifting_individuals(all_populations[-1])
 
@@ -89,10 +87,12 @@ async def main():
 
         sum, actual_percentage, quantity_delta_battery, co2_emissions = evaluate(data, dictionary, first_battery_value)
 
-    dictionary["co2_emissions"] = co2_emissions
+    #dictionary["co2_emissions"] = co2_emissions
     dictionary["soc_min"] = data["soc_min"]
     dictionary["soc_max"] = data["soc_max"]
     dictionary["sold"] = data["sold"]
+    dictionary["battery_nominal_capacity"] = data["battery_nominal_capacity"]
+
     init_gui(dictionary, sum, actual_percentage, quantity_delta_battery, first_battery_value)
 
     print(datetime.now()-ora)
