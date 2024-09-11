@@ -23,7 +23,7 @@ from pymoo.problems import get_problem
 #Capacità della batteria
 #
 
-def evaluate(data, variables_values, first_battery_value):
+def evaluate(data, variables_values, first_battery_value, cycles, polynomial):
     sum = []
     sum.append(0)
     co2_emissions = []
@@ -32,6 +32,7 @@ def evaluate(data, variables_values, first_battery_value):
     
     actual_percentage = []
     actual_percentage.append(first_battery_value)
+
     
     quantity_delta_battery = []
 
@@ -42,8 +43,9 @@ def evaluate(data, variables_values, first_battery_value):
         quantity_charging_battery = None
         quantity_discharging_battery = None
 
-        upper_limit = (data["soc_max"] * variables_values[f"battery_capacity{j}"])
-        lower_limit = (data["soc_min"] * variables_values[f"battery_capacity{j}"])
+        battery_capacity = round(polynomial(cycles) * variables_values["battery_nominal_capacity"], 4)
+        upper_limit = (data["soc_max"] * battery_capacity)
+        lower_limit = (data["soc_min"] * battery_capacity)
         effettivo_in_batteria=lower_limit+(actual_percentage[j]*(upper_limit-lower_limit))
 
         if charge:
@@ -83,9 +85,10 @@ def evaluate(data, variables_values, first_battery_value):
                 sum.append(sum[j] + (
                         - (variables_values[f"difference_of_production{j}"] + quantity_discharging_battery/data["battery_discharging_efficiency"]) * variables_values[f"prices{j}"]))
             
-
-            actual_percentage.append((effettivo_in_batteria - quantity_discharging_battery - lower_limit) / ( upper_limit - lower_limit))
-
+            
+            scarico=(posso_scaricare_di*percentage)/100
+            cycles = round(cycles+(scarico/battery_capacity), 5)
+            actual_percentage.append((effettivo_in_batteria - (quantity_discharging_battery/data["battery_discharging_efficiency"]) - lower_limit) / ( upper_limit - lower_limit))
 
         
         if quantity_charging_battery != None:
@@ -228,14 +231,12 @@ def start_genetic_algorithm(data, pop_size, n_gen, n_threads, sampling=None,verb
                                      data["prices"]["prezzo"].iloc[j])
 
                     if posso_scaricare_di != 0:
-                        X[f"i{j}"] = int((100*quantity_discharging_battery)/(posso_scaricare_di))
+                        X[f"i{j}"] = int((100*(quantity_discharging_battery/data["battery_discharging_efficiency"]))/(posso_scaricare_di))
                     else:
                         X[f"i{j}"] = 0
                     #Viene aggiornato il valore della batteria, dopo la scarica
-                    actual_percentage.append((effettivo_in_batteria - quantity_discharging_battery - lower_limit) / ( upper_limit - lower_limit))
+                    actual_percentage.append((effettivo_in_batteria - (quantity_discharging_battery/data["battery_discharging_efficiency"]) - lower_limit) / ( upper_limit - lower_limit))
                     quantity_battery+=abs(quantity_discharging_battery)
-
-
 
             #Terminata la simulazione, viene attribuito un voto alla stringa in input, dato da tre fattori:
             # - Il costo

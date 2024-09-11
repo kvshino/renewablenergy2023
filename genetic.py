@@ -25,8 +25,8 @@ def evaluate(data, variables_values, first_battery_value):
     lower_limit = (data["soc_min"] * data["battery_capacity"])
     actual_percentage = []
     actual_percentage.append(first_battery_value)
-    print(actual_percentage)
-    eff = 0.9
+    co2_emissions = []
+    co2_emissions.append(0)
 
     quantity_delta_battery = []
 
@@ -46,9 +46,13 @@ def evaluate(data, variables_values, first_battery_value):
             
             if quantity_charging_battery - variables_values[f"difference_of_production{j}"] < 0:
                 # devo vendere
+                co2_emissions.append(co2_emissions[j])
+
                 sum.append(
                     sum[j] + ((quantity_charging_battery - variables_values[f"difference_of_production{j}"]) * sold))  # sum = sum - rimborso
             else:
+                co2_emissions.append(co2_emissions[j] + co2_quantity_emission(data, variables_values, -(quantity_charging_battery - variables_values[f"difference_of_production{j}"]), j))
+
                 sum.append(
                     sum[j] + (quantity_charging_battery - variables_values[f"difference_of_production{j}"]) * data["prices"]["prezzo"].iloc[j])
             actual_percentage.append((effettivo_in_batteria + quantity_charging_battery - lower_limit) / ( upper_limit - lower_limit))
@@ -60,9 +64,11 @@ def evaluate(data, variables_values, first_battery_value):
 
             if variables_values[f"difference_of_production{j}"] + quantity_discharging_battery > 0:
                 
+                co2_emissions.append(co2_emissions[j])             
                 sum.append(sum[j] - ((variables_values[f"difference_of_production{j}"] + quantity_discharging_battery) * sold))
 
             else:
+                co2_emissions.append(co2_emissions[j] + co2_quantity_emission(data, variables_values, variables_values[f"difference_of_production{j}"] + quantity_discharging_battery/data["battery_discharging_efficiency"], j))
                 sum.append(sum[j] + (
                         - (variables_values[f"difference_of_production{j}"] + quantity_discharging_battery/data["battery_discharging_efficiency"]) * data["prices"]["prezzo"].iloc[j]))
             
@@ -76,7 +82,7 @@ def evaluate(data, variables_values, first_battery_value):
         else:
             quantity_delta_battery.append(-quantity_discharging_battery)
 
-    return sum[1:], actual_percentage, quantity_delta_battery
+    return sum[1:], actual_percentage, quantity_delta_battery, co2_emissions[1:]
 
 
 def start_genetic_algorithm(data, pop_size, n_gen, n_threads, sampling=None,verbose=False):

@@ -94,7 +94,7 @@ def genetic_algorithm_graph(data, array_sum, array_qb):
     plt.show()
 
 
-def simulation_plot(dictionary, sum, actual_percentage, quantity_delta_battery, first_battery_value):
+def simulation_plot(data, dictionary, sum, actual_percentage, quantity_delta_battery, first_battery_value,co2_algo):
 
     ########################################################################################
     # This is the part where we consider the whole plant#
@@ -106,7 +106,7 @@ def simulation_plot(dictionary, sum, actual_percentage, quantity_delta_battery, 
     plot_energia_batteria(dictionary,actual_percentage, first_battery_value)
     plot_percentage_battery(dictionary, actual_percentage)
     plot_battery_status(quantity_delta_battery)
-    plot_co2_plant(dictionary, "load", "production", quantity_delta_battery)
+    plot_co2_plant(co2_algo)
 
     ########################################################################################
     # This is the part where we consider only the pv without taking into account the battery#
@@ -118,7 +118,7 @@ def simulation_plot(dictionary, sum, actual_percentage, quantity_delta_battery, 
     # This is the part where we consider only the consumption and no PV and the battery#########
     ########################################################################################
 
-    plot_co2_noplant(dictionary, "load")
+    plot_co2_noplant(data, dictionary, "load")
     plot_costi_noplant(dictionary, "load")
     plt.figure("Cost Comparison",facecolor='#edf1ef')
     plot_cost_comparison(dictionary, "load", "prices", sum)
@@ -133,6 +133,8 @@ def simulation_plant(dictionary, sum, actual_percentage, quantity_delta_battery,
     plot_battery_status(quantity_delta_battery)
     plot_co2_plant(dictionary, "load", "production", quantity_delta_battery)
     plot_cost_comparison(dictionary, "load", "prices", sum)
+    plot_degradation(dictionary)
+
 
 def simulation_plant_nobattery(dictionary):
     plot_load(dictionary, "load")
@@ -236,24 +238,23 @@ def plot_battery_status(quantity_delta_battery):
     plot_graph_hist(quantity_delta_battery_dataframe, "datetime", "value", "Stima carica/scarica batteria (carica positiva)",
                "#4D908E", "Wh")
 
-def plot_co2_plant(dictionary, string_load, string_production, quantity_delta_battery):
+def plot_co2_plant(co2_algo):
     current_datetime = datetime.now() + timedelta(hours=1)
     time_column =pd.date_range(start=current_datetime.replace(minute=0, second=0, microsecond=0), periods=24, freq='H') 
 
-    lista_load = dictionary_to_list(dictionary, string_load)
-    lista_production = dictionary_to_list(dictionary, string_production)
-
-    quantity_delta_battery_dataframe = pd.DataFrame({'datetime': time_column, 'value': quantity_delta_battery})
-    expected_load_dataframe = pd.DataFrame({'datetime': time_column, 'value': lista_load})
-    expected_production_dataframe = pd.DataFrame({'datetime': time_column, 'value': lista_production})
-
-    quantity_delta_battery_dataframe2 = quantity_delta_battery_dataframe[1:].reset_index()    
-    difference = expected_load_dataframe["value"] - (
-            expected_production_dataframe["value"] - quantity_delta_battery_dataframe2["value"]) 
-    
-    co2_plant_dataframe = pd.DataFrame({'datetime': time_column, 'value': co2_datas(difference)})
+    co2_plant_dataframe = pd.DataFrame({'datetime': time_column, 'value': co2_algo})
     plot_graph(co2_plant_dataframe, "datetime", "value",
                 "Co2 immessa con impianto ", "#577590", "Grammi")
+    
+def plot_degradation(dictionary):
+    current_datetime = datetime.now() + timedelta(hours=1)
+    time_column =pd.date_range(start=current_datetime.replace(minute=0, second=0, microsecond=0), periods=24, freq='H') 
+        
+    lista = dictionary_to_list(dictionary, "battery_capacity")
+    
+    co2_plant_dataframe = pd.DataFrame({'datetime': time_column, 'value': lista})
+    plot_graph(co2_plant_dataframe, "datetime", "value",
+                "Degradazione Impianto", "#577590", "Wha")
 
 def plot_costi_plant_nobattery(dictionary):
 
@@ -277,26 +278,18 @@ def plot_costi_plant_nobattery(dictionary):
     plot_graph(pv_only_dataframe, "datetime", "value", "Stima costi in bolletta (guadagno positivo) (senza batteria)",
                "#577590", "Euro €")
 
-def plot_co2_noplant(dictionary, string_load):
+def plot_co2_noplant(data,dictionary, string_load):
     current_datetime = datetime.now() + timedelta(hours=1)
     time_column =pd.date_range(start=current_datetime.replace(minute=0, second=0, microsecond=0), periods=24, freq='H') 
-    consumption_list = []
-    consumption_list.append(0)
-    co2_list = []
-    co2_list.append(0)
-    i = 0
-    consumo=0
+    
+    lista_consumi = dictionary_to_list(dictionary, string_load)
 
-    lista = dictionary_to_list(dictionary, string_load)
+    co2_emissions_noplant=[]
+    co2_emissions_noplant.append(0)
+    for i in range(len(lista_consumi)):
+        co2_emissions_noplant.append(co2_emissions_noplant[i] + co2_quantity_emission(data,dictionary,(-lista_consumi[i]),i))
 
-    for value in lista:
-        consumption_list.append((-value * dictionary[f"prices{i}"]) + consumption_list[i])
-
-        carbone = value * 0.0527 * 0.82     #mix energetico * quanto quel mix inquina(dati da cambaire forse)
-        gas = value * 0.43 * 0.315
-        co2_list.append(  carbone + gas +co2_list[i])
-        i = i + 1
-    co2_dataframe = pd.DataFrame({'datetime': time_column, 'value': co2_list[1:]})
+    co2_dataframe = pd.DataFrame({'datetime': time_column, 'value': co2_emissions_noplant[1:]})
     plot_graph(co2_dataframe, "datetime", "value",
                "Co2 immessa senza impianto ", "#577590", "Grammi ")
 
@@ -359,45 +352,27 @@ def plot_cost_comparison(dictionary, string_load, string_prices, sum):
     plt.legend()
     plt.ylim(-3,3)
 
-def plot_co2_comparison(dictionary, string_load, string_prices,quantity_delta_battery):
+def plot_co2_comparison(dictionary,data,co2_algo):
 
     current_datetime = datetime.now() + timedelta(hours=1)
     time_column =pd.date_range(start=current_datetime.replace(minute=0, second=0, microsecond=0), periods=24, freq='H') 
-    consumption_list = []
-    consumption_list.append(0)
-    co2_list = []
-    co2_list.append(0)
-    i = 0
-    consumo=0
-
-    lista_load = dictionary_to_list(dictionary, string_load)
-    lista_prices = dictionary_to_list(dictionary, string_prices)
+    co2_plant_dataframe = pd.DataFrame({'datetime': time_column, 'value': co2_algo})
 
 
-    for value in lista_load:
-        consumption_list.append((-value * lista_prices[i]) + consumption_list[i])
+    lista_consumi = dictionary_to_list(dictionary,"load")
+    co2_emissions_noplant=[]
+    co2_emissions_noplant.append(0)
+    print(lista_consumi)
+    for i in range(len(lista_consumi)):
+        co2_emissions_noplant.append(co2_emissions_noplant[i] + co2_quantity_emission(data,dictionary,(-lista_consumi[i]),i))
 
-        carbone = value * 0.0527 * 0.82     #mix energetico * quanto quel mix inquina(dati da cambaire forse)
-        gas = value * 0.43 * 0.315
-        co2_list.append(  carbone + gas +co2_list[i])
-        i = i + 1
-    co2_dataframe = pd.DataFrame({'datetime': time_column, 'value': co2_list[1:]})
 
-    quantity_delta_battery_dataframe = pd.DataFrame({'datetime': time_column, 'value': quantity_delta_battery})
-    expected_load_dataframe = pd.DataFrame({'datetime': time_column, 'value': lista_load})
-    expected_production_dataframe = pd.DataFrame({'datetime': time_column, 'value': lista_prices})
+    co2_dataframe = pd.DataFrame({'datetime': time_column, 'value': co2_emissions_noplant[1:]})
 
-    quantity_delta_battery_dataframe2 = quantity_delta_battery_dataframe[1:].reset_index()    
-    difference = expected_load_dataframe["value"] - (
-            expected_production_dataframe["value"] - quantity_delta_battery_dataframe2["value"]) 
-
-    co2_plant_dataframe = pd.DataFrame({'datetime': time_column, 'value': co2_datas(difference)})
-
+    plot_subgraph(co2_plant_dataframe, "datetime", "value", "#90BE6D", "With Algoritm", 1)
     plot_subgraph(co2_dataframe, "datetime", "value", "#577590", "Without PV and battery", 1)
-    plot_subgraph(co2_plant_dataframe, "datetime", "value", "#90BE6D", "With PV and battery", 1)
     plt.ylabel("Co2 in Grammi")
     plt.legend()
-    plt.ylim(-10,3800)
 
 
 def plot_costi_noalgo(sum):
@@ -407,26 +382,95 @@ def plot_costi_noalgo(sum):
     cost_dataframe["value"] = cost_dataframe["value"].multiply(-1)
     plot_graph(cost_dataframe, "datetime", "value", "Stima costi in bolletta (guadagno positivo) senza Algoritmo", "#577590", "Euro €")
 
-def battery_level_noalgo():
+def plot_energia_batteria_noalgo(actual_battery_level_noalgo):    
     current_datetime = datetime.now() + timedelta(hours=1)
-    time_column =pd.date_range(start=current_datetime.replace(minute=0, second=0, microsecond=0), periods=24, freq='H')  
+    time_column = pd.date_range(start=current_datetime.replace(minute=0, second=0, microsecond=0) - timedelta(hours=1),
+                                periods=25, freq='H')
+
+    battery_wh_dataframe = pd.DataFrame({'datetime': time_column, 'value': actual_battery_level_noalgo})
+    plot_graph(battery_wh_dataframe, "datetime", "value", "Stima energia in batteria senza Algoritmo", "#90BE6D", "Wh")
+
+def plot_co2_noalgo(co2):
+
+    current_datetime = datetime.now() + timedelta(hours=1)
+    time_column =pd.date_range(start=current_datetime.replace(minute=0, second=0, microsecond=0), periods=24, freq='H') 
+    co2_plant_dataframe = pd.DataFrame({'datetime': time_column, 'value': co2})
+    plot_graph(co2_plant_dataframe, "datetime", "value",
+                "Co2 immessa con impianto senza Algoritmo ", "#577590", "Grammi")
 
 
-    quantity_delta_battery_dataframe = pd.DataFrame({'datetime': time_column, 'value': quantity_delta_battery})
-    plot_graph_hist(quantity_delta_battery_dataframe, "datetime", "value", "Stima carica/scarica batteria (carica positiva)",
-               "#4D908E", "Wh")
+def plot_degradation_noalgo(quantity_battery_degradation_noalgo):
+
+    current_datetime = datetime.now() + timedelta(hours=1)
+    time_column =pd.date_range(start=current_datetime.replace(minute=0, second=0, microsecond=0), periods=24, freq='H') 
+    co2_plant_dataframe = pd.DataFrame({'datetime': time_column, 'value': quantity_battery_degradation_noalgo})
+    plot_graph(co2_plant_dataframe, "datetime", "value",
+                "Degradazione Impianto senza Algoritmo ", "#577590", "Wh")
     
-def co2_datas(difference):
+def plot_cost_comparison_algo(sum,sum_noalgo):
+    current_datetime = datetime.now() + timedelta(hours=1)
+    time_column =pd.date_range(start=current_datetime.replace(minute=0, second=0, microsecond=0), periods=24, freq='H')        
+
+    cost_dataframe = pd.DataFrame({'datetime': time_column, 'value': sum})
+    cost_dataframe["value"] = cost_dataframe["value"].multiply(-1)
+
+    cost_dataframe_noalgo = pd.DataFrame({'datetime': time_column, 'value': sum_noalgo})
+    cost_dataframe_noalgo["value"] = cost_dataframe_noalgo["value"].multiply(-1)
+
+    plot_subgraph(cost_dataframe, "datetime", "value", "#577590", "With Algoritm", 1)
+    plot_subgraph(cost_dataframe_noalgo, "datetime", "value", "#90BE6D", "Without Algoritm", 1)
+    plt.ylabel("Euro €")
+    plt.legend()
+    plt.ylim(-3,3)
+
+def plot_comparison_degradation_algo(dictionary,quantity_battery_degradation_noalgo):
+    current_datetime = datetime.now() + timedelta(hours=1)
+    time_column =pd.date_range(start=current_datetime.replace(minute=0, second=0, microsecond=0), periods=24, freq='H') 
+
+    lista = dictionary_to_list(dictionary, "battery_capacity")
+    degradation_plant_dataframe = pd.DataFrame({'datetime': time_column, 'value': lista})
+    degradation_plant_dataframe_noalgo = pd.DataFrame({'datetime': time_column, 'value': quantity_battery_degradation_noalgo})
+
+    plot_subgraph(degradation_plant_dataframe, "datetime", "value", "#577590", "With Algoritm", 1)
+    plot_subgraph(degradation_plant_dataframe_noalgo, "datetime", "value", "#90BE6D", "Without Algoritm", 1)
+    plt.ylabel("Wh")
+    plt.legend()
+    plt.ylim(9000,10000)
+
+
+def plot_co2_comparison_algo(co2_algo,co2_noalgo):
+    current_datetime = datetime.now() + timedelta(hours=1)
+    time_column =pd.date_range(start=current_datetime.replace(minute=0, second=0, microsecond=0), periods=24, freq='H') 
+
+    co2_plant_dataframe = pd.DataFrame({'datetime': time_column, 'value': co2_algo})
+    co2_plant_dataframe_noalgo = pd.DataFrame({'datetime': time_column, 'value': co2_noalgo})
+
+    plot_subgraph(co2_plant_dataframe, "datetime", "value", "#577590", "With Algoritm", 1)
+    plot_subgraph(co2_plant_dataframe_noalgo, "datetime", "value", "#90BE6D", "Without Algoritm", 1)
+    plt.ylabel("Grammi")
+    plt.legend()
+
+
+def plot_scambio_rete_noalgo(power_to_grid):
+
+    current_datetime = datetime.now() + timedelta(hours=1)
+    time_column =pd.date_range(start=current_datetime.replace(minute=0, second=0, microsecond=0), periods=24, freq='H')
+    power_to_grid_df = pd.DataFrame({'datetime': time_column, 'value': power_to_grid})
+
+    power_to_grid_df["value"] = power_to_grid_df["value"].multiply(-1)
+
+    plot_graph_hist(power_to_grid_df, "datetime", "value",
+               "Stima scambio energetico con la rete elettrica (Acquisto positivo) senza Algoritmo", "#43AA8B", "Wh")
     
-    co2_list_plant = []
-    co2_list_plant.append(0)
-    i=0
-    for value in difference:
-        if value > 0:
-            carbone = value * 0.0527 * 0.82     #mix energetico * quanto quel mix inquina(dati da cambaire forse)
-            gas = value * 0.43 * 0.315
-            co2_list_plant.append(  carbone + gas +co2_list_plant[i])
-        else:
-            co2_list_plant.append(co2_list_plant[i])
-        i=i+1
-    return co2_list_plant[1:]
+def simulation_plot_no_algorithm(dictionary,sum_noalgo,actual_battery_level_noalgo,quantity_battery_degradation_noalgo,co2,power_to_grid):
+    plot_GME_prices(dictionary, "prices")
+    plot_load(dictionary, "load")
+    plot_production(dictionary, "production")
+    plot_costi_noalgo(sum_noalgo)
+    plot_energia_batteria_noalgo(actual_battery_level_noalgo)
+    plot_co2_noalgo(co2)
+    plot_degradation_noalgo(quantity_battery_degradation_noalgo)
+    plot_scambio_rete_noalgo(power_to_grid)
+
+
+

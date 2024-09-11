@@ -140,17 +140,20 @@ def simulation_no_algorithm(data,dictionary, first_battery_value, cycles, polyno
     co2_emissions.append(0)
     sold = dictionary["sold"]
     battery_level = []
-    battery_capacity = polynomial(cycles) * dictionary["battery_nominal_capacity"]
+    battery_capacity = round(polynomial(cycles) * dictionary["battery_nominal_capacity"], 4)
 
-    first_battery_value_in_w = first_battery_value * battery_capacity *dictionary["soc_max"]
+    upper_limit = (dictionary["soc_max"] * battery_capacity)
+    lower_limit = (dictionary["soc_min"] * battery_capacity)
+    first_battery_value_in_w = lower_limit + (first_battery_value*(upper_limit-lower_limit))
     battery_degradation = []    
     battery_degradation.append(battery_capacity)
     battery_level.append(first_battery_value_in_w)
 
+    power_to_grid = []
 
     for j in range(24):
         
-        battery_capacity = polynomial(cycles) * dictionary["battery_nominal_capacity"]
+        battery_capacity = round(polynomial(cycles) * dictionary["battery_nominal_capacity"], 4)
 
         upper_limit = (dictionary["soc_max"] * battery_capacity)
         lower_limit = (dictionary["soc_min"] * battery_capacity)
@@ -160,45 +163,46 @@ def simulation_no_algorithm(data,dictionary, first_battery_value, cycles, polyno
 
             posso_caricare_di = upper_limit - effettivo_in_batteria
 
-            if posso_caricare_di - dictionary[f"difference_of_production{j}"] >= 0:
+            if posso_caricare_di - (dictionary[f"difference_of_production{j}"]*dictionary["battery_charging_efficiency"]) >= 0:
                 #metto tutto in batteria
-                battery_level.append(effettivo_in_batteria+dictionary[f"difference_of_production{j}"])
+                battery_level.append(effettivo_in_batteria+(dictionary[f"difference_of_production{j}"]*dictionary["battery_charging_efficiency"]))
                 sum.append(sum[j])
-                co2_emissions.append(co2_emissions[j])
-                battery_degradation.append(battery_degradation[j])
+                power_to_grid.append(0)
             else:
                 #vendo
                 sum.append(sum[j] - ((dictionary[f"difference_of_production{j}"] - posso_caricare_di) * sold))
                 battery_level.append(upper_limit)
-                co2_emissions.append(co2_emissions[j])
-                battery_degradation.append(battery_degradation[j])
+                power_to_grid.append(dictionary[f"difference_of_production{j}"] - posso_caricare_di)
 
+            co2_emissions.append(co2_emissions[j])
+            battery_degradation.append(battery_degradation[j])
         else:
             #mi serve corrente
             posso_scaricare_di=effettivo_in_batteria-lower_limit
 
-            if posso_scaricare_di + dictionary[f"difference_of_production{j}"] >= 0:
-                app = effettivo_in_batteria + dictionary[f"difference_of_production{j}"]
+            if posso_scaricare_di + (dictionary[f"difference_of_production{j}"]/dictionary["battery_discharging_efficiency"]) >= 0:
+                app = effettivo_in_batteria + (dictionary[f"difference_of_production{j}"]/dictionary["battery_discharging_efficiency"])
                 battery_level.append(app)
                 co2_emissions.append(co2_emissions[j])
                 sum.append(sum[j])
-
+                power_to_grid.append(0)
 
             else:
                 app = posso_scaricare_di
                 battery_level.append(lower_limit)
                 sum.append( sum[j] - (posso_scaricare_di + dictionary[f"difference_of_production{j}"]) * dictionary[f"prices{j}"] )
                 co2_emissions.append(co2_emissions[j] + co2_quantity_emission(data,dictionary,(posso_scaricare_di + dictionary[f"difference_of_production{j}"]),j))
+                power_to_grid.append(posso_scaricare_di + dictionary[f"difference_of_production{j}"])
 
             cycles = round(cycles+(app/battery_capacity), 5)
             battery_degradation.append(battery_capacity)
 
 
-    return sum[1:],battery_level,battery_degradation,co2_emissions
+    return sum[1:],battery_level,battery_degradation[1:],co2_emissions[1:], power_to_grid
 
 
 def co2_quantity_emission(data,dictionary,to_buy,ora):
-    quantity_bought_from_not_renewable_sources =  to_buy * dictionary[f"production_not_rs{ora}"]
+    quantity_bought_from_not_renewable_sources =  -to_buy * dictionary[f"production_not_rs{ora}"]
     co2_emissions = (quantity_bought_from_not_renewable_sources * data["coal_percentage"] * data["coal_pollution"]) 
     +(quantity_bought_from_not_renewable_sources * data["gas_percentage"] * data["gas_pollution"])  
     +(quantity_bought_from_not_renewable_sources * data["oil_percentage"] * data["oil_pollution"])

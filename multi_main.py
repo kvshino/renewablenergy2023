@@ -19,7 +19,7 @@ warnings.filterwarnings("ignore", category=FutureWarning)
 
 async def main():
     ora=datetime.now()
-    polynomial = battery_function()
+    polynomial_batt = battery_function()
     polynomial_inverter = inverter_function()
 
     with freeze_time(datetime.now()) as frozen_datetime:
@@ -30,7 +30,7 @@ async def main():
         first_battery_value=0
 
         pop_size=10
-        n_gen=5
+        n_gen=4
 
         data = setup(polynomial_inverter)
         prices = await get_future_day_italian_market(data)
@@ -44,6 +44,7 @@ async def main():
 
 
             if(i==0):
+                cycles = data["cycles"]
                 first_battery_value=data["socs"]
 
             if i == 0:
@@ -63,11 +64,10 @@ async def main():
             # plot = Scatter()
             # plot.add(F_norm, facecolor="none", edgecolor="red")
             # plot.show()
-
-
-
+            
             dictionary[f"b{i}"]=data["res"].X[best_index]["b0"]
             dictionary[f"i{i}"]=data["res"].X[best_index]["i0"]
+
 
             dictionary[f"difference_of_production{i}"] = data["difference_of_production"][0]  
             dictionary[f"prices{i}"] = data["prices"]["prezzo"][0]
@@ -81,20 +81,25 @@ async def main():
             all_populations = [a.pop for a in data["history"]]
             sampling = shifting_individuals(all_populations[-1])
 
-            dictionary[f"battery_capacity{i}"] = update_battery_values(data, "csv/socs.csv", dictionary[f"b{i}"], dictionary[f"i{i}"], polynomial)
+            dictionary[f"battery_capacity{i}"] = update_battery_values(data, "csv/socs.csv", dictionary[f"b{i}"], dictionary[f"i{i}"], polynomial_batt)
 
             frozen_datetime.tick(delta=timedelta(hours=1))
 
-        sum, actual_percentage, quantity_delta_battery, co2_emissions = evaluate(data, dictionary, first_battery_value)
 
     #dictionary["co2_emissions"] = co2_emissions
     dictionary["soc_min"] = data["soc_min"]
     dictionary["soc_max"] = data["soc_max"]
     dictionary["sold"] = data["sold"]
     dictionary["battery_nominal_capacity"] = data["battery_nominal_capacity"]
+    dictionary["battery_charging_efficiency"] = data["battery_charging_efficiency"]
+    dictionary["battery_discharging_efficiency"] = data["battery_discharging_efficiency"]
 
-    init_gui(dictionary, sum, actual_percentage, quantity_delta_battery, first_battery_value)
+    sum, actual_percentage, quantity_delta_battery, co2_algo = evaluate(data, dictionary, first_battery_value, cycles, polynomial_batt)
+    sum_noalgo, actual_battery_level_noalgo, quantity_battery_degradation_noalgo,co2_noalgo, power_to_grid = simulation_no_algorithm(data,dictionary, first_battery_value, cycles, polynomial_batt)
+    plot_costi_noalgo(sum_noalgo)
+    plt.show()
 
+    init_gui(data,dictionary, sum, actual_percentage, quantity_delta_battery, first_battery_value,sum_noalgo,actual_battery_level_noalgo,quantity_battery_degradation_noalgo,co2_algo,co2_noalgo,power_to_grid)
     print(datetime.now()-ora)
 
 if __name__ == "__main__":
