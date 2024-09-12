@@ -133,7 +133,7 @@ def shift_ciclico(df):
     return df
 
 
-def simulation_no_algorithm(data,dictionary, first_battery_value, cycles, polynomial):
+def simulation_no_algorithm(data,dictionary, cycles, polynomial):
     sum = []
     sum.append(0)
     co2_emissions = []
@@ -144,9 +144,10 @@ def simulation_no_algorithm(data,dictionary, first_battery_value, cycles, polyno
 
     upper_limit = (dictionary["soc_max"] * battery_capacity)
     lower_limit = (dictionary["soc_min"] * battery_capacity)
-    first_battery_value_in_w = lower_limit + (first_battery_value*(upper_limit-lower_limit))
+    first_battery_value_in_w = lower_limit + (dictionary["first_battery_value"]*(upper_limit-lower_limit))
     battery_degradation = []    
     battery_degradation.append(battery_capacity)
+
     battery_level.append(first_battery_value_in_w)
 
     power_to_grid = []
@@ -199,6 +200,49 @@ def simulation_no_algorithm(data,dictionary, first_battery_value, cycles, polyno
 
 
     return sum[1:],battery_level,battery_degradation[1:],co2_emissions[1:], power_to_grid
+
+def simulation_nobattery(data,dictionary):
+    costo = []
+    co2_nobattery = []
+    power_togrid = []
+
+    costo.append(0)
+    co2_nobattery.append(0)
+
+    list_diff = dictionary_to_list(dictionary,"difference_of_production")
+
+    for i in range(len(list_diff)):
+
+        if dictionary[f"difference_of_production{i}"] < 0:
+            costo.append((dictionary[f"difference_of_production{i}"]) * dictionary[f"prices{i}"] + costo[i])
+            power_togrid.append(dictionary[f"difference_of_production{i}"])
+            co2_nobattery.append(co2_nobattery[i] + co2_quantity_emission(data,dictionary,(dictionary[f"difference_of_production{i}"]),i) )
+
+        else:
+            costo.append((dictionary[f"difference_of_production{i}"]) * dictionary["sold"] + costo[i])
+            power_togrid.append(dictionary[f"difference_of_production{i}"])
+            co2_nobattery.append(co2_nobattery[i] )
+    
+    return costo[1:],co2_nobattery[1:],power_togrid
+
+def simulation_noplant(data,dictionary):
+    costo = []
+    co2_noplant = []
+    power_togrid = []
+
+    costo.append(0)
+    co2_noplant.append(0)
+
+    list_load = dictionary_to_list(dictionary,"load")
+
+    for i in range (len (list_load)):
+        costo.append((-list_load[i] * dictionary[f"prices{i}"]) + costo[i])
+        co2_noplant.append(co2_noplant[i] + co2_quantity_emission(data,dictionary,list_load[i],i))
+        power_togrid.append(list_load[i])  
+
+
+    return costo[1:],co2_noplant[1:],power_togrid
+
 
 
 def co2_quantity_emission(data,dictionary,to_buy,ora):

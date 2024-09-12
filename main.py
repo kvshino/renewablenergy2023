@@ -23,9 +23,8 @@ async def main():
 
         dict={}
         sampling=0
-        first_battery_value=0
-        pop_size =13
-        gen = 4
+        pop_size =80
+        gen = 30
 
         data = setup(polynomial_inverter)
         prices = await get_future_day_italian_market(data)
@@ -38,8 +37,10 @@ async def main():
             data["production_not_rs"] = production_not_rs  
             
             if(i==0):
-                first_battery_value=data["socs"]
+                dict["first_battery_value"]=data["socs"]
                 cycles = data["cycles"]
+                dict[f"battery_capacity{i}"] = data["battery_capacity"]
+
        
             if i == 0:
                 data["res"], data["history"] = start_genetic_algorithm(data=data, pop_size=pop_size, n_gen=gen, n_threads=24, sampling=None, verbose=False)  #Checked OK
@@ -48,12 +49,7 @@ async def main():
             
             print("Fine Esecuzione Ora " + str(i+1))
 
-            # top_individuals = 5
-            # all_populations = [a.pop for a in data["history"]]
-            # last_population = all_populations[-1]
-            # sorted_population = sorted(last_population, key=lambda p: p.F)
-            # top_n_individuals = sorted_population[:top_individuals]
-            # variables_values = [ind.X for ind in top_n_individuals]
+
 
             dict[f"b{i}"]=data["res"].X["b0"]
             dict[f"i{i}"]=data["res"].X["i0"]
@@ -68,23 +64,24 @@ async def main():
         
             all_populations = [a.pop for a in data["history"]]
             sampling = shifting_individuals(all_populations[-1])
-            dict[f"battery_capacity{i}"] = update_battery_values(data, "csv/socs.csv", dict[f"b{i}"], dict[f"i{i}"], polynomial_batt)
+            dict[f"battery_capacity{i+1}"] = update_battery_values(data, "csv/socs.csv", dict[f"b{i}"], dict[f"i{i}"], polynomial_batt)
 
             frozen_datetime.tick(delta=timedelta(hours=1))
 
-    sum, actual_percentage, quantity_delta_battery, co2_algo = evaluate(data, dict, first_battery_value)
-    
+    dict["sum_algo"],dict["actual_percentage_algo"],dict["quantity_delta_battery_algo"],dict["co2_algo"] = evaluate(data, dict,cycles,polynomial_batt)
+
     dict["soc_min"] = data["soc_min"]
     dict["soc_max"] = data["soc_max"]
     dict["sold"] = data["sold"]
     dict["battery_nominal_capacity"] = data["battery_nominal_capacity"]
     dict["battery_charging_efficiency"] = data["battery_charging_efficiency"]
     dict["battery_discharging_efficiency"] = data["battery_discharging_efficiency"]
-   
 
-    sum_noalgo, actual_battery_level_noalgo, quantity_battery_degradation_noalgo,co2_noalgo, power_to_grid = simulation_no_algorithm(data,dict, first_battery_value, cycles, polynomial_batt)
-    
-    init_gui(data,dict, sum, actual_percentage, quantity_delta_battery, first_battery_value,sum_noalgo,actual_battery_level_noalgo,quantity_battery_degradation_noalgo,co2_algo,co2_noalgo,power_to_grid)
+    dict["sum_noalgo"],dict["actual_battery_level_noalgo"],dict["quantity_battery_degradation_noalgo"],dict["co2_noalgo"],dict["power_to_grid_noalgo"] =simulation_no_algorithm(data,dict, cycles, polynomial_batt)
+    dict["sum_nobattery"],dict["co2_nobattery"],dict["power_to_grid_nobattery"]  = simulation_nobattery(data,dict)
+    dict["sum_noplant"],dict["co2_noplant"],dict["power_to_grid_noplant"]= simulation_noplant(data,dict)
+
+    init_gui(data,dict)
     print(datetime.now()-ora)
 
 

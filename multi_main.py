@@ -27,10 +27,9 @@ async def main():
         dictionary={}
 
         sampling=0
-        first_battery_value=0
 
-        pop_size=10
-        n_gen=4
+        pop_size=120
+        n_gen=35
 
         data = setup(polynomial_inverter)
         prices = await get_future_day_italian_market(data)
@@ -42,10 +41,11 @@ async def main():
             data["prices"] = prices 
             data["production_not_rs"] = production_not_rs
 
-
             if(i==0):
                 cycles = data["cycles"]
-                first_battery_value=data["socs"]
+                dictionary["first_battery_value"]=data["socs"]
+                dictionary[f"battery_capacity{i}"] = data["battery_capacity"]
+
 
             if i == 0:
                 data["res"], data["history"] = start_genetic_algorithm(data=data, pop_size=pop_size, n_gen=n_gen, n_threads=24, sampling=None, verbose=False) 
@@ -61,9 +61,6 @@ async def main():
             distances = np.linalg.norm(F_norm, axis=1)
             best_index = np.argmin(distances)
 
-            # plot = Scatter()
-            # plot.add(F_norm, facecolor="none", edgecolor="red")
-            # plot.show()
             
             dictionary[f"b{i}"]=data["res"].X[best_index]["b0"]
             dictionary[f"i{i}"]=data["res"].X[best_index]["i0"]
@@ -81,7 +78,7 @@ async def main():
             all_populations = [a.pop for a in data["history"]]
             sampling = shifting_individuals(all_populations[-1])
 
-            dictionary[f"battery_capacity{i}"] = update_battery_values(data, "csv/socs.csv", dictionary[f"b{i}"], dictionary[f"i{i}"], polynomial_batt)
+            dictionary[f"battery_capacity{i+1}"] = update_battery_values(data, "csv/socs.csv", dictionary[f"b{i}"], dictionary[f"i{i}"], polynomial_batt)
 
             frozen_datetime.tick(delta=timedelta(hours=1))
 
@@ -94,12 +91,12 @@ async def main():
     dictionary["battery_charging_efficiency"] = data["battery_charging_efficiency"]
     dictionary["battery_discharging_efficiency"] = data["battery_discharging_efficiency"]
 
-    sum, actual_percentage, quantity_delta_battery, co2_algo = evaluate(data, dictionary, first_battery_value, cycles, polynomial_batt)
-    sum_noalgo, actual_battery_level_noalgo, quantity_battery_degradation_noalgo,co2_noalgo, power_to_grid = simulation_no_algorithm(data,dictionary, first_battery_value, cycles, polynomial_batt)
-    plot_costi_noalgo(sum_noalgo)
-    plt.show()
+    dictionary["sum_algo"],dictionary["actual_percentage_algo"],dictionary["quantity_delta_battery_algo"],dictionary["co2_algo"] = evaluate(data, dictionary,  cycles, polynomial_batt)
+    dictionary["sum_noalgo"],dictionary["actual_battery_level_noalgo"],dictionary["quantity_battery_degradation_noalgo"],dictionary["co2_noalgo"],dictionary["power_to_grid_noalgo"] =simulation_no_algorithm(data,dictionary, cycles, polynomial_batt)
+    dictionary["sum_nobattery"],dictionary["co2_nobattery"],dictionary["power_to_grid_nobattery"]  = simulation_nobattery(data,dictionary)
+    dictionary["sum_noplant"],dictionary["co2_noplant"],dictionary["power_to_grid_noplant"]= simulation_noplant(data,dictionary)    
 
-    init_gui(data,dictionary, sum, actual_percentage, quantity_delta_battery, first_battery_value,sum_noalgo,actual_battery_level_noalgo,quantity_battery_degradation_noalgo,co2_algo,co2_noalgo,power_to_grid)
+    init_gui(data,dictionary)
     print(datetime.now()-ora)
 
 if __name__ == "__main__":
