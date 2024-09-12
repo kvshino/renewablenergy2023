@@ -126,9 +126,7 @@ def start_genetic_algorithm(data, pop_size, n_gen, n_threads, sampling=None,verb
                 #Caso in cui si sceglie di caricare la batteria
                 if charge:                                                  
 
-
                     #Viene calcolato di quanto caricare la batteria
-                    #eff
                     posso_caricare_di = upper_limit - effettivo_in_batteria 
                     #potrei sforare e caricare di più
                     quantity_charging_battery = ((posso_caricare_di * percentage) / 100)/data["battery_charging_efficiency"]
@@ -136,11 +134,11 @@ def start_genetic_algorithm(data, pop_size, n_gen, n_threads, sampling=None,verb
 
                     #Si controlla che la carica della batteria non sia maggiore di quella fisicamente ottenibile
                     if(quantity_charging_battery > data["maximum_power_battery_exchange"]):
-                        penality_batt = penality_batt + (1 -  data["maximum_power_battery_exchange"] / quantity_charging_battery)
+                        penality_batt = penality_batt + 0.5
 
                     if(quantity_charging_battery > data["maximum_power_absorption"]):
                         #più+ grave di sopra ma in teoria scattano entrambi
-                        penality_sum = penality_sum + (1 -  data["maximum_power_absorption"] / quantity_charging_battery)
+                        penality_sum = penality_sum + 0.2
 
 
                     #Viene controllata se la produzione dei pannelli è maggiore del consumo domestico unito al consumo della carica della batteria
@@ -155,7 +153,7 @@ def start_genetic_algorithm(data, pop_size, n_gen, n_threads, sampling=None,verb
 
                         #Viene fatto un controllo che NON permette di acquistare più energia di quanto il contratto stipulato dall'utente permetta
                         if( quantity_charging_battery > data["maximum_power_absorption"] + delta_production.iloc[j]):
-                            penality_sum = penality_sum + (1 -  data["maximum_power_absorption"] / quantity_charging_battery)
+                            penality_sum = penality_sum + 0.5
                         #Viene acquistata energia
                         sum = sum + (quantity_charging_battery - delta_production.iloc[j]) * data["prices"]["prezzo"].iloc[j] * penality_sum
 
@@ -176,10 +174,10 @@ def start_genetic_algorithm(data, pop_size, n_gen, n_threads, sampling=None,verb
 
                     #Si controlla che la scarica della batteria non sia maggiore di quella fisicamente ottenibile
                     if(quantity_discharging_battery > data["maximum_power_battery_exchange"]):
-                        penality_batt=penality_batt + (1 -  data["maximum_power_battery_exchange"] / quantity_discharging_battery)
+                        penality_batt=penality_batt + 0.5
 
                     if(quantity_discharging_battery > data["maximum_power_absorption"]):
-                        penality_sum =penality_sum + (1 -  data["maximum_power_absorption"] / quantity_discharging_battery)
+                        penality_sum =penality_sum + 0.2
 
                     #Si controlla se si produce di più di quanto si consuma. Prendere energia dalla batteria viene considerata produzione
                     if delta_production.iloc[j] + quantity_discharging_battery > 0:
