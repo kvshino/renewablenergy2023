@@ -110,7 +110,8 @@ def forecast_percentage_production_from_not_renewable_sources(api_key, zona="IT_
     result["Difference"] = final_total["Generation"] - final["Sum"]
     result["Difference"] = result["Difference"].clip(lower=0)
     result["Difference"] = result["Difference"] / final_total["Generation"]
-    
+    result = result.iloc[:24]
+
     return result
 
 

@@ -47,7 +47,6 @@ async def main():
                 dictionary["first_battery_value"]=data["socs"]
                 dictionary[f"battery_capacity{i}"] = data["battery_capacity"]
 
-
             if i == 0:
                 data["res"], data["history"] = start_genetic_algorithm(data=data, pop_size=pop_size, n_gen=n_gen, n_threads=24, sampling=None, verbose=False) 
             else:
@@ -62,7 +61,7 @@ async def main():
             distances = np.linalg.norm(F_norm, axis=1)
             best_index = np.argmin(distances)
 
-            
+
             dictionary[f"b{i}"]=data["res"].X[best_index]["b0"]
             dictionary[f"i{i}"]=data["res"].X[best_index]["i0"]
 
