@@ -64,16 +64,18 @@ def forecast_percentage_production_from_not_renewable_sources(api_key, zona="IT_
         ahead = client.query_wind_and_solar_forecast(zona, start=start, end=end)
         ahead["Ora"] = ahead.index.hour
         ahead["Sum"] = ahead["Solar"] + ahead["Wind Onshore"]
+    except:
+        ahead = client.query_wind_and_solar_forecast(zona, start=start-timedelta(days=1), end=end-timedelta(days=1))
+        ahead["Ora"] = ahead.index.hour
+        ahead["Sum"] = ahead["Solar"] + ahead["Wind Onshore"]
 
+
+    try:
         total_today = client.query_generation_forecast(zona, start=start, end=end)
         total_today = total_today.to_frame(name='Generation')
         total_today["Ora"] = total_today.index.hour
     except:
-        ahead = client.query_wind_and_solar_forecast(zona, start=start-timedelta(days=1), end=end)
-        ahead["Ora"] = ahead.index.hour
-        ahead["Sum"] = ahead["Solar"] + ahead["Wind Onshore"]
-
-        total_today = client.query_generation_forecast(zona, start=start-timedelta(days=1), end=end)
+        total_today = client.query_generation_forecast(zona, start=start-timedelta(days=1), end=end-timedelta(days=1))
         total_today = total_today.to_frame(name='Generation')
         total_today["Ora"] = total_today.index.hour
     
