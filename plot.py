@@ -457,3 +457,31 @@ def plot_comparison_degradation(dictionary):
     plt.title("Confronto Degradazione Batteria")
     # Mostra il grafico
     plt.tight_layout()
+
+def plot_comparison_battery(dictionary):
+    current_datetime = datetime.now() + timedelta(hours=1)
+    time_column =pd.date_range(start=current_datetime.replace(minute=0, second=0, microsecond=0) - timedelta(hours=1), periods=25, freq='H') 
+
+    actual_percentage_algo = dictionary["actual_percentage_algo"]
+    
+    battery_wh = [float(dictionary["soc_min"] * dictionary[f"battery_capacity{i}"]) + (percentage * (float(dictionary["soc_max"] * dictionary[f"battery_capacity{i}"]) - float(dictionary["soc_min"] * dictionary[f"battery_capacity{i}"]))) for i,percentage in enumerate(actual_percentage_algo)]
+    battery_wh_dataframe = pd.DataFrame({'datetime': time_column, 'value': battery_wh})
+
+    battery_dataframe_noalgo = pd.DataFrame({'datetime': time_column, 'value': dictionary["actual_battery_level_noalgo"]})
+
+    plt.figure(figsize=(10, 6))
+
+    # Tracciare tutte le curve sullo stesso grafico
+    plt.plot(battery_wh_dataframe["datetime"], battery_wh_dataframe["value"], color="#577590", label="With Algoritm")
+    plt.plot(battery_dataframe_noalgo["datetime"], battery_dataframe_noalgo["value"], color="#F8961E", label="With PV and battery NO ALGORITHM")
+
+    # Impostazioni del grafico
+    plt.xlabel("Datetime")
+    plt.ylabel("Wh")
+    plt.legend()  # Mostra la legenda per distinguere le curve
+    plt.xticks(rotation=45)  # Ruota le etichette dell'asse x per una migliore leggibilità
+    plt.grid(True)  # Aggiungi una griglia per facilitare la lettura
+    plt.xticks(battery_wh_dataframe["datetime"], battery_wh_dataframe["datetime"].dt.strftime('%H'), rotation=10)
+    plt.title("Confronto Energia in Batteria")
+    # Mostra il grafico
+    plt.tight_layout()

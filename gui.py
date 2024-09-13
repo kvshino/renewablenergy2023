@@ -170,6 +170,10 @@ def init_gui(data,dictionary):
                 case "Grafico 3: Confronto Degradazione con e senza Algoritmo":
                     plot_comparison_degradation(dictionary)
                     plt.show()
+                
+                case "Grafico 4: Confronto Energia in Batteria con e senza Algoritmo":
+                    plot_comparison_battery(dictionary)
+                    plt.show()
 
 
 
@@ -228,7 +232,7 @@ def init_gui(data,dictionary):
 
     combo4.current(0)
 
-    combo5 = ttk.Combobox(frame,values=["Grafico 1: Confronto Costi","Grafico 2: Confronto Co2 fra Impianti","Grafico 3: Confronto Degradazione con e senza Algoritmo"])
+    combo5 = ttk.Combobox(frame,values=["Grafico 1: Confronto Costi","Grafico 2: Confronto Co2 fra Impianti","Grafico 3: Confronto Degradazione con e senza Algoritmo", "Grafico 4: Confronto Energia in Batteria con e senza Algoritmo"])
 
     combo5.current(0)
     # Posizionamento delle etichette e dei menu a tendina sulla griglia con adattamento
