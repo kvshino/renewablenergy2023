@@ -46,10 +46,6 @@ def plot_subgraph(data, x, y, color, label, position):
     plt.xticks(data['datetime'], data['datetime'].dt.strftime('%H'), rotation=10)
     plt.title(label)
 
-    if label != "Cost" or label != "Cost without Battery":
-        plt.ylim(-10000, 10000)
-    else:
-        plt.ylim(-2, 2)
 
 
 def genetic_algorithm_graph(data, array_sum, array_qb):
@@ -378,38 +374,65 @@ def plot_co2_comparison_algo(dictionary):
     co2_plant_dataframe_nobattery = pd.DataFrame({'datetime': time_column, 'value': dictionary["co2_nobattery"]})
     co2_plant_dataframe_noplant = pd.DataFrame({'datetime': time_column, 'value': dictionary["co2_noplant"]})
     co2_plant_dataframe_noalgo = pd.DataFrame({'datetime': time_column, 'value': dictionary["co2_noalgo"]})
+    co2_plant_dataframe_noplant["value"] = co2_plant_dataframe_noplant["value"].multiply(-1)                             
 
-    plot_subgraph(co2_plant_dataframe, "datetime", "value", "#577590", "With PV and battery", 1)
-    plot_subgraph(co2_plant_dataframe_nobattery, "datetime", "value", "#90BE6D", "With PV", 1)
-    plot_subgraph(co2_plant_dataframe_noplant, "datetime", "value", "#F94144", "Without PV", 1)
-    plot_subgraph(co2_plant_dataframe_noalgo, "datetime", "value", "#F8961E ", "With PV and battery NO ALGORITM", 1)
+   # Creazione della figura
+    plt.figure(figsize=(10, 6))
 
-    plt.ylabel("Grammi")
-    plt.legend()
+    # Tracciare tutte le curve sullo stesso grafico
+    plt.plot(co2_plant_dataframe["datetime"], co2_plant_dataframe["value"], color="#577590", label="With PV and battery")
+    plt.plot(co2_plant_dataframe_nobattery["datetime"], co2_plant_dataframe_nobattery["value"], color="#90BE6D", label="With PV")
+    plt.plot(co2_plant_dataframe_noplant["datetime"], co2_plant_dataframe_noplant["value"], color="#F94144", label="Without PV")
+    plt.plot(co2_plant_dataframe_noalgo["datetime"], co2_plant_dataframe_noalgo["value"], color="#F8961E", label="With PV and battery NO ALGORITHM")
+
+    # Impostazioni del grafico
+    plt.xlabel("Datetime")
+    plt.ylabel("Grammi di Co2")
+    plt.legend()  # Mostra la legenda per distinguere le curve
+    plt.xticks(rotation=45)  # Ruota le etichette dell'asse x per una migliore leggibilità
+    plt.grid(True)  # Aggiungi una griglia per facilitare la lettura
+    plt.xticks(co2_plant_dataframe_noalgo["datetime"], co2_plant_dataframe_noalgo["datetime"].dt.strftime('%H'), rotation=10)
+    plt.title("Confronto emissioni di Co2")
+    # Mostra il grafico
+    plt.tight_layout()
 
 
 def plot_cost_comparison(dictionary):
+    # Imposta l'ora corrente e crea la colonna del tempo
     current_datetime = datetime.now() + timedelta(hours=1)
-    time_column =pd.date_range(start=current_datetime.replace(minute=0, second=0, microsecond=0), periods=24, freq='H')
+    time_column = pd.date_range(start=current_datetime.replace(minute=0, second=0, microsecond=0), periods=24, freq='H')
 
+    # Creazione dei DataFrame con i dati
     cost_dataframe_algo = pd.DataFrame({'datetime': time_column, 'value': dictionary["sum_algo"]})
     cost_dataframe_algo["value"] = cost_dataframe_algo["value"].multiply(-1)
 
-    cost_dataframe_nobattery= pd.DataFrame({'datetime': time_column, 'value': dictionary["sum_nobattery"]})
-
+    cost_dataframe_nobattery = pd.DataFrame({'datetime': time_column, 'value': dictionary["sum_nobattery"]})
     cost_dataframe_noplant = pd.DataFrame({'datetime': time_column, 'value': dictionary["sum_noplant"]})
 
     cost_dataframe_noalgo = pd.DataFrame({'datetime': time_column, 'value': dictionary["sum_noalgo"]})
     cost_dataframe_noalgo["value"] = cost_dataframe_noalgo["value"].multiply(-1)
 
-    plot_subgraph(cost_dataframe_algo, "datetime", "value", "#577590", "With PV and battery", 1)
-    plot_subgraph(cost_dataframe_nobattery, "datetime", "value", "#90BE6D", "With PV", 1)
-    plot_subgraph(cost_dataframe_noplant, "datetime", "value", "#F94144", "Without PV", 1)
-    plot_subgraph(cost_dataframe_noalgo, "datetime", "value", "#F8961E ", "With PV and battery NO ALGORITM", 1)
+    # Creazione della figura
+    plt.figure(figsize=(10, 6))
 
+    # Tracciare tutte le curve sullo stesso grafico
+    plt.plot(cost_dataframe_algo["datetime"], cost_dataframe_algo["value"], color="#577590", label="With PV and battery")
+    plt.plot(cost_dataframe_nobattery["datetime"], cost_dataframe_nobattery["value"], color="#90BE6D", label="With PV")
+    plt.plot(cost_dataframe_noplant["datetime"], cost_dataframe_noplant["value"], color="#F94144", label="Without PV")
+    plt.plot(cost_dataframe_noalgo["datetime"], cost_dataframe_noalgo["value"], color="#F8961E", label="With PV and battery NO ALGORITHM")
+
+    # Impostazioni del grafico
+    plt.xlabel("Datetime")
     plt.ylabel("Euro €")
-    plt.legend()
-    plt.ylim(-3,3)
+    plt.legend()  # Mostra la legenda per distinguere le curve
+    plt.ylim(-2, 2)  # Puoi regolare o rimuovere questi limiti
+    plt.xticks(rotation=45)  # Ruota le etichette dell'asse x per una migliore leggibilità
+    plt.grid(True)  # Aggiungi una griglia per facilitare la lettura
+    plt.xticks(cost_dataframe_algo["datetime"], cost_dataframe_algo["datetime"].dt.strftime('%H'), rotation=10)
+    plt.title("Confronto costi (Guadagno Positivo)")
+    # Mostra il grafico
+    plt.tight_layout()
+
 
 
 def plot_comparison_degradation(dictionary):
@@ -420,8 +443,17 @@ def plot_comparison_degradation(dictionary):
     degradation_plant_dataframe = pd.DataFrame({'datetime': time_column, 'value': lista})
     degradation_plant_dataframe_noalgo = pd.DataFrame({'datetime': time_column, 'value': dictionary["quantity_battery_degradation_noalgo"]})
 
-    plot_subgraph(degradation_plant_dataframe, "datetime", "value", "#577590", "With Algoritm", 1)
-    plot_subgraph(degradation_plant_dataframe_noalgo, "datetime", "value", "#90BE6D", "Without Algoritm", 1)
+    # Tracciare tutte le curve sullo stesso grafico
+    plt.plot(degradation_plant_dataframe["datetime"], degradation_plant_dataframe["value"], color="#577590", label="With Algoritm")
+    plt.plot(degradation_plant_dataframe_noalgo["datetime"], degradation_plant_dataframe_noalgo["value"], color="#F8961E", label="With PV and battery NO ALGORITHM")
+
+    # Impostazioni del grafico
+    plt.xlabel("Datetime")
     plt.ylabel("Wh")
-    plt.legend()
-    plt.ylim(9000,10000)
+    plt.legend()  # Mostra la legenda per distinguere le curve
+    plt.xticks(rotation=45)  # Ruota le etichette dell'asse x per una migliore leggibilità
+    plt.grid(True)  # Aggiungi una griglia per facilitare la lettura
+    plt.xticks(degradation_plant_dataframe["datetime"], degradation_plant_dataframe["datetime"].dt.strftime('%H'), rotation=10)
+    plt.title("Confronto Degradazione Batteria")
+    # Mostra il grafico
+    plt.tight_layout()

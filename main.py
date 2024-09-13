@@ -35,6 +35,7 @@ async def main():
             data = setup(polynomial_inverter)
             data["prices"] = prices 
             data["production_not_rs"] = production_not_rs  
+            data["polynomial"] = polynomial_batt
             
             if(i==0):
                 dict["first_battery_value"]=data["socs"]

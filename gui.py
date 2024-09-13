@@ -69,7 +69,7 @@ def init_gui(data,dictionary):
                     plt.show()
 
                 case "Grafico 2: Prezzi dell'energia":
-                    plot_GME_prices(dictionary, "prices")
+                    plot_GME_prices(dictionary)
                     plt.show()
 
                 case "Grafico 3: Consumi":
@@ -80,12 +80,12 @@ def init_gui(data,dictionary):
                     plot_production(dictionary)
                     plt.show()
 
-                case "Grafico 5: Scambio con la Rete":
-                    plot_scambio_rete_nobattery(dictionary)
+                case "Grafico 5: Costo":
+                    plot_costi_plant_nobattery(dictionary)
                     plt.show()
 
-                case "Grafico 6: Costo":
-                    plot_costi_plant_nobattery(dictionary)
+                case "Grafico 6: Scambio con la Rete":
+                    plot_scambio_rete_nobattery(dictionary)
                     plt.show()
 
                 case "Grafico 7: Co2 immessa":
@@ -138,26 +138,28 @@ def init_gui(data,dictionary):
                 case "Grafico 5: Costo":
                     plot_costi_noalgo(dictionary)
                     plt.show()
+                    
+                case "Grafico 6: Scambio con la rete":
+                    plot_scambio_rete_noalgo(dictionary)
+                    plt.show()
 
-                case "Grafico 6: Energia in Batteria":
+                case "Grafico 7: Energia in Batteria":
                     plot_energia_batteria_noalgo(dictionary)
                     plt.show()
 
-                case "Grafico 7: Co2 immessa con Impianto Senza Algoritmo":
+                case "Grafico 8: Co2 immessa con Impianto Senza Algoritmo":
                     plot_co2_noalgo(dictionary)
                     plt.show()
                     
-                case "Grafico 8: Degradazione Batteria":
+                case "Grafico 9: Degradazione Batteria":
                     plot_degradation_noalgo(dictionary)
                     plt.show()
-                case "Grafico 9: Scambio con la rete":
-                    plot_scambio_rete_noalgo(dictionary)
-                    plt.show()
+
                     
         elif event.widget == combo5:
             match selected_graph_5:
 
-                case "Grafico 1: Confronto costi":
+                case "Grafico 1: Confronto Costi":
                     plot_cost_comparison(dictionary)
                     plt.show()
 
@@ -174,7 +176,7 @@ def init_gui(data,dictionary):
     # Creazione della finestra principale
     root = tk.Tk()
     root.title("Selezione del Grafico")
-    root.geometry("950x600")  # Imposta la larghezza a 600px e l'altezza a 300px
+    root.geometry("1200x800")  # Imposta la larghezza a 600px e l'altezza a 300px
 
     icon_path = "sole.png"  # Specifica il percorso al file .ico
     icon = tk.PhotoImage(file=icon_path)
@@ -212,7 +214,7 @@ def init_gui(data,dictionary):
     combo1.current(0)  # Imposta il primo valore come selezionato di default
 
     combo2 = ttk.Combobox(frame, values=["Grafico 1: Simulazione Completa", "Grafico 2: Prezzi dell'energia", "Grafico 3: Consumi",
-                                        "Grafico 4: Produzione","Grafico 5: Scambio con la Rete","Grafico 6: Costo",
+                                        "Grafico 4: Produzione","Grafico 5: Costo","Grafico 6: Scambio con la Rete",
                                         "Grafico 7: Co2 immessa"])
     combo2.current(0)
 
@@ -221,12 +223,12 @@ def init_gui(data,dictionary):
     combo3.current(0)
 
     combo4 = ttk.Combobox(frame,values=["Grafico 1: Simulazione Completa", "Grafico 2: Prezzi dell'energia", "Grafico 3: Consumi",
-                                        "Grafico 4: Produzione","Grafico 5: Costo","Grafico 6: Energia in Batteria","Grafico 7: Co2 immessa con Impianto Senza Algoritmo",
-                                        "Grafico 8: Degradazione Batteria","Grafico 9: Scambio con la rete"])
+                                        "Grafico 4: Produzione","Grafico 5: Costo","Grafico 6: Scambio con la rete","Grafico 7: Energia in Batteria","Grafico 8: Co2 immessa con Impianto Senza Algoritmo",
+                                        "Grafico 9: Degradazione Batteria"])
 
     combo4.current(0)
 
-    combo5 = ttk.Combobox(frame,values=["Grafico 1: Confronto costi","Grafico 2: Confronto Co2 fra Impianti","Grafico 3: Confronto Degradazione con e senza Algoritmo"])
+    combo5 = ttk.Combobox(frame,values=["Grafico 1: Confronto Costi","Grafico 2: Confronto Co2 fra Impianti","Grafico 3: Confronto Degradazione con e senza Algoritmo"])
 
     combo5.current(0)
     # Posizionamento delle etichette e dei menu a tendina sulla griglia con adattamento

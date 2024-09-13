@@ -32,7 +32,7 @@ def evaluate(data, variables_values, cycles, polynomial):
     
     actual_percentage = []
     actual_percentage.append(variables_values["first_battery_value"])
-
+    battery_capacity = round(polynomial(cycles) * variables_values["battery_nominal_capacity"], 4)
     
     quantity_delta_battery = []
 
@@ -43,7 +43,7 @@ def evaluate(data, variables_values, cycles, polynomial):
         quantity_charging_battery = None
         quantity_discharging_battery = None
 
-        battery_capacity = round(polynomial(cycles) * variables_values["battery_nominal_capacity"], 4)
+        
         upper_limit = (data["soc_max"] * battery_capacity)
         lower_limit = (data["soc_min"] * battery_capacity)
         effettivo_in_batteria=lower_limit+(actual_percentage[j]*(upper_limit-lower_limit))
@@ -66,7 +66,7 @@ def evaluate(data, variables_values, cycles, polynomial):
                 sum.append(
                     sum[j] + (quantity_charging_battery - variables_values[f"difference_of_production{j}"]) * variables_values[f"prices{j}"])
                 
-            actual_percentage.append((effettivo_in_batteria + quantity_charging_battery - lower_limit) / ( upper_limit - lower_limit))
+            actual_percentage.append((effettivo_in_batteria + (quantity_charging_battery*data["battery_charging_efficiency"]) - lower_limit) / ( upper_limit - lower_limit))
             
         else:
             
@@ -87,9 +87,10 @@ def evaluate(data, variables_values, cycles, polynomial):
             
             scarico=(posso_scaricare_di*percentage)/100
             cycles = round(cycles+(scarico/battery_capacity), 5)
+            battery_capacity = round(polynomial(cycles) * variables_values["battery_nominal_capacity"], 4)
             actual_percentage.append((effettivo_in_batteria - (quantity_discharging_battery/data["battery_discharging_efficiency"]) - lower_limit) / ( upper_limit - lower_limit))
 
-        
+
         if quantity_charging_battery != None:
             quantity_delta_battery.append(+quantity_charging_battery)
         else:
@@ -125,19 +126,23 @@ def start_genetic_algorithm(data, pop_size, n_gen, n_threads, sampling=None,verb
             sum = 0                                                         #variabile che viene usata come contenitore per determinare l'andamento della stringa nel corso della valutazione
             delta_production = data["difference_of_production"]             #variabile che mi dice quantitativamente se la produzione di energia supera il consumo e viceversa
             sold = data["sold"]                                             #variabile che mi dice il prezzo della vendita dell'energia
-            upper_limit = (data["soc_max"] * data["battery_capacity"])      #una batteria ha una certa capacità, dai parametri di configurazione si capisce fino a quando l'utente vuole che si carichi
-            lower_limit = (data["soc_min"] * data["battery_capacity"])      #una batteria ha una certa capacità, dai parametri di configurazione si capisce fino a quando l'utente vuole che si scarichi
             actual_percentage = [float(data["socs"])]                          #viene memorizzato l'attuale livello della batteria
             quantity_battery=0
             co2_emissions=0
             percentage_production_not_renewable = data["production_not_rs"]
             penality_sum = 1
             penality_batt = 1
+            cycles = data["cycles"]
+            battery_capacity = round(data["polynomial"](cycles) * data["battery_nominal_capacity"], 4)
             
 
             for j in range(24):                                             #Viene eseguita una predizione per le successive 24 ore         
                 charge = X[f"b{j}"]
                 percentage = X[f"i{j}"]
+
+                
+                upper_limit = (data["soc_max"] * battery_capacity)      #una batteria ha una certa capacità, dai parametri di configurazione si capisce fino a quando l'utente vuole che si carichi
+                lower_limit = (data["soc_min"] * battery_capacity)      #una batteria ha una certa capacità, dai parametri di configurazione si capisce fino a quando l'utente vuole che si scarichi
 
                 effettivo_in_batteria=lower_limit+(actual_percentage[j]*(upper_limit-lower_limit))
 
@@ -180,7 +185,7 @@ def start_genetic_algorithm(data, pop_size, n_gen, n_threads, sampling=None,verb
                         #Viene acquistata energia
                         sum = sum + (quantity_charging_battery - delta_production.iloc[j]) * data["prices"]["prezzo"].iloc[j]*penality_sum
                     
-                    actual_percentage.append((effettivo_in_batteria + quantity_charging_battery - lower_limit) / ( upper_limit - lower_limit))
+                    actual_percentage.append((effettivo_in_batteria + (quantity_charging_battery*data["battery_charging_efficiency"]) - lower_limit) / ( upper_limit - lower_limit))
                     
                     
                 #Caso in cui si sceglie di scaricare la batteria
@@ -217,6 +222,10 @@ def start_genetic_algorithm(data, pop_size, n_gen, n_threads, sampling=None,verb
                         sum = sum + (- (delta_production.iloc[j] + quantity_discharging_battery/data["battery_discharging_efficiency"]) *
                                      data["prices"]["prezzo"].iloc[j])*penality_sum
 
+
+                    scarico=(posso_scaricare_di*percentage)/100
+                    cycles = round(cycles+(scarico/battery_capacity), 5)
+                    battery_capacity = round(data["polynomial"](cycles) * data["battery_nominal_capacity"], 4)
 
                     #Viene aggiornato il valore della batteria, dopo la scarica
                     actual_percentage.append((effettivo_in_batteria - (quantity_discharging_battery/data["battery_discharging_efficiency"]) - lower_limit) / ( upper_limit - lower_limit))
@@ -263,7 +272,6 @@ def start_genetic_algorithm(data, pop_size, n_gen, n_threads, sampling=None,verb
                 X[k] = dict
 
             return X
-
 
 
     pool = ThreadPool(n_threads)

@@ -28,8 +28,8 @@ async def main():
 
         sampling=0
 
-        pop_size=120
-        n_gen=35
+        pop_size=80
+        n_gen=25
 
         data = setup(polynomial_inverter)
         prices = await get_future_day_italian_market(data)
@@ -40,6 +40,7 @@ async def main():
             data = setup(polynomial_inverter)
             data["prices"] = prices 
             data["production_not_rs"] = production_not_rs
+            data["polynomial"] = polynomial_batt
 
             if(i==0):
                 cycles = data["cycles"]

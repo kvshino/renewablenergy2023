@@ -56,7 +56,7 @@ def evaluate(data, variables_values,cycles,polynomial_batt):
 
                 sum.append(
                     sum[j] + (quantity_charging_battery - variables_values[f"difference_of_production{j}"]) * data["prices"]["prezzo"].iloc[j])
-            actual_percentage.append((effettivo_in_batteria + quantity_charging_battery - lower_limit) / ( upper_limit - lower_limit))
+            actual_percentage.append((effettivo_in_batteria + (quantity_charging_battery*data["battery_charging_efficiency"]) - lower_limit) / ( upper_limit - lower_limit))
             
         else:
             #aggiungo eff di 0.9 in carica e scarica ma comunque lo pago!    
@@ -74,7 +74,7 @@ def evaluate(data, variables_values,cycles,polynomial_batt):
                         - (variables_values[f"difference_of_production{j}"] + quantity_discharging_battery/data["battery_discharging_efficiency"]) * data["prices"]["prezzo"].iloc[j]))
             
 
-            actual_percentage.append((effettivo_in_batteria - quantity_discharging_battery - lower_limit) / ( upper_limit - lower_limit))
+            actual_percentage.append((effettivo_in_batteria - (quantity_discharging_battery/data["battery_discharging_efficiency"]) - lower_limit) / ( upper_limit - lower_limit))
 
 
 
@@ -116,6 +116,8 @@ def start_genetic_algorithm(data, pop_size, n_gen, n_threads, sampling=None,verb
             quantity_battery=0
             penality_sum = 1
             penality_batt = 1
+            cycles = data["cycles"]
+            battery_capacity = round(data["polynomial"](cycles) * data["battery_nominal_capacity"], 4)
 
             for j in range(24):                                             #Viene eseguita una predizione per le successive 24 ore         
                 charge = X[f"b{j}"]
@@ -134,12 +136,11 @@ def start_genetic_algorithm(data, pop_size, n_gen, n_threads, sampling=None,verb
 
                     #Si controlla che la carica della batteria non sia maggiore di quella fisicamente ottenibile
                     if(quantity_charging_battery > data["maximum_power_battery_exchange"]):
-                        penality_batt = penality_batt + 0.5
+                        penality_batt = penality_batt + 0.7
 
                     if(quantity_charging_battery > data["maximum_power_absorption"]):
                         #più+ grave di sopra ma in teoria scattano entrambi
-                        penality_sum = penality_sum + 0.2
-
+                        penality_sum = penality_sum + 0.7
 
                     #Viene controllata se la produzione dei pannelli è maggiore del consumo domestico unito al consumo della carica della batteria
                     if quantity_charging_battery - delta_production.iloc[j] < 0:
@@ -153,7 +154,7 @@ def start_genetic_algorithm(data, pop_size, n_gen, n_threads, sampling=None,verb
 
                         #Viene fatto un controllo che NON permette di acquistare più energia di quanto il contratto stipulato dall'utente permetta
                         if( quantity_charging_battery > data["maximum_power_absorption"] + delta_production.iloc[j]):
-                            penality_sum = penality_sum + 0.5
+                            penality_sum = penality_sum + 0.7
                         #Viene acquistata energia
                         sum = sum + (quantity_charging_battery - delta_production.iloc[j]) * data["prices"]["prezzo"].iloc[j] * penality_sum
 
@@ -161,7 +162,7 @@ def start_genetic_algorithm(data, pop_size, n_gen, n_threads, sampling=None,verb
                     #Viene aggiornato il valore di carica della batteria, essendo stata caricata
                     quantity_battery-=abs(quantity_charging_battery*0.3)
                     #quantity_battery = max(quantity_battery,0)
-                    actual_percentage.append((effettivo_in_batteria + quantity_charging_battery - lower_limit) / ( upper_limit - lower_limit))
+                    actual_percentage.append((effettivo_in_batteria + (quantity_charging_battery*data["battery_charging_efficiency"]) - lower_limit) / ( upper_limit - lower_limit))
 
 
                 #Caso in cui si sceglie di scaricare la batteria
@@ -174,17 +175,17 @@ def start_genetic_algorithm(data, pop_size, n_gen, n_threads, sampling=None,verb
 
                     #Si controlla che la scarica della batteria non sia maggiore di quella fisicamente ottenibile
                     if(quantity_discharging_battery > data["maximum_power_battery_exchange"]):
-                        penality_batt=penality_batt + 0.5
+                        penality_batt=penality_batt + 0.7
 
                     if(quantity_discharging_battery > data["maximum_power_absorption"]):
-                        penality_sum =penality_sum + 0.2
+                        penality_sum =penality_sum + 0.7
 
                     #Si controlla se si produce di più di quanto si consuma. Prendere energia dalla batteria viene considerata produzione
                     if delta_production.iloc[j] + quantity_discharging_battery > 0:
 
                         #Si controlla di non prendere più energia dalla batteria di quanto il contatore sia in grado di gestire
                         if(quantity_discharging_battery + delta_production.iloc[j] > data["maximum_power_absorption"]):
-                            penality_sum = penality_sum + (1 -  data["maximum_power_absorption"] / quantity_discharging_battery)
+                            penality_sum = penality_sum + 0.7
 
                         #Produco di più di quanto consumo, vendo il resto
                         sum = sum - ((delta_production.iloc[j] + quantity_discharging_battery) * sold) / penality_sum
@@ -197,8 +198,12 @@ def start_genetic_algorithm(data, pop_size, n_gen, n_threads, sampling=None,verb
                                      data["prices"]["prezzo"].iloc[j]) * penality_sum
 
 
+                    scarico=(posso_scaricare_di*percentage)/100
+                    cycles = round(cycles+(scarico/battery_capacity), 5)
+                    battery_capacity = round(data["polynomial"](cycles) * data["battery_nominal_capacity"], 4)
+
                     #Viene aggiornato il valore della batteria, dopo la scarica
-                    actual_percentage.append((effettivo_in_batteria - quantity_discharging_battery - lower_limit) / ( upper_limit - lower_limit))
+                    actual_percentage.append((effettivo_in_batteria - (quantity_discharging_battery/data["battery_discharging_efficiency"]) - lower_limit) / ( upper_limit - lower_limit))
                     quantity_battery+=abs(quantity_discharging_battery*0.76)
 
 
