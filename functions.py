@@ -61,11 +61,11 @@ def forecast_percentage_production_from_not_renewable_sources(api_key, zona="IT_
     end = start + timedelta(days=1)
 
     try:
-        ahead = client.query_wind_and_solar_forecast(zona, start=start, end=end)
+        ahead = client.query_intraday_wind_and_solar_forecast(zona, start=start, end=end)
         ahead["Ora"] = ahead.index.hour
         ahead["Sum"] = ahead["Solar"] + ahead["Wind Onshore"]
     except:
-        ahead = client.query_wind_and_solar_forecast(zona, start=start-timedelta(days=1), end=end-timedelta(days=1))
+        ahead = client.query_intraday_wind_and_solar_forecast(zona, start=start-timedelta(days=1), end=end-timedelta(days=1))
         ahead["Ora"] = ahead.index.hour
         ahead["Sum"] = ahead["Solar"] + ahead["Wind Onshore"]
 
@@ -144,6 +144,7 @@ def simulation_no_algorithm(data,dictionary, cycles, polynomial):
     sold = dictionary["sold"]
     battery_level = []
     battery_capacity = round(polynomial(cycles) * dictionary["battery_nominal_capacity"], 4)
+    ratio_list = []
 
     upper_limit = (dictionary["soc_max"] * battery_capacity)
     lower_limit = (dictionary["soc_min"] * battery_capacity)
@@ -164,18 +165,21 @@ def simulation_no_algorithm(data,dictionary, cycles, polynomial):
         if dictionary[f"difference_of_production{j}"] >= 0:
 
             posso_caricare_di = upper_limit - effettivo_in_batteria
+            
+            ratio = min((dictionary[f"load{j}"] + dictionary[f"difference_of_production{j}"]) / data["inverter_nominal_power"], 1)
 
-            if posso_caricare_di - (dictionary[f"difference_of_production{j}"]*dictionary["battery_charging_efficiency"]) >= 0:
+            dictionary[f"difference_of_production{j}"] = dictionary[f"production{j}"]*data["polynomial_inverter"](ratio) - dictionary[f"load{j}"]
+            if posso_caricare_di - (dictionary[f"difference_of_production{j}"]*dictionary["battery_charging_efficiency"]*data["polynomial_inverter"](ratio)) >= 0:
                 #metto tutto in batteria
-                battery_level.append(effettivo_in_batteria+(dictionary[f"difference_of_production{j}"]*dictionary["battery_charging_efficiency"]))
+                battery_level.append(effettivo_in_batteria+(dictionary[f"difference_of_production{j}"]*dictionary["battery_charging_efficiency"]*data["polynomial_inverter"](ratio)))
                 sum.append(sum[j])
                 power_to_grid.append(0)
             else:
                 #vendo
 
-                sum.append(sum[j] - ((dictionary[f"difference_of_production{j}"] - posso_caricare_di/dictionary["battery_charging_efficiency"]) * sold))
+                sum.append(sum[j] - ((dictionary[f"difference_of_production{j}"] - posso_caricare_di/dictionary["battery_charging_efficiency"]/data["polynomial_inverter"](ratio)) * sold))
                 battery_level.append(upper_limit)
-                power_to_grid.append(dictionary[f"difference_of_production{j}"] - posso_caricare_di/dictionary["battery_charging_efficiency"])
+                power_to_grid.append(dictionary[f"difference_of_production{j}"] - posso_caricare_di/dictionary["battery_charging_efficiency"]/data["polynomial_inverter"](ratio))
 
             co2_emissions.append(co2_emissions[j])
             battery_degradation.append(battery_degradation[j])
@@ -183,9 +187,12 @@ def simulation_no_algorithm(data,dictionary, cycles, polynomial):
             #mi serve corrente
             posso_scaricare_di=effettivo_in_batteria-lower_limit
 
-            if posso_scaricare_di + (dictionary[f"difference_of_production{j}"]/dictionary["battery_discharging_efficiency"]) >= 0:
-                app = -(dictionary[f"difference_of_production{j}"]/dictionary["battery_discharging_efficiency"])
-                battery_level.append(effettivo_in_batteria + (dictionary[f"difference_of_production{j}"]/dictionary["battery_discharging_efficiency"]))
+            ratio = (dictionary[f"load{j}"]) / data["inverter_nominal_power"]
+
+            dictionary[f"difference_of_production{j}"] = dictionary[f"production{j}"]*data["polynomial_inverter"](ratio) - dictionary[f"load{j}"]
+            if posso_scaricare_di + (dictionary[f"difference_of_production{j}"]/dictionary["battery_discharging_efficiency"]/data["polynomial_inverter"](ratio)) >= 0:
+                app = -(dictionary[f"difference_of_production{j}"]/dictionary["battery_discharging_efficiency"]/data["polynomial_inverter"](ratio))
+                battery_level.append(effettivo_in_batteria + (dictionary[f"difference_of_production{j}"]/dictionary["battery_discharging_efficiency"]/data["polynomial_inverter"](ratio)))
                 co2_emissions.append(co2_emissions[j])
                 sum.append(sum[j])
                 power_to_grid.append(0)
@@ -193,16 +200,17 @@ def simulation_no_algorithm(data,dictionary, cycles, polynomial):
             else:
                 app = posso_scaricare_di
                 battery_level.append(lower_limit)
-                sum.append( sum[j] - (posso_scaricare_di*dictionary["battery_discharging_efficiency"] + dictionary[f"difference_of_production{j}"]) * dictionary[f"prices{j}"] )
-                co2_emissions.append(co2_emissions[j] + co2_quantity_emission(data,dictionary,(posso_scaricare_di*dictionary["battery_discharging_efficiency"] + dictionary[f"difference_of_production{j}"]),j))
-                power_to_grid.append(posso_scaricare_di*dictionary["battery_discharging_efficiency"] + dictionary[f"difference_of_production{j}"])
+                sum.append( sum[j] - (posso_scaricare_di*dictionary["battery_discharging_efficiency"]*data["polynomial_inverter"](ratio) + dictionary[f"difference_of_production{j}"]) * dictionary[f"prices{j}"] )
+                co2_emissions.append(co2_emissions[j] + co2_quantity_emission(data,dictionary,(posso_scaricare_di*dictionary["battery_discharging_efficiency"]*data["polynomial_inverter"](ratio) + dictionary[f"difference_of_production{j}"]),j))
+                power_to_grid.append(posso_scaricare_di*dictionary["battery_discharging_efficiency"]*data["polynomial_inverter"](ratio) + dictionary[f"difference_of_production{j}"])
 
             cycles = round(cycles+(app/battery_capacity), 5)
             battery_capacity = round(polynomial(cycles) * dictionary["battery_nominal_capacity"], 4)
             battery_degradation.append(battery_capacity)
+        ratio_list.append(ratio)
 
 
-    return sum[1:],battery_level,battery_degradation[1:],co2_emissions[1:], power_to_grid
+    return sum[1:],battery_level,battery_degradation[1:],co2_emissions[1:], power_to_grid, ratio_list
 
 def simulation_nobattery(data,dictionary):
     costo = []
@@ -211,22 +219,27 @@ def simulation_nobattery(data,dictionary):
 
     costo.append(0)
     co2_nobattery.append(0)
+    ratio_list = []
 
     list_diff = dictionary_to_list(dictionary,"difference_of_production")
+
 
     for i in range(len(list_diff)):
 
         if dictionary[f"difference_of_production{i}"] < 0:
+            ratio = 1
             costo.append((dictionary[f"difference_of_production{i}"]) * dictionary[f"prices{i}"] + costo[i])
             power_togrid.append(dictionary[f"difference_of_production{i}"])
             co2_nobattery.append(co2_nobattery[i] + co2_quantity_emission(data,dictionary,(dictionary[f"difference_of_production{i}"]),i) )
 
         else:
-            costo.append((dictionary[f"difference_of_production{i}"]) * dictionary["sold"] + costo[i])
-            power_togrid.append(dictionary[f"difference_of_production{i}"])
+            ratio = min(dictionary[f"load{i}"] + dictionary[f"difference_of_production{i}"] / data["inverter_nominal_power"], 1)
+            costo.append((dictionary[f"difference_of_production{i}"]*data["polynomial_inverter"](ratio)) * dictionary["sold"] + costo[i])
+            power_togrid.append(dictionary[f"difference_of_production{i}"]*data["polynomial_inverter"](ratio))
             co2_nobattery.append(co2_nobattery[i] )
-    
-    return costo[1:],co2_nobattery[1:],power_togrid
+        ratio_list.append(ratio)
+
+    return costo[1:],co2_nobattery[1:],power_togrid, ratio_list
 
 def simulation_noplant(data,dictionary):
     costo = []

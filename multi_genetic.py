@@ -35,6 +35,7 @@ def evaluate(data, variables_values, cycles, polynomial):
     battery_capacity = round(polynomial(cycles) * variables_values["battery_nominal_capacity"], 4)
     
     quantity_delta_battery = []
+    ratio_list = []
 
     # valori negativi indicano consumi ,positivi guadagni
     for j in range(24):
@@ -54,17 +55,24 @@ def evaluate(data, variables_values, cycles, polynomial):
 
             #Viene calcolato di quanto caricare la batteria
             quantity_charging_battery = ((posso_caricare_di * percentage) / 100) / data["battery_charging_efficiency"]
-            
+
+
+            if quantity_charging_battery - variables_values[f"difference_of_production{j}"] < 0:
+                ratio = min((variables_values[f"load{j}"] + quantity_charging_battery + (quantity_charging_battery - variables_values[f"difference_of_production{j}"])) / data["inverter_nominal_power"],1)
+            else:
+                ratio = min((variables_values[f"load{j}"] + quantity_charging_battery) / data["inverter_nominal_power"], 1)
+
+            variables_values[f"difference_of_production{j}"] = variables_values[f"production{j}"] * data["polynomial_inverter"](ratio) - variables_values[f"load{j}"]
             if quantity_charging_battery - variables_values[f"difference_of_production{j}"] < 0:
                 # devo vendere
                 co2_emissions.append( co2_emissions[j] )
                 sum.append(
                     sum[j] + ((quantity_charging_battery - variables_values[f"difference_of_production{j}"]) * sold))  # sum = sum - rimborso
             else:
-                co2_emissions.append(co2_emissions[j] + co2_quantity_emission(data, variables_values, -(quantity_charging_battery - variables_values[f"difference_of_production{j}"]), j))
+                co2_emissions.append(co2_emissions[j] + co2_quantity_emission(data, variables_values, -((quantity_charging_battery - variables_values[f"difference_of_production{j}"])/data["polynomial_inverter"](ratio)), j))
                 
                 sum.append(
-                    sum[j] + (quantity_charging_battery - variables_values[f"difference_of_production{j}"]) * variables_values[f"prices{j}"])
+                    sum[j] + ((quantity_charging_battery - variables_values[f"difference_of_production{j}"])) * variables_values[f"prices{j}"])
                 
             actual_percentage.append((effettivo_in_batteria + (quantity_charging_battery*data["battery_charging_efficiency"]) - lower_limit) / ( upper_limit - lower_limit))
             
@@ -73,16 +81,25 @@ def evaluate(data, variables_values, cycles, polynomial):
             posso_scaricare_di=effettivo_in_batteria-lower_limit
             quantity_discharging_battery=((posso_scaricare_di*percentage)/100)*data["battery_discharging_efficiency"]
 
+
+            if variables_values[f"difference_of_production{j}"] + quantity_discharging_battery > 0:
+                ratio = min((variables_values[f"load{j}"] + (variables_values[f"difference_of_production{j}"] + quantity_discharging_battery)) / data["inverter_nominal_power"], 1)
+            else:
+                ratio = min(variables_values[f"load{j}"] / data["inverter_nominal_power"], 1)
+
+            quantity_discharging_battery = quantity_discharging_battery * data["polynomial_inverter"](ratio)
+
+            variables_values[f"difference_of_production{j}"] = variables_values[f"production{j}"] * data["polynomial_inverter"](ratio) - variables_values[f"load{j}"]
             if variables_values[f"difference_of_production{j}"] + quantity_discharging_battery > 0:
                 co2_emissions.append( co2_emissions[j] )
                 sum.append(sum[j] - ((variables_values[f"difference_of_production{j}"] + quantity_discharging_battery) * sold))
 
             else:
                 
-                co2_emissions.append(co2_emissions[j] + co2_quantity_emission(data, variables_values, variables_values[f"difference_of_production{j}"] + quantity_discharging_battery/data["battery_discharging_efficiency"], j))
+                co2_emissions.append(co2_emissions[j] + co2_quantity_emission(data, variables_values, (variables_values[f"difference_of_production{j}"] + quantity_discharging_battery/data["battery_discharging_efficiency"])/data["polynomial_inverter"](ratio), j))
 
                 sum.append(sum[j] + (
-                        - (variables_values[f"difference_of_production{j}"] + quantity_discharging_battery/data["battery_discharging_efficiency"]) * variables_values[f"prices{j}"]))
+                        - ((variables_values[f"difference_of_production{j}"] + quantity_discharging_battery/data["battery_discharging_efficiency"])) * variables_values[f"prices{j}"]))
             
             
             scarico=(posso_scaricare_di*percentage)/100
@@ -90,13 +107,14 @@ def evaluate(data, variables_values, cycles, polynomial):
             battery_capacity = round(polynomial(cycles) * variables_values["battery_nominal_capacity"], 4)
             actual_percentage.append((effettivo_in_batteria - (quantity_discharging_battery/data["battery_discharging_efficiency"]) - lower_limit) / ( upper_limit - lower_limit))
 
+        ratio_list.append(ratio)
 
         if quantity_charging_battery != None:
             quantity_delta_battery.append(+quantity_charging_battery)
         else:
             quantity_delta_battery.append(-quantity_discharging_battery)
 
-    return sum[1:], actual_percentage, quantity_delta_battery, co2_emissions[1:]
+    return sum[1:], actual_percentage, quantity_delta_battery, co2_emissions[1:], ratio_list
 
 
 def start_genetic_algorithm(data, pop_size, n_gen, n_threads, sampling=None,verbose=False):
@@ -154,18 +172,26 @@ def start_genetic_algorithm(data, pop_size, n_gen, n_threads, sampling=None,verb
                     #Viene calcolato di quanto caricare la batteria
                     quantity_charging_battery = ((posso_caricare_di * percentage) / 100) / data["battery_charging_efficiency"]
 
+                    if quantity_charging_battery - delta_production.iloc[j] < 0:
+                        ratio = min((data["estimate"]["consumo"].values[j] + quantity_charging_battery + (quantity_charging_battery - delta_production.iloc[j])) / data["inverter_nominal_power"],1)
+                    else:
+                        ratio = min((data["estimate"]["consumo"].values[j] + quantity_charging_battery) / data["inverter_nominal_power"], 1)
+
 
                     #Si controlla che la carica della batteria non sia maggiore di quella fisicamente ottenibile
                     if(quantity_charging_battery > data["maximum_power_battery_exchange"]):
                         penality_batt = penality_batt + (1 -  data["maximum_power_battery_exchange"] / quantity_charging_battery)
 
-                    if(quantity_charging_battery > data["maximum_power_absorption"]):
+                    if(quantity_charging_battery > data["maximum_power_absorption"]): #da togliere      
                         penality_sum = penality_sum + (1 -  data["maximum_power_absorption"] / quantity_charging_battery)
                     
 
-
+                    delta_production.iloc[j] = data["expected_production"]["production"][j] * data["polynomial_inverter"](ratio) - data["estimate"]["consumo"].values[j]
                     #Viene controllata se la produzione dei pannelli è maggiore del consumo domestico unito al consumo della carica della batteria
                     if quantity_charging_battery - delta_production.iloc[j] < 0:
+
+                        if data["estimate"]["consumo"].values[j] + quantity_charging_battery + (quantity_charging_battery - delta_production.iloc[j]) > data["inverter_nominal_power"]:
+                            penality_batt = penality_batt + (1 - data["inverter_nominal_power"]/(data["estimate"]["consumo"].values[j] + quantity_charging_battery + (quantity_charging_battery - delta_production.iloc[j])))
                         
                         #Il surplus di energia viene venduto
                         sum = sum + ((quantity_charging_battery - delta_production.iloc[j]) * sold)/penality_sum  # sum = sum - rimborso
@@ -174,16 +200,19 @@ def start_genetic_algorithm(data, pop_size, n_gen, n_threads, sampling=None,verb
                     #Caso in cui viene prodotto meno di quanto si consuma, di conseguenza è necessario acquistare dalla rete
                     else:
                         
-                        quantity_bought_from_not_renewable_sources =  (quantity_charging_battery - delta_production.iloc[j]) * percentage_production_not_renewable["Difference"][j]
-                        co2_emissions = co2_emissions + (quantity_bought_from_not_renewable_sources * data["coal_percentage"] * data["coal_pollution"]) + (quantity_bought_from_not_renewable_sources * data["gas_percentage"] * data["gas_pollution"]) + (quantity_bought_from_not_renewable_sources * data["oil_percentage"] * data["oil_pollution"])
+                        quantity_bought_from_not_renewable_sources =  ((quantity_charging_battery - delta_production.iloc[j])) * percentage_production_not_renewable["Difference"][j]
+                        co2_emissions = co2_emissions + (quantity_bought_from_not_renewable_sources * data["coal_percentage"] * data["coal_pollution"]) + (quantity_bought_from_not_renewable_sources * data["gas_percentage"] * data["gas_pollution"]) + (quantity_bought_from_not_renewable_sources * data["oil_percentage"] * data["oil_pollution"]) * penality_sum
 
+
+                        if data["estimate"]["consumo"].values[j] + quantity_charging_battery > data["inverter_nominal_power"]:
+                            penality_batt = penality_batt + (1 - data["inverter_nominal_power"]/(data["estimate"]["consumo"].values[j] + quantity_charging_battery))
 
                         #Viene fatto un controllo che NON permette di acquistare più energia di quanto il contratto stipulato dall'utente permetta
                         if( quantity_charging_battery > data["maximum_power_absorption"] + delta_production.iloc[j]):
                             penality_sum = penality_sum + (1 -  data["maximum_power_absorption"] / quantity_charging_battery)
 
                         #Viene acquistata energia
-                        sum = sum + (quantity_charging_battery - delta_production.iloc[j]) * data["prices"]["prezzo"].iloc[j]*penality_sum
+                        sum = sum + ((quantity_charging_battery - delta_production.iloc[j])) * data["prices"]["prezzo"].iloc[j]*penality_sum
                     
                     actual_percentage.append((effettivo_in_batteria + (quantity_charging_battery*data["battery_charging_efficiency"]) - lower_limit) / ( upper_limit - lower_limit))
                     
@@ -193,7 +222,15 @@ def start_genetic_algorithm(data, pop_size, n_gen, n_threads, sampling=None,verb
 
                     #Viene calcolato di quanto scaricare la batteria
                     posso_scaricare_di=effettivo_in_batteria-lower_limit
-                    quantity_discharging_battery=((posso_scaricare_di*percentage)/100)*data["battery_discharging_efficiency"]              
+                    quantity_discharging_battery=((posso_scaricare_di*percentage)/100)*data["battery_discharging_efficiency"]
+
+                                  
+                    if delta_production.iloc[j] + quantity_discharging_battery > 0:
+                        ratio = min((data["estimate"]["consumo"].values[j] + (delta_production.iloc[j] + quantity_discharging_battery)) / data["inverter_nominal_power"], 1)
+                    else:
+                        ratio = min(data["estimate"]["consumo"].values[j] / data["inverter_nominal_power"], 1)
+
+                    quantity_discharging_battery = quantity_discharging_battery * data["polynomial_inverter"](ratio)
 
 
                     #Si controlla che la scarica della batteria non sia maggiore di quella fisicamente ottenibile
@@ -203,8 +240,13 @@ def start_genetic_algorithm(data, pop_size, n_gen, n_threads, sampling=None,verb
                     if(quantity_discharging_battery > data["maximum_power_absorption"]):
                         penality_sum = penality_sum + (1 -  data["maximum_power_absorption"] / quantity_discharging_battery)
 
+
+                    delta_production.iloc[j] = data["expected_production"]["production"][j] * data["polynomial_inverter"](ratio) - data["estimate"]["consumo"].values[j]
                     #Si controlla se si produce di più di quanto si consuma. Prendere energia dalla batteria viene considerata produzione
                     if delta_production.iloc[j] + quantity_discharging_battery > 0:
+
+                        if data["estimate"]["consumo"].values[j] + (delta_production.iloc[j] + quantity_discharging_battery) > data["inverter_nominal_power"]:
+                            penality_batt = penality_batt + (1 - data["inverter_nominal_power"]/(data["estimate"]["consumo"].values[j] + (delta_production.iloc[j] + quantity_discharging_battery)))
 
                         #Si controlla di non prendere più energia dalla batteria di quanto il contatore sia in grado di gestire
                         if(quantity_discharging_battery + delta_production.iloc[j] > data["maximum_power_absorption"]):
@@ -216,8 +258,11 @@ def start_genetic_algorithm(data, pop_size, n_gen, n_threads, sampling=None,verb
                     #Produco poco e consumo di più
                     else:
                         quantity_bought_from_not_renewable_sources = (- (delta_production.iloc[j] + quantity_discharging_battery)) * percentage_production_not_renewable["Difference"][j]
-                        co2_emissions = co2_emissions + (quantity_bought_from_not_renewable_sources * data["coal_percentage"] * data["coal_pollution"]) + (quantity_bought_from_not_renewable_sources * data["gas_percentage"] * data["gas_pollution"]) + (quantity_bought_from_not_renewable_sources * data["oil_percentage"] * data["oil_pollution"])
+                        co2_emissions = co2_emissions + (quantity_bought_from_not_renewable_sources * data["coal_percentage"] * data["coal_pollution"]) + (quantity_bought_from_not_renewable_sources * data["gas_percentage"] * data["gas_pollution"]) + (quantity_bought_from_not_renewable_sources * data["oil_percentage"] * data["oil_pollution"]) * penality_sum
 
+                        if data["estimate"]["consumo"].values[j] > data["inverter_nominal_power"]:
+                            penality_batt = penality_batt + (1 - data["inverter_nominal_power"]/(data["estimate"]["consumo"].values[j]))
+                                                
                         #Produco di meno di quanto consumo, compro il resto
                         sum = sum + (- (delta_production.iloc[j] + quantity_discharging_battery/data["battery_discharging_efficiency"]) *
                                      data["prices"]["prezzo"].iloc[j])*penality_sum
@@ -299,9 +344,9 @@ def start_genetic_algorithm(data, pop_size, n_gen, n_threads, sampling=None,verb
 
 
 
-    # plot = Scatter()
-    # plot.add(res.F, facecolor="none", edgecolor="red")
-    # plot.show()
+    plot = Scatter()
+    plot.add(res.F, facecolor="none", edgecolor="red")
+    plot.show()
 
     return res, res.history
 

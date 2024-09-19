@@ -28,8 +28,8 @@ async def main():
 
         sampling=0
 
-        pop_size=1
-        n_gen=1
+        pop_size=90
+        n_gen=20
 
         data = setup(polynomial_inverter)
         prices = await get_future_day_italian_market(data)
@@ -91,12 +91,27 @@ async def main():
     dictionary["battery_charging_efficiency"] = data["battery_charging_efficiency"]
     dictionary["battery_discharging_efficiency"] = data["battery_discharging_efficiency"]
 
-    dictionary["sum_algo"],dictionary["actual_percentage_algo"],dictionary["quantity_delta_battery_algo"],dictionary["co2_algo"] = evaluate(data, dictionary,  cycles, polynomial_batt)
-    dictionary["sum_noalgo"],dictionary["actual_battery_level_noalgo"],dictionary["quantity_battery_degradation_noalgo"],dictionary["co2_noalgo"],dictionary["power_to_grid_noalgo"] =simulation_no_algorithm(data,dictionary, cycles, polynomial_batt)
-    dictionary["sum_nobattery"],dictionary["co2_nobattery"],dictionary["power_to_grid_nobattery"]  = simulation_nobattery(data,dictionary)
+    dictionary["sum_algo"],dictionary["actual_percentage_algo"],dictionary["quantity_delta_battery_algo"],dictionary["co2_algo"], dictionary["ratio_algo"] = evaluate(data, dictionary,  cycles, polynomial_batt)
+    dictionary["sum_noalgo"],dictionary["actual_battery_level_noalgo"],dictionary["quantity_battery_degradation_noalgo"],dictionary["co2_noalgo"],dictionary["power_to_grid_noalgo"], dictionary["ratio_noalgo"] =simulation_no_algorithm(data,dictionary, cycles, polynomial_batt)
+    dictionary["sum_nobattery"],dictionary["co2_nobattery"],dictionary["power_to_grid_nobattery"], dictionary["ratio_nobattery"]  = simulation_nobattery(data,dictionary)
     dictionary["sum_noplant"],dictionary["co2_noplant"],dictionary["power_to_grid_noplant"]= simulation_noplant(data,dictionary)    
 
-    init_gui(data,dictionary)
+    
+    for i in range(24):
+        dictionary[f"difference_of_production_algo{i}"] = dictionary[f"production{i}"]*dictionary["ratio_algo"][i] - dictionary[f"load{i}"]
+        dictionary[f"difference_of_production_noalgo{i}"] = dictionary[f"production{i}"]*dictionary["ratio_noalgo"][i] - dictionary[f"load{i}"]
+        dictionary[f"difference_of_production_nobattery{i}"] = dictionary[f"production{i}"]*dictionary["ratio_nobattery"][i] - dictionary[f"load{i}"]
+        print(dictionary[f"difference_of_production{i}"])
+        print(dictionary[f"difference_of_production_algo{i}"])
+        print(dictionary[f"difference_of_production_noalgo{i}"])
+        print(dictionary[f"difference_of_production_nobattery{i}"])
+        print("**"*10)
+
+    
+
+
+
+    #init_gui(data,dictionary)
     print(datetime.now()-ora)
 
 if __name__ == "__main__":

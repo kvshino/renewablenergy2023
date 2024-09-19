@@ -44,9 +44,9 @@ def difference_of_production(data):
             Array with difference
     """
 
-    ratio =  data["expected_production"]["production"]/data["inverter_nominal_power"]
-    #rimetto il valore in expected per facilità di plot
-    data["expected_production"]["production"] = data["expected_production"]["production"] * data["polynomial_inverter"](ratio)
+    # ratio =  data["expected_production"]["production"]/data["inverter_nominal_power"]
+    # #rimetto il valore in expected per facilità di plot
+    # data["expected_production"]["production"] = data["expected_production"]["production"] * data["polynomial_inverter"](ratio)
     return data["expected_production"]["production"] - data["estimate"]["consumo"].values
 
 
