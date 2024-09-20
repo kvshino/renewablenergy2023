@@ -28,7 +28,7 @@ async def main():
 
         sampling=0
 
-        pop_size=90
+        pop_size=40
         n_gen=20
 
         data = setup(polynomial_inverter)
@@ -90,6 +90,7 @@ async def main():
     dictionary["battery_nominal_capacity"] = data["battery_nominal_capacity"]
     dictionary["battery_charging_efficiency"] = data["battery_charging_efficiency"]
     dictionary["battery_discharging_efficiency"] = data["battery_discharging_efficiency"]
+    dictionary["polynomial_inverter"] = polynomial_inverter
 
     dictionary["sum_algo"],dictionary["actual_percentage_algo"],dictionary["quantity_delta_battery_algo"],dictionary["co2_algo"], dictionary["ratio_algo"] = evaluate(data, dictionary,  cycles, polynomial_batt)
     dictionary["sum_noalgo"],dictionary["actual_battery_level_noalgo"],dictionary["quantity_battery_degradation_noalgo"],dictionary["co2_noalgo"],dictionary["power_to_grid_noalgo"], dictionary["ratio_noalgo"] =simulation_no_algorithm(data,dictionary, cycles, polynomial_batt)
@@ -97,21 +98,10 @@ async def main():
     dictionary["sum_noplant"],dictionary["co2_noplant"],dictionary["power_to_grid_noplant"]= simulation_noplant(data,dictionary)    
 
     
-    for i in range(24):
-        dictionary[f"difference_of_production_algo{i}"] = dictionary[f"production{i}"]*dictionary["ratio_algo"][i] - dictionary[f"load{i}"]
-        dictionary[f"difference_of_production_noalgo{i}"] = dictionary[f"production{i}"]*dictionary["ratio_noalgo"][i] - dictionary[f"load{i}"]
-        dictionary[f"difference_of_production_nobattery{i}"] = dictionary[f"production{i}"]*dictionary["ratio_nobattery"][i] - dictionary[f"load{i}"]
-        print(dictionary[f"difference_of_production{i}"])
-        print(dictionary[f"difference_of_production_algo{i}"])
-        print(dictionary[f"difference_of_production_noalgo{i}"])
-        print(dictionary[f"difference_of_production_nobattery{i}"])
-        print("**"*10)
-
-    
 
 
 
-    #init_gui(data,dictionary)
+    init_gui(data,dictionary)
     print(datetime.now()-ora)
 
 if __name__ == "__main__":

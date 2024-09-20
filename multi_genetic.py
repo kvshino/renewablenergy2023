@@ -20,8 +20,7 @@ from pymoo.visualization.scatter import Scatter
 import matplotlib.pyplot as plt
 from pymoo.problems import get_problem
 
-#Capacità della batteria
-#
+from pymoo.core.callback import Callback
 
 def evaluate(data, variables_values, cycles, polynomial):
     sum = []
@@ -58,7 +57,7 @@ def evaluate(data, variables_values, cycles, polynomial):
 
 
             if quantity_charging_battery - variables_values[f"difference_of_production{j}"] < 0:
-                ratio = min((variables_values[f"load{j}"] + quantity_charging_battery + (quantity_charging_battery - variables_values[f"difference_of_production{j}"])) / data["inverter_nominal_power"],1)
+                ratio = min((variables_values[f"load{j}"] + quantity_charging_battery - (quantity_charging_battery - variables_values[f"difference_of_production{j}"])) / data["inverter_nominal_power"],1)
             else:
                 ratio = min((variables_values[f"load{j}"] + quantity_charging_battery) / data["inverter_nominal_power"], 1)
 
@@ -173,7 +172,7 @@ def start_genetic_algorithm(data, pop_size, n_gen, n_threads, sampling=None,verb
                     quantity_charging_battery = ((posso_caricare_di * percentage) / 100) / data["battery_charging_efficiency"]
 
                     if quantity_charging_battery - delta_production.iloc[j] < 0:
-                        ratio = min((data["estimate"]["consumo"].values[j] + quantity_charging_battery + (quantity_charging_battery - delta_production.iloc[j])) / data["inverter_nominal_power"],1)
+                        ratio = min((data["estimate"]["consumo"].values[j] + quantity_charging_battery - (quantity_charging_battery - delta_production.iloc[j])) / data["inverter_nominal_power"],1)
                     else:
                         ratio = min((data["estimate"]["consumo"].values[j] + quantity_charging_battery) / data["inverter_nominal_power"], 1)
 
@@ -182,7 +181,7 @@ def start_genetic_algorithm(data, pop_size, n_gen, n_threads, sampling=None,verb
                     if(quantity_charging_battery > data["maximum_power_battery_exchange"]):
                         penality_batt = penality_batt + (1 -  data["maximum_power_battery_exchange"] / quantity_charging_battery)
 
-                    if(quantity_charging_battery > data["maximum_power_absorption"]): #da togliere      
+                    if(quantity_charging_battery > data["maximum_power_absorption"]):      
                         penality_sum = penality_sum + (1 -  data["maximum_power_absorption"] / quantity_charging_battery)
                     
 
@@ -247,6 +246,7 @@ def start_genetic_algorithm(data, pop_size, n_gen, n_threads, sampling=None,verb
 
                         if data["estimate"]["consumo"].values[j] + (delta_production.iloc[j] + quantity_discharging_battery) > data["inverter_nominal_power"]:
                             penality_batt = penality_batt + (1 - data["inverter_nominal_power"]/(data["estimate"]["consumo"].values[j] + (delta_production.iloc[j] + quantity_discharging_battery)))
+                            penality_sum = penality_sum + (1 - data["inverter_nominal_power"]/(data["estimate"]["consumo"].values[j] + (delta_production.iloc[j] + quantity_discharging_battery)))
 
                         #Si controlla di non prendere più energia dalla batteria di quanto il contatore sia in grado di gestire
                         if(quantity_discharging_battery + delta_production.iloc[j] > data["maximum_power_absorption"]):
@@ -262,7 +262,8 @@ def start_genetic_algorithm(data, pop_size, n_gen, n_threads, sampling=None,verb
 
                         if data["estimate"]["consumo"].values[j] > data["inverter_nominal_power"]:
                             penality_batt = penality_batt + (1 - data["inverter_nominal_power"]/(data["estimate"]["consumo"].values[j]))
-                                                
+                            penality_sum = penality_sum * (1 - data["inverter_nominal_power"]/(data["estimate"]["consumo"].values[j]))                    
+                        
                         #Produco di meno di quanto consumo, compro il resto
                         sum = sum + (- (delta_production.iloc[j] + quantity_discharging_battery/data["battery_discharging_efficiency"]) *
                                      data["prices"]["prezzo"].iloc[j])*penality_sum
@@ -317,6 +318,21 @@ def start_genetic_algorithm(data, pop_size, n_gen, n_threads, sampling=None,verb
                 X[k] = dict
 
             return X
+    
+    class MyCallback(Callback):
+        def __init__(self):
+            super().__init__()
+            self.data["costs"] = []
+            self.data["battery_degradation"] = []
+            self.data["co2_emissions"] = []
+
+        def notify(self, algorithm):
+            # Prendi i migliori individui in ogni generazione (popolazione attuale)
+            F = algorithm.pop.get("F")
+            # Trova l'individuo con il miglior valore rispetto ai 3 obiettivi
+            self.data["costs"].append(np.min(np.linalg.norm(F, axis=0)))
+            self.data["battery_degradation"].append(np.min(np.linalg.norm(F, axis=0)))
+            self.data["co2_emissions"].append(np.min(np.linalg.norm(F, axis=0)))
 
 
     pool = ThreadPool(n_threads)
@@ -330,23 +346,42 @@ def start_genetic_algorithm(data, pop_size, n_gen, n_threads, sampling=None,verb
     else:
         algorithm = MixedVariableGA(pop_size, sampling=MySampling(), survival=RankAndCrowdingSurvival())
         
-
+    callback = MyCallback()
     res = minimize(problem,
                    algorithm,
                    termination= termination, 
                    seed= random.randint(0, 99999),
                    verbose=verbose,
                    output=MyOutput(),
-                   save_history=True)
+                   save_history=True,
+                   callback = callback)
     
     pool.close()
     pool.join()
 
+    # best_cost_per_generation = np.array(callback.data["costs"])
+    # best_battery_per_generation = np.array(callback.data["battery_degradation"])
+    # best_co2_per_generation = np.array(callback.data["co2_emissions"])
 
 
-    plot = Scatter()
-    plot.add(res.F, facecolor="none", edgecolor="red")
-    plot.show()
+    # generations = np.arange(1, len(best_cost_per_generation) + 1)
+    # plt.figure(figsize=(10, 6))
+    # plt.plot(generations, best_cost_per_generation, label="Cost")
+    # plt.plot(generations, best_battery_per_generation, label="Battery Degradation")
+    # plt.plot(generations, best_co2_per_generation, label="CO2 emissions")
+
+    
+    # plt.xlabel('Generazione')
+    # plt.ylabel('Miglior valore (fitness)')
+    # plt.title('Andamento del migliore risultato per generazione')
+    # plt.legend(loc='best')
+    # plt.grid(True)
+    # plt.show()
+
+
+    # plot = Scatter()
+    # plot.add(res.F, facecolor="none", edgecolor="red")
+    # plot.show()
 
     return res, res.history
 

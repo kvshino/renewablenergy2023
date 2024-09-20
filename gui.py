@@ -59,6 +59,12 @@ def init_gui(data,dictionary):
                 case "Grafico 11: Degradazione Batteria":
                     plot_degradation(dictionary)
                     plt.show()
+                case "Grafico 12: Produzione Fotovoltaica dopo l'efficienza dell'Inverter":
+                    plot_production_algo_inverter(dictionary)
+                    plt.show()
+                case "Grafico 13: Efficienza Inverter":
+                    plot_inverter_efficency(dictionary)
+                    plt.show()
                
 
 
@@ -212,8 +218,9 @@ def init_gui(data,dictionary):
     combo1 = ttk.Combobox(frame, values=["Grafico 1: Simulazione Completa", "Grafico 2: Prezzi dell'energia", "Grafico 3: Consumi",
                                         "Grafico 4: Produzione","Grafico 5: Costo", "Grafico 6: Scambio con la Rete",
                                         "Grafico 7: Energia in Batteria","Grafico 8: Percentuale Energia in Batteria",
-                                        "Grafico 9: Scambio Energia in Batteria","Grafico 10: Co2 immessa con Impianto"
-                                        ,"Grafico 11: Degradazione Batteria"])
+                                        "Grafico 9: Scambio Energia in Batteria","Grafico 10: Co2 immessa con Impianto",
+                                        "Grafico 11: Degradazione Batteria", "Grafico 12: Produzione Fotovoltaica dopo l'efficienza dell'Inverter",
+                                        "Grafico 13: Efficienza Inverter" ])
     
     combo1.current(0)  # Imposta il primo valore come selezionato di default
 

@@ -185,6 +185,8 @@ def plot_scambio_rete(dictionary):
     lista_quantity = dictionary["quantity_delta_battery_algo"]
     lista_load = dictionary_to_list(dictionary, "load")
     lista_production = dictionary_to_list(dictionary, "production")
+    for i in range(len(lista_production)):
+        lista_production[i] = lista_production[i] * dictionary["polynomial_inverter"](dictionary["ratio_algo"][i])
 
     quantity_delta_battery_dataframe = pd.DataFrame({'datetime': time_column, 'value': lista_quantity})
     expected_load_dataframe = pd.DataFrame({'datetime': time_column, 'value': lista_load})
@@ -253,6 +255,27 @@ def plot_degradation(dictionary):
     plot_graph(co2_plant_dataframe, "datetime", "value",
                 "Degradazione Impianto", "#577590", "Wha")
 
+def plot_production_algo_inverter(dictionary):
+    current_datetime = datetime.now() + timedelta(hours=1)
+    time_column =pd.date_range(start=current_datetime.replace(minute=0, second=0, microsecond=0), periods=24, freq='H')
+
+    lista = dictionary_to_list(dictionary, "production")
+    for i in range(len(lista)):
+        lista[i] = lista[i] * dictionary["polynomial_inverter"](dictionary["ratio_algo"][i])
+
+    expected_production_dataframe = pd.DataFrame({'datetime': time_column, 'value': lista})
+    plot_graph(expected_production_dataframe, "datetime", "value", "Stima Produzione PV con efficienza Inverter", "#F3722C", "Wh")
+
+def plot_inverter_efficency(dictionary):
+    current_datetime = datetime.now() + timedelta(hours=1)
+    time_column =pd.date_range(start=current_datetime.replace(minute=0, second=0, microsecond=0), periods=24, freq='H')
+
+    risultato = []
+    for i in range(len(dictionary["ratio_algo"])):
+        risultato.append(dictionary["polynomial_inverter"](dictionary["ratio_algo"][i]))
+
+    efficiency_dataframe = pd.DataFrame({'datetime': time_column, 'value': risultato})
+    plot_graph(efficiency_dataframe, "datetime", "value", "Efficienza Inverter", "#F3722C", "%")
 
 ########################################################################################
 #       NO BATTERY FUNCTION
