@@ -23,8 +23,8 @@ async def main():
 
         dict={}
         sampling=0
-        pop_size =80
-        gen = 30
+        pop_size =8
+        gen = 3
 
         data = setup(polynomial_inverter)
         prices = await get_future_day_italian_market(data)
@@ -42,7 +42,6 @@ async def main():
                 cycles = data["cycles"]
                 dict[f"battery_capacity{i}"] = data["battery_capacity"]
 
-       
             if i == 0:
                 data["res"], data["history"] = start_genetic_algorithm(data=data, pop_size=pop_size, n_gen=gen, n_threads=24, sampling=None, verbose=False)  #Checked OK
             else:
@@ -59,7 +58,7 @@ async def main():
             dict[f"production_not_rs{i}"] = data[f"production_not_rs"]["Difference"][0]
             dict[f"load{i}"] = data["estimate"]["consumo"][0]
             dict[f"production{i}"] = data["expected_production"]["production"][0]
-
+            
             prices = shift_ciclico(prices)
             production_not_rs = shift_ciclico(production_not_rs)
         
@@ -69,7 +68,6 @@ async def main():
 
             frozen_datetime.tick(delta=timedelta(hours=1))
 
-    dict["sum_algo"],dict["actual_percentage_algo"],dict["quantity_delta_battery_algo"],dict["co2_algo"] = evaluate(data, dict,cycles,polynomial_batt)
 
     dict["soc_min"] = data["soc_min"]
     dict["soc_max"] = data["soc_max"]
@@ -78,9 +76,20 @@ async def main():
     dict["battery_charging_efficiency"] = data["battery_charging_efficiency"]
     dict["battery_discharging_efficiency"] = data["battery_discharging_efficiency"]
 
-    dict["sum_noalgo"],dict["actual_battery_level_noalgo"],dict["quantity_battery_degradation_noalgo"],dict["co2_noalgo"],dict["power_to_grid_noalgo"] =simulation_no_algorithm(data,dict, cycles, polynomial_batt)
-    dict["sum_nobattery"],dict["co2_nobattery"],dict["power_to_grid_nobattery"]  = simulation_nobattery(data,dict)
+    dict["sum_algo"],dict["actual_percentage_algo"],dict["quantity_delta_battery_algo"],dict["co2_algo"] ,dict["ratio_algo"]= evaluate(data, dict,cycles,polynomial_batt)
+    dict["sum_noalgo"],dict["actual_battery_level_noalgo"],dict["quantity_battery_degradation_noalgo"],dict["co2_noalgo"],dict["power_to_grid_noalgo"] , dict["ratio_noalgo"]=simulation_no_algorithm(data,dict, cycles, polynomial_batt)
+    dict["sum_nobattery"],dict["co2_nobattery"],dict["power_to_grid_nobattery"], dict["ratio_nobattery"]  = simulation_nobattery(data,dict)
     dict["sum_noplant"],dict["co2_noplant"],dict["power_to_grid_noplant"]= simulation_noplant(data,dict)
+  
+    for i in range(24):
+        dict[f"difference_of_production_algo{i}"] = dict[f"production{i}"]*dict["ratio_algo"][i] - dict[f"load{i}"]
+        dict[f"difference_of_production_noalgo{i}"] = dict[f"production{i}"]*dict["ratio_noalgo"][i] - dict[f"load{i}"]
+        dict[f"difference_of_production_nobattery{i}"] = dict[f"production{i}"]*dict["ratio_nobattery"][i] - dict[f"load{i}"]
+        # print(dict[f"difference_of_production{i}"])
+        # print(dict[f"difference_of_production_algo{i}"])
+        # print(dict[f"difference_of_production_noalgo{i}"])
+        # print(dict[f"difference_of_production_nobattery{i}"])
+        # print("**"*10)
 
     init_gui(data,dict)
     print(datetime.now()-ora)

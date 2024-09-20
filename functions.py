@@ -267,3 +267,10 @@ def co2_quantity_emission(data,dictionary,to_buy,ora):
     +(quantity_bought_from_not_renewable_sources * data["gas_percentage"] * data["gas_pollution"])  
     +(quantity_bought_from_not_renewable_sources * data["oil_percentage"] * data["oil_pollution"])
     return co2_emissions
+
+def co2_quantity_emission_algo(data,perc,to_buy):
+    quantity_bought_from_not_renewable_sources =  -to_buy * perc
+    co2_emissions = (quantity_bought_from_not_renewable_sources * data["coal_percentage"] * data["coal_pollution"]) 
+    +(quantity_bought_from_not_renewable_sources * data["gas_percentage"] * data["gas_pollution"])  
+    +(quantity_bought_from_not_renewable_sources * data["oil_percentage"] * data["oil_pollution"])
+    return co2_emissions
