@@ -317,10 +317,10 @@ def start_genetic_algorithm(data, pop_size, n_gen, n_threads, sampling=None,verb
     
     if sampling is None:
         algorithm = MixedVariableGA(pop_size)
-        #algorithm = Optuna()
+        algorithm = Optuna()
     else:
         algorithm = MixedVariableGA(pop_size, sampling=MySampling())
-        #algorithm = Optuna(sampling = MySampling())
+        algorithm = Optuna(sampling = MySampling())
         
     res = minimize(problem,
                    algorithm,

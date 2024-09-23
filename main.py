@@ -23,8 +23,8 @@ async def main():
 
         dict={}
         sampling=0
-        pop_size =140
-        gen = 40
+        pop_size =80
+        gen = 60
 
         data = setup(polynomial_inverter)
         prices = await get_future_day_italian_market(data)
@@ -49,14 +49,14 @@ async def main():
             
             print("Fine Esecuzione Ora " + str(i+1))
 
-            # plt.figure("Convergenza dell'algoritmo", facecolor='#edf1ef')
-            # history = [(e.opt[0].F[0]) for e in data["history"]]
-            # plt.plot(history, color ="#577590")
-            # #plt.xticks(range(0, len(data["history"])+1))
-            # plt.title("Convergenza dell'algoritmo")
-            # plt.xlabel('Generazione')
-            # plt.ylabel('Score')
-            # plt.show()
+            plt.figure("Convergenza dell'algoritmo", facecolor='#edf1ef')
+            history = [(e.opt[0].F[0]) for e in data["history"]]
+            plt.plot(history, color ="#577590")
+            plt.xticks(range(0, len(data["history"])+1))
+            plt.title("Convergenza dell'algoritmo")
+            plt.xlabel('Generazione')
+            plt.ylabel('Score')
+            plt.show()
             # cc
 
             dict[f"b{i}"]=data["res"].X["b0"]
@@ -67,8 +67,8 @@ async def main():
             dict[f"load{i}"] = data["estimate"]["consumo"][0]
             dict[f"production{i}"] = data["expected_production"]["production"][0]
             
-            prices = shift_ciclico(prices)
-            production_not_rs = shift_ciclico(production_not_rs)
+            prices = shift_ciclico(prices, "prezzo")
+            production_not_rs = shift_ciclico(production_not_rs, "Difference")
         
             all_populations = [a.pop for a in data["history"]]
             sampling = shifting_individuals(all_populations[-1])
