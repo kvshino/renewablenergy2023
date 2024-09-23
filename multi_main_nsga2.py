@@ -28,20 +28,19 @@ async def main():
 
         sampling=0
 
-        pop_size=1
-        n_gen=1
+        pop_size=120
+        n_gen=30
 
         data = setup(polynomial_inverter)
         prices = await get_future_day_italian_market(data)
         production_not_rs = forecast_percentage_production_from_not_renewable_sources(api_key=data["api_key"], zona=data["entsoe_timezone"])
-        
+
         for i in range(24):
 
             data = setup(polynomial_inverter)
             data["prices"] = prices 
             data["production_not_rs"] = production_not_rs
-            data["polynomial"] = polynomial_batt   
-              
+            data["polynomial"] = polynomial_batt
 
             if(i==0):
                 cycles = data["cycles"]
@@ -49,10 +48,10 @@ async def main():
                 dictionary[f"battery_capacity{i}"] = data["battery_capacity"]
 
             if i == 0:
-                data["res"], data["history"] = start_genetic_algorithm(data=data, pop_size=pop_size, n_gen=n_gen, n_threads=24, sampling=None, verbose=False) 
+                data["res"], data["history"] = start_nsga2_genetic_algorithm(data=data, pop_size=pop_size, n_gen=n_gen, n_threads=24, sampling=None, verbose=False) 
             else:
-                data["res"], data["history"] = start_genetic_algorithm(data=data, pop_size=pop_size, n_gen=n_gen, n_threads=24, sampling=sampling, verbose=False)
-            
+                data["res"], data["history"] = start_nsga2_genetic_algorithm(data=data, pop_size=pop_size, n_gen=n_gen, n_threads=24, sampling=sampling, verbose=False)
+
             print("Fine Esecuzione Ora " + str(i+1))
 
             F=data["res"].F
@@ -63,8 +62,8 @@ async def main():
             best_index = np.argmin(distances)
 
 
-            dictionary[f"b{i}"]=data["res"].X[best_index]["b0"]
-            dictionary[f"i{i}"]=data["res"].X[best_index]["i0"]
+            dictionary[f"b{i}"]=round(data["res"].X[best_index][0])
+            dictionary[f"i{i}"]=round(data["res"].X[best_index][1])
 
 
             dictionary[f"difference_of_production{i}"] = data["difference_of_production"][0]  
@@ -73,11 +72,10 @@ async def main():
             dictionary[f"load{i}"] = data["estimate"]["consumo"][0]
             dictionary[f"production{i}"] = data["expected_production"]["production"][0]
 
-            prices = shift_ciclico(prices, "prezzo")
-            production_not_rs = shift_ciclico(production_not_rs, "Difference")
-            
+            prices = shift_ciclico(prices)
+            production_not_rs = shift_ciclico(production_not_rs)
             all_populations = [a.pop for a in data["history"]]
-            sampling = shifting_individuals(all_populations[-1])
+            sampling = shifting_nsga2_individuals(all_populations[-1])
 
             dictionary[f"battery_capacity{i+1}"] = update_battery_values(data, "csv/socs.csv", dictionary[f"b{i}"], dictionary[f"i{i}"], polynomial_batt)
 
@@ -98,9 +96,6 @@ async def main():
     dictionary["sum_noplant"],dictionary["co2_noplant"],dictionary["power_to_grid_noplant"]= simulation_noplant(data,dictionary)    
 
     
-
-
-
     init_gui(data,dictionary)
     print(datetime.now()-ora)
 

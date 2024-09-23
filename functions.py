@@ -88,6 +88,7 @@ def forecast_percentage_production_from_not_renewable_sources(api_key, zona="IT_
         #print("GIORNO DOPO RENEWABLE TROVATO")
         # GIORNO DOPO RENEWABLE TROVATO
     except:
+        ahead.loc[ahead["Ora"] < (datetime.now().hour+1)%25, 'Sum'] = ahead['Sum'] + ahead['Sum'] * random.uniform(-0.10, 0.10)
         final= pd.concat([ahead[ahead["Ora"] >= (datetime.now().hour+1)%25], ahead[ahead["Ora"] < (datetime.now().hour+1)%25]], axis=0)
         # GIORNO DOPO RENEWABLE NON TROVATO
         #print("GIORNO DOPO RENEWABLE NON TROVATO")
@@ -101,6 +102,7 @@ def forecast_percentage_production_from_not_renewable_sources(api_key, zona="IT_
         # GIORNO DOPO PRODUZIONE TOTALE TROVATA 
         #print("GIORNO DOPO PRODUZIONE TOTALE TROVATA")
     except:
+        total_today.loc[total_today["Ora"] < (datetime.now().hour+1)%25, 'Generation'] = total_today['Generation'] + total_today['Generation'] * random.uniform(-0.10, 0.10)
         final_total = pd.concat([total_today[total_today["Ora"] >= (datetime.now().hour+1)%25], total_today[total_today["Ora"] < (datetime.now().hour+1)%25]], axis=0)
         # GIORNO DOPO PRODUZIONE TOTALE NON TROVATA
         #print("GIORNO DOPO PRODUZIONE TOTALE NON TROVATA")
@@ -125,12 +127,13 @@ def dictionary_to_list(dictionary, string, number=24):
     return lista
 
 
-def shift_ciclico(df):
+def shift_ciclico(df, stringa):
     # Shift ciclico di una colonna
     app = df.iloc[0].copy()
     for i in range(len(df)):
         df.iloc[i] = df.iloc[(i+1) % len(df)] 
 
+    app[stringa] = app[stringa] + (random.uniform(-0.10, 0.10) * app[stringa])
     df.iloc[len(df)-1] = app
 
     return df

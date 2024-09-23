@@ -2,7 +2,7 @@ from datetime import datetime, timedelta
 
 import pandas as pd
 from mercati_energetici import MercatiElettrici
-
+import random
 #import sys
 #from aiohttp.client_exceptions import ClientConnectorError
 
@@ -128,6 +128,9 @@ async def get_future_day_italian_market(data, zona = 'CSUD') -> pd.core.frame.Da
 
         if flag == 0:
             #NESSUN MERCATO DI DOMANI DISPONIBILE
+            price_filtered = price_filtered.reset_index(drop=True)
+
+            price_filtered.loc[price_filtered["ora"] < (datetime.now().hour+1)%25, 'prezzo'] = price_filtered['prezzo'] + price_filtered['prezzo'] * random.uniform(-0.10, 0.10)
             final= pd.concat([price_filtered[price_filtered["ora"] >= (datetime.now().hour+1)%25],price_filtered[price_filtered["ora"] < (datetime.now().hour+1)%25]], axis=0)
         else:
             price_tomorrow_df = pd.DataFrame(price_tomorrow)
