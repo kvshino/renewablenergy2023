@@ -23,8 +23,8 @@ async def main():
 
         dict={}
         sampling=0
-        pop_size =80
-        gen = 60
+        pop_size =2
+        gen = 2
 
         data = setup(polynomial_inverter)
         prices = await get_future_day_italian_market(data)
@@ -49,14 +49,14 @@ async def main():
             
             print("Fine Esecuzione Ora " + str(i+1))
 
-            plt.figure("Convergenza dell'algoritmo", facecolor='#edf1ef')
-            history = [(e.opt[0].F[0]) for e in data["history"]]
-            plt.plot(history, color ="#577590")
-            plt.xticks(range(0, len(data["history"])+1))
-            plt.title("Convergenza dell'algoritmo")
-            plt.xlabel('Generazione')
-            plt.ylabel('Score')
-            plt.show()
+            #plt.figure("Convergenza dell'algoritmo", facecolor='#edf1ef')
+            #history = [(e.opt[0].F[0]) for e in data["history"]]
+            #plt.plot(history, color ="#577590")
+            #plt.xticks(range(0, len(data["history"])+1))
+            #plt.title("Convergenza dell'algoritmo")
+            #plt.xlabel('Generazione')
+            #plt.ylabel('Score')
+            #plt.show()
             # cc
 
             dict[f"b{i}"]=data["res"].X["b0"]

@@ -4,7 +4,7 @@ from functions import *
 import numpy as np
 from multiprocessing.pool import ThreadPool
 from pymoo.core.problem import StarmapParallelization
-from pymoo.core.mixed import MixedVariableGA
+from pymoo.core.mixed import MixedVariableGA, MixedVariableMating
 from pymoo.core.problem import ElementwiseProblem
 from pymoo.core.variable import Binary, Integer
 from pymoo.optimize import minimize
@@ -13,7 +13,12 @@ from pymoo.util.display.column import Column
 from pymoo.termination.default import DefaultMultiObjectiveTermination
 from pymoo.core.sampling import Sampling
 from pymoo.algorithms.soo.nonconvex.optuna import Optuna
-
+from pymoo.operators.selection.tournament import TournamentSelection
+from pymoo.core.crossover import Crossover
+from pymoo.algorithms.soo.nonconvex.ga import FitnessSurvival, comp_by_cv_and_fitness
+from pymoo.operators.mutation.bitflip import BFM
+from pymoo.operators.repair.rounding import RoundingRepair
+from pymoo.operators.mutation.pm import PM
 
 
 
@@ -314,13 +319,24 @@ def start_genetic_algorithm(data, pop_size, n_gen, n_threads, sampling=None,verb
     problem = MixedVariableProblem(elementwise_runner=runner)
 
     termination= DefaultMultiObjectiveTermination(xtol=0.001, n_max_gen=n_gen, n_skip=1, period=20)
+
+    survival = FitnessSurvival() 
+    selection = TournamentSelection(func_comp=comp_by_cv_and_fitness)
+    
+    crossover = {
+        Binary: CustomFourPointCrossover(),
+        Integer: CustomFourPointCrossover()
+    } 
+
+    mutation = {
+        Binary: BFM(),
+        Integer: PM(vtype=float, repair=RoundingRepair(), prob=0.9, eta=20, at_least_once=False),
+    }
     
     if sampling is None:
-        algorithm = MixedVariableGA(pop_size)
-        algorithm = Optuna()
+        algorithm = MixedVariableGA(pop_size, survival=survival, mating=MixedVariableMating(selection=selection, crossover=crossover, mutation=mutation, eliminate_duplicates=None))
     else:
-        algorithm = MixedVariableGA(pop_size, sampling=MySampling())
-        algorithm = Optuna(sampling = MySampling())
+        algorithm = MixedVariableGA(pop_size, sampling=MySampling(), survival=survival, mating=MixedVariableMating(selection=selection, crossover=crossover, mutation=mutation, eliminate_duplicates=None))
         
     res = minimize(problem,
                    algorithm,
@@ -346,3 +362,31 @@ def shifting_individuals(population):
         individuo.X["i23"] = random.randint(0, 100)
     
     return population
+
+
+class CustomFourPointCrossover(Crossover):
+
+    def __init__(self):
+        super().__init__(2, 2)  # 2 genitori, 2 figli
+
+    def _do(self, problem, X, **kwargs):
+
+        offspring = np.full_like(X.copy(), 0)
+
+        for j, value in enumerate(X[0]):
+            for i in range(6):
+                offspring[0, j, i] = value[i]
+                offspring[1, j, i+6] = value[i+6]
+                offspring[0, j, i+12] = value[i+12]
+                offspring[1, j, i+18] = value[i+18]
+
+
+        for j, value in enumerate(X[1]):
+            for i in range(6):
+                offspring[1, j, i] = value[i]
+                offspring[0, j, i+6] = value[i+6]
+                offspring[1, j, i+12] = value[i+12]
+                offspring[0, j, i+18] = value[i+18]
+
+
+        return offspring

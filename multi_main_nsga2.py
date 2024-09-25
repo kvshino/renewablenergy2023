@@ -3,6 +3,7 @@ from functions import *
 import warnings
 from update_costs import *
 from multi_genetic import *
+from multi_genetic_nsga import *
 from consumptions import *
 from plot import *
 from gui import *
@@ -28,8 +29,8 @@ async def main():
 
         sampling=0
 
-        pop_size=120
-        n_gen=30
+        pop_size=2
+        n_gen=2
 
         data = setup(polynomial_inverter)
         prices = await get_future_day_italian_market(data)
@@ -72,8 +73,8 @@ async def main():
             dictionary[f"load{i}"] = data["estimate"]["consumo"][0]
             dictionary[f"production{i}"] = data["expected_production"]["production"][0]
 
-            prices = shift_ciclico(prices)
-            production_not_rs = shift_ciclico(production_not_rs)
+            prices = shift_ciclico(prices, "prezzo")
+            production_not_rs = shift_ciclico(production_not_rs, "Difference")
             all_populations = [a.pop for a in data["history"]]
             sampling = shifting_nsga2_individuals(all_populations[-1])
 
