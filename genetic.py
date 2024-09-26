@@ -1,6 +1,4 @@
 from functions import *
-
-
 import numpy as np
 from multiprocessing.pool import ThreadPool
 from pymoo.core.problem import StarmapParallelization
@@ -12,7 +10,6 @@ from pymoo.util.display.output import Output
 from pymoo.util.display.column import Column
 from pymoo.termination.default import DefaultMultiObjectiveTermination
 from pymoo.core.sampling import Sampling
-from pymoo.algorithms.soo.nonconvex.optuna import Optuna
 from pymoo.operators.selection.tournament import TournamentSelection
 from pymoo.core.crossover import Crossover
 from pymoo.algorithms.soo.nonconvex.ga import FitnessSurvival, comp_by_cv_and_fitness
@@ -115,7 +112,7 @@ def evaluate(data, variables_values,cycles,polynomial_batt):
     return sum[1:], actual_percentage, quantity_delta_battery, co2_emissions[1:],ratio_list
 
 
-def start_genetic_algorithm(data, pop_size, n_gen, n_threads, sampling=None,verbose=False):
+def start_genetic_algorithm(data, pop_size, n_gen, n_threads,prob_mut_bit =0.5,prob_mut_pm=0.9, sampling=None,verbose=False):
     class MixedVariableProblem(ElementwiseProblem):
 
         def __init__(self, n_couples=24, **kwargs):
@@ -329,8 +326,8 @@ def start_genetic_algorithm(data, pop_size, n_gen, n_threads, sampling=None,verb
     } 
 
     mutation = {
-        Binary: BFM(),
-        Integer: PM(vtype=float, repair=RoundingRepair(), prob=0.9, eta=20, at_least_once=False),
+        Binary: BFM(prob_var=prob_mut_bit),
+        Integer: PM(vtype=float, repair=RoundingRepair(), prob_var=prob_mut_pm, eta=20, at_least_once=False),
     }
     
     if sampling is None:

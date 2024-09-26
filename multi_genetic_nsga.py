@@ -1,34 +1,14 @@
 from functions import *
-
-
 import numpy as np
 from multiprocessing.pool import ThreadPool
 from pymoo.core.problem import StarmapParallelization
-from pymoo.core.mixed import MixedVariableGA, MixedVariableMating
 from pymoo.core.problem import ElementwiseProblem
-from pymoo.core.variable import Binary, Integer
 from pymoo.optimize import minimize
-from pymoo.util.display.output import Output
-from pymoo.util.display.column import Column
-
 from pymoo.termination.default import DefaultMultiObjectiveTermination
-from pymoo.algorithms.moo.nsga2 import RankAndCrowdingSurvival
-
 from pymoo.core.sampling import Sampling
-
-from pymoo.visualization.scatter import Scatter
-import matplotlib.pyplot as plt
 from pymoo.problems import get_problem
-
 from pymoo.core.callback import Callback
 from pymoo.algorithms.moo.nsga2 import NSGA2, binary_tournament
-from pymoo.operators.crossover.ux import UX
-from pymoo.operators.crossover.pntx import SinglePointCrossover
-
-from pymoo.operators.mutation.bitflip import BFM
-from pymoo.operators.repair.rounding import RoundingRepair
-from pymoo.operators.mutation.pm import PM
-from pymoo.operators.selection.rnd import RandomSelection
 from pymoo.operators.selection.tournament import TournamentSelection
 from pymoo.operators.survival.rank_and_crowding import RankAndCrowding
 from pymoo.core.crossover import Crossover
@@ -38,7 +18,7 @@ from pymoo.operators.repair.bounds_repair import repair_clamp
 
 
 
-def start_nsga2_genetic_algorithm(data, pop_size, n_gen, n_threads, sampling=None,verbose=False):
+def start_nsga2_genetic_algorithm(data, pop_size, n_gen, n_threads,prob_mut_int = 0.8,prob_mut_bit = 0.5,prob_cross=0.5, sampling=None,verbose=False):
     class MixedVariableProblem(ElementwiseProblem):
 
         def __init__(self, n_couples=24, **kwargs):
@@ -239,8 +219,8 @@ def start_nsga2_genetic_algorithm(data, pop_size, n_gen, n_threads, sampling=Non
 
     survival=RankAndCrowding()
     selection=TournamentSelection(func_comp=binary_tournament)
-    crossover = SimulatedBinaryCrossoverModified()
-    mutation = CustomGaussianMutation(prob=0.1, eta=20)
+    crossover = SimulatedBinaryCrossoverModified(prob_var=prob_cross)
+    mutation = CustomGaussianMutation(prob_mut_bit = prob_mut_bit , prob_mut_int = prob_mut_int, eta=5)
 
     if sampling is None:
         algorithm = NSGA2(pop_size, survival=survival, selection=selection, crossover=crossover, mutation=mutation)
@@ -363,7 +343,7 @@ class SimulatedBinaryCrossoverModified(Crossover):
 
     def __init__(self,
                  prob_var=0.5,
-                 eta=15,
+                 eta=20,
                  prob_exch=1.0,
                  prob_bin=0.5,
                  n_offsprings=2,
@@ -400,19 +380,21 @@ class SBXModified(SimulatedBinaryCrossoverModified):
 
 
 class CustomGaussianMutation(Mutation):
-    def __init__(self, prob=0.5, eta=20):
+    def __init__(self, prob_mut_int=0.5,prob_mut_bit= 0.8, eta=20):
         super().__init__()
-        self.prob = prob
+        self.prob_int = prob_mut_int
+        self.prob_bit = prob_mut_bit
+
         self.eta = max(min(eta, 30), 1)
     
     def _do(self, problem, X, **kwargs):
         # X ha dimensione (pop_size, n_var)
         for i in range(X.shape[0]):
             for j in range(0, X.shape[1], 2):
-                if np.random.rand() < self.prob:
+                if np.random.rand() < self.prob_bit:
                     X[i, j] = 1.0 if round(X[i, j]) == 0 else 0.0
                 
-                if np.random.rand() < self.prob:
+                if np.random.rand() < self.prob_int:
                     X[i, j+1] += np.random.normal(-10*(1/self.eta), 10*(1/self.eta))
                     X[i, j+1] = max(min(X[i, j+1], problem.xu[j+1]), problem.xl[j+1])
                     # Arrotondamento se necessario

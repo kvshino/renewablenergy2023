@@ -1,12 +1,8 @@
 from functions import *
-
-
 import numpy as np
 from multiprocessing.pool import ThreadPool
 from pymoo.core.problem import StarmapParallelization
-from pymoo.core.mixed import MixedVariableGA
 from pymoo.core.problem import ElementwiseProblem
-from pymoo.core.variable import Binary, Integer
 from pymoo.optimize import minimize
 from pymoo.util.display.output import Output
 from pymoo.util.display.column import Column
@@ -17,15 +13,12 @@ from pymoo.core.crossover import Crossover
 from pymoo.core.variable import Real, get
 from pymoo.operators.repair.bounds_repair import repair_clamp
 from pymoo.algorithms.soo.nonconvex.ga import FitnessSurvival, comp_by_cv_and_fitness
-from pymoo.operators.mutation.pm import PM
-from pymoo.operators.selection.tournament import compare, TournamentSelection
+from pymoo.operators.selection.tournament import  TournamentSelection
 from pymoo.core.mutation import Mutation
-from pymoo.operators.mutation.bitflip import BFM
-from pymoo.operators.repair.rounding import RoundingRepair
-from pymoo.operators.mutation.pm import PM
 
 
-def start_GA_genetic_algorithm(data, pop_size, n_gen, n_threads, sampling=None,verbose=False):
+
+def start_GA_genetic_algorithm(data, pop_size, n_gen, n_threads,prob_cross = 0.5,prob_mut_bit = 0.5,prob_mut_int = 0.8, sampling=None,verbose=False):
     class MixedVariableProblem(ElementwiseProblem):
 
         def __init__(self, **kwargs):
@@ -234,8 +227,8 @@ def start_GA_genetic_algorithm(data, pop_size, n_gen, n_threads, sampling=None,v
 
     survival = FitnessSurvival()
     selection=TournamentSelection(func_comp=comp_by_cv_and_fitness)
-    crossover = SimulatedBinaryCrossoverModified()
-    mutation=CustomGaussianMutation(prob=0.1, eta=20)
+    crossover = SimulatedBinaryCrossoverModified(prob_var=prob_cross)
+    mutation=CustomGaussianMutation(prob_mut_bit = prob_mut_bit , prob_mut_int = prob_mut_int, eta=5)
 
     termination= DefaultMultiObjectiveTermination(xtol=0.001, n_max_gen=n_gen, n_skip=1, period=20)
     
@@ -243,7 +236,6 @@ def start_GA_genetic_algorithm(data, pop_size, n_gen, n_threads, sampling=None,v
         algorithm = GA(pop_size=pop_size, survival=survival, selection=selection, crossover=crossover, mutation=mutation)
     else:
         algorithm = GA(pop_size=pop_size, sampling=MySampling(), survival=survival, selection=selection, crossover=crossover, mutation=mutation)
-        #algorithm = Optuna(sampling = MySampling())
         
     res = minimize(problem,
                    algorithm,
@@ -307,7 +299,7 @@ def sbx_crossover(x1, x2, eta):
 
     return c1, c2
 
-def cross_sbx_modified(X, xl, xu, eta, prob_var, prob_bin, eps=1.0e-14):
+def cross_sbx_modified(X, xl, xu, eta, prob_var, prob_bin):
     """ SBX crossover modificato per coppie (signo, valore) """
     
     n_parents, n_matings, n_var = X.shape
@@ -359,7 +351,7 @@ class SimulatedBinaryCrossoverModified(Crossover):
 
     def __init__(self,
                  prob_var=0.5,
-                 eta=15,
+                 eta=20,
                  prob_exch=1.0,
                  prob_bin=0.5,
                  n_offsprings=2,
@@ -399,19 +391,20 @@ class SBXModified(SimulatedBinaryCrossoverModified):
 
 
 class CustomGaussianMutation(Mutation):
-    def __init__(self, prob=0.5, eta=20):
+    def __init__(self, prob_mut_int=0.8,prob_mut_bit = 0.5, eta=5):
         super().__init__()
-        self.prob = prob
+        self.prob_int = prob_mut_int
+        self.prob_bit =prob_mut_bit
         self.eta = max(min(eta, 30), 1)
     
     def _do(self, problem, X, **kwargs):
         # X ha dimensione (pop_size, n_var)
         for i in range(X.shape[0]):
             for j in range(0, X.shape[1], 2):
-                if np.random.rand() < self.prob:
+                if np.random.rand() < self.prob_bit:
                     X[i, j] = 1.0 if round(X[i, j]) == 0 else 0.0
                 
-                if np.random.rand() < self.prob:
+                if np.random.rand() < self.prob_int:
                     X[i, j+1] += np.random.normal(-10*(1/self.eta), 10*(1/self.eta))
                     X[i, j+1] = max(min(X[i, j+1], problem.xu[j+1]), problem.xl[j+1])
                     # Arrotondamento se necessario

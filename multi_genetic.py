@@ -1,6 +1,4 @@
 from functions import *
-
-
 import numpy as np
 from multiprocessing.pool import ThreadPool
 from pymoo.core.problem import StarmapParallelization
@@ -8,32 +6,18 @@ from pymoo.core.mixed import MixedVariableGA, MixedVariableMating
 from pymoo.core.problem import ElementwiseProblem
 from pymoo.core.variable import Binary, Integer
 from pymoo.optimize import minimize
-from pymoo.util.display.output import Output
-from pymoo.util.display.column import Column
-
 from pymoo.termination.default import DefaultMultiObjectiveTermination
 from pymoo.algorithms.moo.nsga2 import RankAndCrowdingSurvival
 
 from pymoo.core.sampling import Sampling
-
-from pymoo.visualization.scatter import Scatter
-import matplotlib.pyplot as plt
 from pymoo.problems import get_problem
 
 from pymoo.core.callback import Callback
-from pymoo.algorithms.moo.nsga2 import NSGA2, binary_tournament
-from pymoo.operators.crossover.sbx import SimulatedBinaryCrossover
-from pymoo.operators.crossover.ux import UX
-
 from pymoo.operators.mutation.bitflip import BFM
 from pymoo.operators.repair.rounding import RoundingRepair
 from pymoo.operators.mutation.pm import PM
 from pymoo.operators.selection.rnd import RandomSelection
-from pymoo.operators.selection.tournament import TournamentSelection
-from pymoo.operators.survival.rank_and_crowding import RankAndCrowding
 from pymoo.core.crossover import Crossover
-from pymoo.algorithms.moo.nsga2 import binary_tournament
-from pymoo.algorithms.soo.nonconvex.ga import  comp_by_cv_and_fitness
 
 
 
@@ -131,7 +115,7 @@ def evaluate(data, variables_values, cycles, polynomial):
     return sum[1:], actual_percentage, quantity_delta_battery, co2_emissions[1:], ratio_list
 
 
-def start_genetic_algorithm(data, pop_size, n_gen, n_threads, sampling=None,verbose=False):
+def start_genetic_algorithm(data, pop_size, n_gen, n_threads,prob_mut_bit = 0.5,prob_mut_int=0.9, sampling=None,verbose=False):
     class MixedVariableProblem(ElementwiseProblem):
 
         def __init__(self, n_couples=24, **kwargs):
@@ -348,8 +332,8 @@ def start_genetic_algorithm(data, pop_size, n_gen, n_threads, sampling=None,verb
     } 
 
     mutation = {
-        Binary: BFM(),
-        Integer: PM(vtype=float, repair=RoundingRepair(), prob=0.9, eta=20, at_least_once=False),
+        Binary: BFM(prob_var=prob_mut_bit),
+        Integer: PM(vtype=float, repair=RoundingRepair(), prob_var=prob_mut_int, eta=20, at_least_once=False),
     }
 
     if sampling is None:
