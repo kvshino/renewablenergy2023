@@ -28,8 +28,8 @@ async def main():
 
         sampling=0
 
-        pop_size=2
-        n_gen=2
+        pop_size= 500
+        n_gen= 200
 
         data = setup(polynomial_inverter)
         prices = await get_future_day_italian_market(data)
@@ -59,9 +59,9 @@ async def main():
             F_min = np.min(F, axis=0)
             F_max = np.max(F, axis=0)
             F_norm = (F - F_min) / (F_max - F_min)
+            F_norm[:, 2] *= 1.5
             distances = np.linalg.norm(F_norm, axis=1)
             best_index = np.argmin(distances)
-
 
             dictionary[f"b{i}"]=data["res"].X[best_index]["b0"]
             dictionary[f"i{i}"]=data["res"].X[best_index]["i0"]
