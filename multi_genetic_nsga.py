@@ -10,12 +10,16 @@ from pymoo.problems import get_problem
 from pymoo.core.callback import Callback
 from pymoo.algorithms.moo.nsga2 import NSGA2, binary_tournament
 from pymoo.operators.selection.tournament import TournamentSelection
-from pymoo.operators.survival.rank_and_crowding import RankAndCrowding
+from pymoo.algorithms.moo.nsga2 import RankAndCrowdingSurvival
 from pymoo.core.crossover import Crossover
 from pymoo.core.mutation import Mutation
 from pymoo.core.variable import Real, get
 from pymoo.operators.repair.bounds_repair import repair_clamp
 
+from pymoo.core.selection import Selection
+from pymoo.util.misc import random_permuations
+
+import math
 
 
 def start_nsga2_genetic_algorithm(data, pop_size, n_gen, n_threads, prob_mut_bit = 0.5, prob_mut_int = 0.8, prob_cross=0.5, sampling=None,verbose=False):
@@ -217,8 +221,8 @@ def start_nsga2_genetic_algorithm(data, pop_size, n_gen, n_threads, prob_mut_bit
 
     termination= DefaultMultiObjectiveTermination(xtol=0.001, n_max_gen=n_gen, n_skip=1, period=30)
 
-    survival=RankAndCrowding()
-    selection=TournamentSelection(func_comp=binary_tournament)
+    survival=RankAndCrowdingSurvival()
+    selection=CustomTournamentSelection(func_comp=binary_tournament)
     crossover = SimulatedBinaryCrossoverModified(prob_var=prob_cross)
     mutation = CustomGaussianMutation(prob_mut_bit = prob_mut_bit , prob_mut_int = prob_mut_int, eta=5)
 
@@ -403,3 +407,49 @@ class CustomGaussianMutation(Mutation):
                     X[i, j+1] = np.round(X[i, j+1])
         
         return X
+
+
+class CustomTournamentSelection(Selection):
+    """
+      The Tournament selection is used to simulated a tournament between individuals. The pressure balances
+      greedy the genetic algorithm will be.
+    """
+
+    def __init__(self, func_comp=None, pressure=2, **kwargs):
+        """
+
+        Parameters
+        ----------
+        func_comp: func
+            The function to compare two individuals. It has the shape: comp(pop, indices) and returns the winner.
+            If the function is None it is assumed the population is sorted by a criterium and only indices are compared.
+
+        pressure: int
+            The selection pressure to bie applied. Default it is a binary tournament.
+        """
+
+        super().__init__(**kwargs)
+
+        # selection pressure to be applied
+        self.pressure = pressure
+
+        self.func_comp = func_comp
+        if self.func_comp is None:
+            raise Exception("Please provide the comparing function for the tournament selection!")
+
+    def _do(self, _, pop, n_select, n_parents=1, **kwargs):
+        # number of random individuals needed
+        n_random = n_select * n_parents * self.pressure
+
+        # number of permutations needed
+        n_perms = math.ceil(n_random / round(len(pop)/2))
+
+        # get random permutations and reshape them
+        P = random_permuations(n_perms, round(len(pop)/2))[:n_random]
+        P = np.reshape(P, (n_select * n_parents, self.pressure))
+
+        # compare using tournament function
+        S = self.func_comp(pop, P, **kwargs)
+
+        
+        return np.reshape(S, (n_select, n_parents))

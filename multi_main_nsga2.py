@@ -29,8 +29,8 @@ async def main():
 
         sampling=0
 
-        pop_size=8
-        n_gen=2
+        pop_size=100
+        n_gen=20
 
         data = setup(polynomial_inverter)
         prices = await get_future_day_italian_market(data)
@@ -49,9 +49,9 @@ async def main():
                 dictionary[f"battery_capacity{i}"] = data["battery_capacity"]
 
             if i == 0:
-                data["res"], data["history"] = start_nsga2_genetic_algorithm(data=data, pop_size=pop_size, n_gen=n_gen, n_threads=24, sampling=None, verbose=False) 
+                data["res"], data["history"] = start_nsga2_genetic_algorithm(data=data, pop_size=pop_size, n_gen=n_gen, n_threads=12, sampling=None, verbose=False) 
             else:
-                data["res"], data["history"] = start_nsga2_genetic_algorithm(data=data, pop_size=pop_size, n_gen=n_gen, n_threads=24, sampling=sampling, verbose=False)
+                data["res"], data["history"] = start_nsga2_genetic_algorithm(data=data, pop_size=pop_size, n_gen=n_gen, n_threads=12, sampling=sampling, verbose=False)
 
             print("Fine Esecuzione Ora " + str(i+1))
 

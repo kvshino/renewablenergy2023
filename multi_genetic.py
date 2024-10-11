@@ -7,7 +7,7 @@ from pymoo.core.problem import ElementwiseProblem
 from pymoo.core.variable import Binary, Integer
 from pymoo.optimize import minimize
 from pymoo.termination.default import DefaultMultiObjectiveTermination
-from pymoo.algorithms.moo.nsga2 import RankAndCrowdingSurvival
+from pymoo.operators.survival.rank_and_crowding import RankAndCrowding
 
 from pymoo.core.sampling import Sampling
 from pymoo.problems import get_problem
@@ -19,6 +19,9 @@ from pymoo.operators.mutation.pm import PM
 from pymoo.operators.selection.rnd import RandomSelection
 from pymoo.core.crossover import Crossover
 
+from pymoo.core.selection import Selection
+from pymoo.util.misc import random_permuations
+import math
 
 
 def evaluate(data, variables_values, cycles, polynomial):
@@ -322,8 +325,8 @@ def start_genetic_algorithm(data, pop_size, n_gen, n_threads, prob_mut_bit=0.5, 
 
     termination= DefaultMultiObjectiveTermination(xtol=0.001, n_max_gen=n_gen, n_skip=1, period=30)
 
-    survival = RankAndCrowdingSurvival() 
-    selection = RandomSelection()
+    survival = RankAndCrowding() 
+    selection = CustomRandomSelection()
 
     
     crossover = {
@@ -398,3 +401,18 @@ class CustomFourPointCrossover(Crossover):
 
 
         return offspring
+
+
+class CustomRandomSelection(Selection):
+
+    def _do(self, _, pop, n_select, n_parents, **kwargs):
+        # number of random individuals needed
+        n_random = n_select * n_parents
+
+        # number of permutations needed
+        n_perms = math.ceil(n_random / round(len(pop)/2))
+
+        # get random permutations and reshape them
+        P = random_permuations(n_perms, round(len(pop)/2))[:n_random]
+
+        return np.reshape(P, (n_select, n_parents))
