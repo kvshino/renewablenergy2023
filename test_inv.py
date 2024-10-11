@@ -6,8 +6,8 @@ from scipy.optimize import curve_fit
 
 def inverter_function():
     # Punti di dati dalla curva
-    x = np.array([0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0])
-    y = np.array([86.5, 91.5, 94.5, 96.0, 96.6, 96.8, 97.0, 97.0, 97.1, 97.1, 97.1]) / 100
+    x = np.array([0.05, 0.1, 0.2, 0.25, 0.3, 0.5, 0.75, 1.0])
+    y = np.array([91, 94.5, 96.3, 96.6, 96.8, 97.1, 97.1, 97.0]) / 100
     
     coeff = np.polyfit(x, y, deg=4)
     polynomial = np.poly1d(coeff)

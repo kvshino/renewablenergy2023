@@ -24,20 +24,19 @@ async def main():
 
         dict={}
         sampling=0
-        pop_size =4
-        gen = 2
+        pop_size =150
+        gen = 40
 
         data = setup(polynomial_inverter)
         prices = await get_future_day_italian_market(data)
         production_not_rs = forecast_percentage_production_from_not_renewable_sources(api_key=data["api_key"], zona=data["entsoe_timezone"])
-
         for i in range(24):
 
             data = setup(polynomial_inverter)
             data["prices"] = prices 
             data["production_not_rs"] = production_not_rs  
             data["polynomial"] = polynomial_batt
-            
+
             if(i==0):
                 dict["first_battery_value"]=data["socs"]
                 cycles = data["cycles"]
@@ -62,6 +61,8 @@ async def main():
 
             dict[f"b{i}"]=data["res"].X[0]
             dict[f"i{i}"]=data["res"].X[1]
+
+
             dict[f"difference_of_production{i}"] = data["difference_of_production"][0]
             dict[f"prices{i}"] = data["prices"]["prezzo"][0]
             dict[f"production_not_rs{i}"] = data[f"production_not_rs"]["Difference"][0]
