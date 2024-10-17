@@ -1,6 +1,6 @@
 soc_max: 0.8                      # Adimensionale
 soc_min: 0.2                      # Adimensionale
-battery_nominal_capacity: 10000   # Wh     https://www.tesla.com/sites/default/files/pdfs/powerwall/Powerwall_2_AC_Datasheet_2018_IT_Italy.pdf
+battery_nominal_capacity: 10000   # Wh     https://cdn.prod.website-files.com/6459f6ee0c7f63a3b1a74a51/670a128cac5a059f9f995b30_Dyness%20Tower%201.5G%20datasheet-EN.pdf
 battery_charging_efficiency: 0.9
 battery_discharging_efficiency: 0.9
 maximum_power_absorption: 4500    # Wh
@@ -8,13 +8,13 @@ maximum_power_absorption: 4500    # Wh
 maximum_power_battery_exchange: 5000  # Wh
 
 
-latitude: 40.6824404
-longitude: 14.7680965
+latitude: 45.666751773759295   #40.6824404
+longitude: 11.745264693183467 #14.7680965
 
-inverter_nominal_power: 3680
+inverter_nominal_power: 3680 #https://files.sma.de/assets/278585.pdf
 
-sold: 0.00007
-iva: 0.34
+sold: 0.00010 #10 c€/kWh
+iva: 0.43
 # dati https://www.mercatoelettrico.org/It/default.aspx 30/09/23(sabato)
 
 timezone: 'Europe/Rome'
@@ -25,11 +25,32 @@ fd: 1           #Pari ad 1 poichè il PV è piatto
 SF: 1           #soiling factor: sporcizia. Se pari ad 1 il pannello è pulito
 f1: 0.9         #funzione che descrive la massa d'aria (Slide libro 78)
 f2: 1           #funzione che descrive come i raggi cadono sul pannello. Un valore pari ad 1 indica che i raggi sono perpendicolari
-pmax: 2960
+pmax: 6560
 gamma: -0.0026   #γ for power: around -0.3% to -0.5% per degree Celsius. -0.4% is -0.004
 temp_ref: 25
+tilt: 30
+azimuth: 180
 
-#Entsoe (Dati non ancora usati)
+#Coefficienti tabellari
+a: 
+- 0.935823
+- 0.054289
+- -0.008677
+- 0.000527
+- -0.000011
+
+b: 
+- 1.000341
+- -0.005557
+- 6.553e-4
+- -2.730e-5
+-  4.641e-7
+- -2.806e-9
+
+Beta: 30
+ThetaPV: 180 
+
+#Entsoe 
 api_key: '634ab8da-8c97-452b-b4c8-1e73462d9b7b'
 entsoe_timezone: "IT_CSUD"
 

@@ -144,7 +144,6 @@ def start_genetic_algorithm(data, pop_size, n_gen, n_threads, prob_mut_bit=0.5, 
             delta_production = data["difference_of_production"]             #variabile che mi dice quantitativamente se la produzione di energia supera il consumo e viceversa
             sold = data["sold"]                                             #variabile che mi dice il prezzo della vendita dell'energia
             actual_percentage = [float(data["socs"])]                          #viene memorizzato l'attuale livello della batteria
-            quantity_battery=0
             co2_emissions=0
             percentage_production_not_renewable = data["production_not_rs"]
             penality_sum = 1
@@ -275,13 +274,12 @@ def start_genetic_algorithm(data, pop_size, n_gen, n_threads, prob_mut_bit=0.5, 
 
                     #Viene aggiornato il valore della batteria, dopo la scarica
                     actual_percentage.append((effettivo_in_batteria - (quantity_discharging_battery/data["battery_discharging_efficiency"]) - lower_limit) / ( upper_limit - lower_limit))
-                    quantity_battery+=abs(quantity_discharging_battery) * penality_batt
             #Terminata la simulazione, viene attribuito un voto alla stringa in input, dato da tre fattori:
             # - Il costo
             # - L'utilizzo della batteria
             # - Emissioni CO2
 
-            out["F"] = [sum, quantity_battery/data["battery_nominal_capacity"], co2_emissions/1000]
+            out["F"] = [sum, -battery_capacity/data["battery_nominal_capacity"], co2_emissions/1000]
             
 
 

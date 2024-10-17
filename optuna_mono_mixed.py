@@ -22,8 +22,8 @@ async def objective_async(trial):
     # Parametri che Optuna ottimizza
     pop_size = trial.suggest_int('pop_size', 10, 50)            # Pop size tra 10 e 500
     n_gen = trial.suggest_int('n_gen', 5, 30)                   # Generazioni tra 50 e 300
-    prob_mut_pm = trial.suggest_float('prob_mut_pm',0.3,0.9)
-    prob_mut_bit = trial.suggest_float('prob_mut_bit',0.2,0.5)
+    prob_mut_pm = trial.suggest_float('prob_mut_pm',0.1,0.3)
+    prob_mut_bit = trial.suggest_float('prob_mut_bit',0.3,0.9)
 
     n_threads = 24  # o un altro valore
 

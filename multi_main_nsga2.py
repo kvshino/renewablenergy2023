@@ -29,8 +29,8 @@ async def main():
 
         sampling=0
 
-        pop_size=100
-        n_gen=20
+        pop_size=20
+        n_gen=5
 
         data = setup(polynomial_inverter)
         prices = await get_future_day_italian_market(data)

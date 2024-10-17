@@ -15,7 +15,7 @@ from datetime import datetime, timedelta
 import pandas as pd
 
 
-def setup(polynomial_inverter) -> dict:
+def setup(polynomial_inverter, filename='csv/socs.csv') -> dict:
     """
     Takes the datas from the conf.yaml and stores them in data.
 
@@ -26,7 +26,7 @@ def setup(polynomial_inverter) -> dict:
     with open("conf.yaml") as f:
         data = yaml.load(f, Loader=yaml.FullLoader)
 
-    df = pd.read_csv('csv/socs.csv')
+    df = pd.read_csv(filename)
     
 
     data["socs"] = df.iloc[-1][-3]
@@ -39,12 +39,10 @@ def setup(polynomial_inverter) -> dict:
     data["polynomial_inverter"] = polynomial_inverter
     data["expected_production"] = get_expected_power_production_from_pv_24_hours_from_now(data)
     data["difference_of_production"] = difference_of_production(data)
-
-
-    #data["production_not_rs"] = forecast_percentage_production_from_not_renewable_sources(api_key=data["api_key"])
+    data["production_not_rs"] = forecast_percentage_production_from_not_renewable_sources(api_key=data["api_key"])  
     
 
-    with open('csv/socs.csv', 'r+') as file:
+    with open(filename, 'r+') as file:
         lines = file.read().split()
         data["battery_capacity"] = float(lines[-1])
         file.close()

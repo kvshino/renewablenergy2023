@@ -35,7 +35,7 @@ def objective(trial):
     pop_size = trial.suggest_int('pop_size', 100, 700)  # Pop size tra 10 e 100
     n_gen = trial.suggest_int('n_gen', 70, 300)        # Generazioni tra 50 e 300
 
-    prob_mut_bit = trial.suggest_float('prob_mut_bit',0.2,0.5)
+    prob_mut_bit = trial.suggest_float('prob_mut_bit',0.1,0.3)
     prob_mut_int = trial.suggest_float('prob_mut_int',0.3,0.9)
 
     n_threads = 12 
