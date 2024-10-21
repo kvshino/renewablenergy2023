@@ -9,19 +9,19 @@ from plot import *
 from update_battery import *
 from test_inv import *
 from freezegun import freeze_time
+import time
 
 warnings.filterwarnings("ignore", category=FutureWarning)
 
 async def mixed():
-    ora = datetime.now()
     polynomial_batt = battery_function()
     polynomial_inverter = inverter_function()
 
     with freeze_time(datetime.now()) as frozen_datetime:
         dict = {}
         sampling = 0
-        pop_size = 4
-        gen = 1
+        pop_size = 150
+        gen = 40
 
         data = setup(polynomial_inverter,"csv/socsmixed.csv")
         prices = await get_future_day_italian_market(data)
@@ -76,7 +76,6 @@ async def mixed():
     return dict["sum_algo"], dict["actual_percentage_algo"], dict["co2_algo"], lista 
 
 async def ga():
-    ora=datetime.now()
     polynomial_batt = battery_function()
     polynomial_inverter = inverter_function()
 
@@ -84,8 +83,8 @@ async def ga():
 
         dict={}
         sampling=0
-        pop_size =4
-        gen = 1
+        pop_size =150
+        gen = 40
 
         data = setup(polynomial_inverter,"csv/socsga.csv")
         prices = await get_future_day_italian_market(data)
@@ -255,13 +254,53 @@ def plot_comparison_battery(dictionary,lista1,lista2):
     # Mostra il grafico
     plt.tight_layout()
 
+def plot_time(time1,time2):
+    input_sizes = ['']  # Aggiorna l'input con un'etichetta valida
+    algorithm1_times_mixed = [time1]  # Tempi per Algoritmo 1
+    algorithm2_times_ga = [time2]  # Tempi per Algoritmo 2
+
+    # Creiamo un array per la posizione delle barre sull'asse X
+    bar_width = 0.15  # Larghezza delle barre
+    index = np.arange(len(input_sizes))  # Posizioni per l'asse X
+
+    # Creazione del grafico
+    fig, ax = plt.subplots()
+
+    # Barre per Algoritmo 1 (spostate leggermente a sinistra)
+    bar1 = ax.bar(index - bar_width*0.7, algorithm2_times_ga, bar_width, color="#F8961E", label='GA')
+
+    # Barre per Algoritmo 2 (spostate leggermente a destra)
+    bar2 = ax.bar(index + bar_width*0.7, algorithm1_times_mixed, bar_width, color="#577590", label='MixedVariableGa')
+
+    # Aggiunta delle etichette e del titolo
+    ax.set_ylabel('Execution time (s)')
+    ax.set_title('Comparison of the execution times')
+    ax.set_xticks(index)
+    ax.set_xticklabels(input_sizes)
+    ax.set_xlim([-0.5, 0.5])
+
+    # Aggiungere le etichette sotto le barre
+    ax.text(index[0] - bar_width * 0.7, -0.05, 'GA', ha='center', va='top', fontsize=12)
+    ax.text(index[0] + bar_width * 0.7, -0.05, 'Mixed', ha='center', va='top', fontsize=12)
+
+    # Mostrare il grafico
+    plt.tight_layout()
 
 async def main():
     # Await the mixed function since it is asynchronous
     dictionary ={}
-    dictionary["sum_mixed"],dictionary["apercentage_mixed"] , dictionary["co2_mixed"] , lista1 = await mixed()
-    dictionary["sum_ga"], dictionary["apercentage_ga"],  dictionary["co2_ga"], lista2 = await ga()
+    start_time = time.time()
 
+    dictionary["sum_mixed"],dictionary["apercentage_mixed"] , dictionary["co2_mixed"] , lista1 = await mixed()
+    end_time = time.time()
+    execution_time_mixed = end_time - start_time
+    print(f"Execution_time MixedVariableGa: {execution_time_mixed} seconds")
+
+    start_time = time.time()
+    dictionary["sum_ga"], dictionary["apercentage_ga"],  dictionary["co2_ga"], lista2 = await ga()
+    end_time = time.time()
+    execution_time_ga = end_time - start_time
+    print(f"Execution_time Ga: {execution_time_ga} seconds")
 
     plot_cost_comparison(dictionary)
     plt.show()
@@ -274,7 +313,8 @@ async def main():
 
     plot_comparison_battery(dictionary,lista1,lista2)
     plt.show()
-
+    plot_time(execution_time_mixed,execution_time_ga)
+    plt.show()
 
 
 if __name__ == "__main__":
