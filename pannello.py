@@ -128,11 +128,11 @@ def get_expected_power_production_from_pv(data, meteo) -> float:
     # temp_cell = get_temp_cell(temp_air, data["noct"], irradiance)
 
 
-    result=[0]*24
-    for i in range(24):
-        result[i]=(irradiance[i] / 1000) * data["pmax"] * (1 + data["gamma"] * (temp_cell[i] - data["temp_ref"]))
-    r=pd.DataFrame(result)
-    return r
+    # result=[0]*24
+    # for i in range(24):
+    #     result[i]=(irradiance[i] / 1000) * data["pmax"] * (1 + data["gamma"] * (temp_cell[i] - data["temp_ref"]))
+    # r=pd.DataFrame(result)
+    # return r
 
 
 def difference_of_production(data):

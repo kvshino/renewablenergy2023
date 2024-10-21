@@ -146,8 +146,8 @@ def start_genetic_algorithm(data, pop_size, n_gen, n_threads, prob_mut_bit=0.5, 
             actual_percentage = [float(data["socs"])]                          #viene memorizzato l'attuale livello della batteria
             co2_emissions=0
             percentage_production_not_renewable = data["production_not_rs"]
-            penality_sum = 1
-            penality_batt = 1
+            penality_sum = 0
+            penality_batt = 0
             cycles = data["cycles"]
             battery_capacity = round(data["polynomial"](cycles) * data["battery_nominal_capacity"], 4)
             
@@ -192,7 +192,7 @@ def start_genetic_algorithm(data, pop_size, n_gen, n_threads, prob_mut_bit=0.5, 
                             penality_batt = penality_batt + (1 - data["inverter_nominal_power"]/(data["estimate"]["consumo"].values[j] + quantity_charging_battery + (quantity_charging_battery - delta_production_after_inverter)))
                         
                         #Il surplus di energia viene venduto
-                        sum = sum + ((quantity_charging_battery - delta_production_after_inverter) * sold)/penality_sum  # sum = sum - rimborso
+                        sum = sum + ((quantity_charging_battery - delta_production_after_inverter) * sold)+penality_sum  # sum = sum - rimborso
 
 
                     #Caso in cui viene prodotto meno di quanto si consuma, di conseguenza è necessario acquistare dalla rete
@@ -210,7 +210,7 @@ def start_genetic_algorithm(data, pop_size, n_gen, n_threads, prob_mut_bit=0.5, 
                             penality_sum = penality_sum + (1 -  data["maximum_power_absorption"] / quantity_charging_battery)
 
                         #Viene acquistata energia
-                        sum = sum + ((quantity_charging_battery - delta_production_after_inverter)) * data["prices"]["prezzo"].iloc[j]*penality_sum
+                        sum = sum + ((quantity_charging_battery - delta_production_after_inverter)) * data["prices"]["prezzo"].iloc[j]+penality_sum
                     
                     actual_percentage.append((effettivo_in_batteria + (quantity_charging_battery*data["battery_charging_efficiency"]) - lower_limit) / ( upper_limit - lower_limit))
                     
@@ -252,7 +252,7 @@ def start_genetic_algorithm(data, pop_size, n_gen, n_threads, prob_mut_bit=0.5, 
                             penality_sum = penality_sum + (1 -  data["maximum_power_absorption"] / quantity_discharging_battery)
 
                      #Produco di più di quanto consumo, vendo il resto
-                        sum = sum - ((delta_production_after_inverter + quantity_discharging_battery) * sold)/penality_sum
+                        sum = sum - ((delta_production_after_inverter + quantity_discharging_battery) * sold)+penality_sum
 
                     #Produco poco e consumo di più
                     else:
@@ -265,10 +265,10 @@ def start_genetic_algorithm(data, pop_size, n_gen, n_threads, prob_mut_bit=0.5, 
                         
                         #Produco di meno di quanto consumo, compro il resto
                         sum = sum + (- (delta_production_after_inverter + quantity_discharging_battery/data["battery_discharging_efficiency"]) *
-                                     data["prices"]["prezzo"].iloc[j])*penality_sum
+                                     data["prices"]["prezzo"].iloc[j])+penality_sum
 
 
-                    scarico=(posso_scaricare_di*percentage)/100
+                    scarico=(posso_scaricare_di*percentage)/100 + penality_batt
                     cycles = round(cycles+(scarico/battery_capacity), 5)
                     battery_capacity = round(data["polynomial"](cycles) * data["battery_nominal_capacity"], 4)
 

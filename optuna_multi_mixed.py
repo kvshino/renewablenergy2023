@@ -47,7 +47,6 @@ def objective(trial):
     F_min = np.min(F, axis=0)
     F_max = np.max(F, axis=0)
     F_norm = (F - F_min) / (F_max - F_min)
-    F_norm[:, 2] *= 1.5
     distances = np.linalg.norm(F_norm, axis=1)
     best_index = np.argmin(distances)
 
@@ -58,8 +57,8 @@ data= asyncio.run(obtaining_data())
 
 
 # Crea uno studio Optuna per ottimizzare i parametri
-study = optuna.create_study(directions=["minimize", "minimize", "minimize"])
-study.optimize(objective, n_trials=80)
+study = optuna.create_study(storage="sqlite:///mixed.db", directions=["minimize", "minimize", "minimize"])
+study.optimize(objective, n_trials=150)
 
 # Visualizza i risultati
 print("Pareto solutions:", len(study.best_trials))
