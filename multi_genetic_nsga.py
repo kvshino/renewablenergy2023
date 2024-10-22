@@ -97,7 +97,7 @@ def start_nsga2_genetic_algorithm(data, pop_size, n_gen, n_threads, prob_mut_bit
                     else:
                         
                         quantity_bought_from_not_renewable_sources =  ((quantity_charging_battery - delta_production_after_inverter)) * percentage_production_not_renewable["Difference"][j]
-                        co2_emissions = co2_emissions + (quantity_bought_from_not_renewable_sources * data["coal_percentage"] * data["coal_pollution"]) + (quantity_bought_from_not_renewable_sources * data["gas_percentage"] * data["gas_pollution"]) + (quantity_bought_from_not_renewable_sources * data["oil_percentage"] * data["oil_pollution"]) * penality_sum
+                        co2_emissions = co2_emissions + (quantity_bought_from_not_renewable_sources * data["coal_percentage"] * data["coal_pollution"]) + (quantity_bought_from_not_renewable_sources * data["gas_percentage"] * data["gas_pollution"]) + (quantity_bought_from_not_renewable_sources * data["oil_percentage"] * data["oil_pollution"]) + penality_sum
 
 
                         if data["estimate"]["consumo"].values[j] + quantity_charging_battery > data["inverter_nominal_power"]:
@@ -105,7 +105,7 @@ def start_nsga2_genetic_algorithm(data, pop_size, n_gen, n_threads, prob_mut_bit
 
                         #Viene fatto un controllo che NON permette di acquistare più energia di quanto il contratto stipulato dall'utente permetta
                         if( quantity_charging_battery > data["maximum_power_absorption"] + delta_production_after_inverter):
-                            penality_sum = penality_sum + (1 -  data["maximum_power_absorption"] / quantity_charging_battery)
+                            penality_sum = penality_sum + (1 -  (data["maximum_power_absorption"] + delta_production_after_inverter) / quantity_charging_battery)
 
                         #Viene acquistata energia
                         sum = sum + ((quantity_charging_battery - delta_production_after_inverter)) * data["prices"]["prezzo"].iloc[j]+penality_sum
@@ -147,7 +147,7 @@ def start_nsga2_genetic_algorithm(data, pop_size, n_gen, n_threads, prob_mut_bit
 
                         #Si controlla di non prendere più energia dalla batteria di quanto il contatore sia in grado di gestire
                         if(quantity_discharging_battery + delta_production_after_inverter > data["maximum_power_absorption"]):
-                            penality_sum = penality_sum + (1 -  data["maximum_power_absorption"] / quantity_discharging_battery)
+                            penality_sum = penality_sum + (1 -  data["maximum_power_absorption"] / (quantity_discharging_battery + delta_production_after_inverter))
 
                      #Produco di più di quanto consumo, vendo il resto
                         sum = sum - ((delta_production_after_inverter + quantity_discharging_battery) * sold)+penality_sum
@@ -155,11 +155,11 @@ def start_nsga2_genetic_algorithm(data, pop_size, n_gen, n_threads, prob_mut_bit
                     #Produco poco e consumo di più
                     else:
                         quantity_bought_from_not_renewable_sources = (- (delta_production_after_inverter + quantity_discharging_battery)) * percentage_production_not_renewable["Difference"][j]
-                        co2_emissions = co2_emissions + (quantity_bought_from_not_renewable_sources * data["coal_percentage"] * data["coal_pollution"]) + (quantity_bought_from_not_renewable_sources * data["gas_percentage"] * data["gas_pollution"]) + (quantity_bought_from_not_renewable_sources * data["oil_percentage"] * data["oil_pollution"]) * penality_sum
+                        co2_emissions = co2_emissions + (quantity_bought_from_not_renewable_sources * data["coal_percentage"] * data["coal_pollution"]) + (quantity_bought_from_not_renewable_sources * data["gas_percentage"] * data["gas_pollution"]) + (quantity_bought_from_not_renewable_sources * data["oil_percentage"] * data["oil_pollution"]) + penality_sum
 
                         if data["estimate"]["consumo"].values[j] > data["inverter_nominal_power"]:
                             penality_batt = penality_batt + (1 - data["inverter_nominal_power"]/(data["estimate"]["consumo"].values[j]))
-                            penality_sum = penality_sum * (1 - data["inverter_nominal_power"]/(data["estimate"]["consumo"].values[j]))                    
+                            penality_sum = penality_sum + (1 - data["inverter_nominal_power"]/(data["estimate"]["consumo"].values[j]))                    
                         
                         #Produco di meno di quanto consumo, compro il resto
                         sum = sum + (- (delta_production_after_inverter + quantity_discharging_battery/data["battery_discharging_efficiency"]) *
