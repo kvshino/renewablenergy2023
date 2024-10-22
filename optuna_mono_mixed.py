@@ -49,7 +49,7 @@ async def objective_async(trial):
     return -np.min(res.pop.get("F"))  # Supponiamo di voler massimizzare "F"
 
 # Crea uno studio Optuna
-study = optuna.create_study(direction="maximize")  # Modifica 'maximize' o 'minimize' a seconda del tuo obiettivo
+study = optuna.create_study(storage ="sqlite:///mixed.db",direction="maximize")  # Modifica 'maximize' o 'minimize' a seconda del tuo obiettivo
 study.optimize(objective, n_trials=50)  # Esegui 50 prove di ottimizzazione
 
 # Stampa il risultato migliore

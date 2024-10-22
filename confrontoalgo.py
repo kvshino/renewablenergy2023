@@ -13,6 +13,9 @@ import time
 
 warnings.filterwarnings("ignore", category=FutureWarning)
 
+color_ga ="#a066cb"
+color_mixed =color="#86c7ed"
+
 async def mixed():
     polynomial_batt = battery_function()
     polynomial_inverter = inverter_function()
@@ -156,9 +159,9 @@ def plot_cost_comparison(dictionary):
     plt.figure(figsize=(10, 6))
 
     # Tracciare tutte le curve sullo stesso grafico
-    plt.plot(cost_dataframe_mixed["datetime"], cost_dataframe_mixed["value"], color="#577590", label="MIXED")
+    plt.plot(cost_dataframe_mixed["datetime"], cost_dataframe_mixed["value"], color=color_mixed, label="MIXED")
 
-    plt.plot(cost_dataframe_ga["datetime"], cost_dataframe_ga["value"], color="#F8961E", label="GA")
+    plt.plot(cost_dataframe_ga["datetime"], cost_dataframe_ga["value"], color=color_ga, label="GA")
 
     # Impostazioni del grafico
     plt.xlabel("Datetime")
@@ -168,7 +171,7 @@ def plot_cost_comparison(dictionary):
     plt.xticks(rotation=45)  # Ruota le etichette dell'asse x per una migliore leggibilità
     plt.grid(True)  # Aggiungi una griglia per facilitare la lettura
     plt.xticks(cost_dataframe_mixed["datetime"], cost_dataframe_mixed["datetime"].dt.strftime('%H'), rotation=10)
-    plt.title("Confronto costi (Guadagno Positivo)")
+    plt.title("Cost Comparison ( Positive Earnings)")
     # Mostra il grafico
     plt.tight_layout()
 
@@ -185,18 +188,18 @@ def plot_co2_comparison_algo(dictionary):
     plt.figure(figsize=(10, 6))
 
     # Tracciare tutte le curve sullo stesso grafico
-    plt.plot(co2_mixed_dataframe["datetime"], co2_mixed_dataframe["value"], color="#577590", label="MIXED")
-    plt.plot(co2_ga_dataframe["datetime"], co2_ga_dataframe["value"], color="#F8961E", label="GA")
+    plt.plot(co2_mixed_dataframe["datetime"], co2_mixed_dataframe["value"], color=color_mixed, label="MIXED")
+    plt.plot(co2_ga_dataframe["datetime"], co2_ga_dataframe["value"], color=color_ga, label="GA")
 
 
     # Impostazioni del grafico
     plt.xlabel("Datetime")
-    plt.ylabel("Grammi di Co2")
+    plt.ylabel("Co2 Grams")
     plt.legend()  # Mostra la legenda per distinguere le curve
     plt.xticks(rotation=45)  # Ruota le etichette dell'asse x per una migliore leggibilità
     plt.grid(True)  # Aggiungi una griglia per facilitare la lettura
     plt.xticks(co2_mixed_dataframe["datetime"], co2_mixed_dataframe["datetime"].dt.strftime('%H'), rotation=10)
-    plt.title("Confronto emissioni di Co2")
+    plt.title("Co2 Emissions Comparison")
     # Mostra il grafico
     plt.tight_layout()
 
@@ -209,8 +212,8 @@ def plot_comparison_degradation(lista1,lista2):
     degradation_plant_dataframe_ga = pd.DataFrame({'datetime': time_column, 'value':lista2})
 
     # Tracciare tutte le curve sullo stesso grafico
-    plt.plot(degradation_plant_dataframe_mixed["datetime"], degradation_plant_dataframe_mixed["value"], color="#577590", label="Mixed")
-    plt.plot(degradation_plant_dataframe_ga["datetime"], degradation_plant_dataframe_ga["value"], color="#F8961E", label="GA")
+    plt.plot(degradation_plant_dataframe_mixed["datetime"], degradation_plant_dataframe_mixed["value"], color=color_mixed, label="Mixed")
+    plt.plot(degradation_plant_dataframe_ga["datetime"], degradation_plant_dataframe_ga["value"], color=color_ga, label="GA")
 
     # Impostazioni del grafico
     plt.xlabel("Datetime")
@@ -219,7 +222,7 @@ def plot_comparison_degradation(lista1,lista2):
     plt.xticks(rotation=45)  # Ruota le etichette dell'asse x per una migliore leggibilità
     plt.grid(True)  # Aggiungi una griglia per facilitare la lettura
     plt.xticks(degradation_plant_dataframe_ga["datetime"], degradation_plant_dataframe_ga["datetime"].dt.strftime('%H'), rotation=10)
-    plt.title("Confronto Degradazione Batteria")
+    plt.title("Battery Degradation Comparison")
     # Mostra il grafico
     plt.tight_layout()
 
@@ -240,8 +243,8 @@ def plot_comparison_battery(dictionary,lista1,lista2):
     plt.figure(figsize=(10, 6))
 
     # Tracciare tutte le curve sullo stesso grafico
-    plt.plot(battery_wh_dataframe_mixed["datetime"], battery_wh_dataframe_mixed["value"], color="#577590", label="MIXED")
-    plt.plot(battery_wh_dataframe_ga["datetime"], battery_wh_dataframe_ga["value"], color="#F8961E", label="GA")
+    plt.plot(battery_wh_dataframe_mixed["datetime"], battery_wh_dataframe_mixed["value"], color=color_mixed, label="MIXED")
+    plt.plot(battery_wh_dataframe_ga["datetime"], battery_wh_dataframe_ga["value"], color=color_ga, label="GA")
 
     # Impostazioni del grafico
     plt.xlabel("Datetime")
@@ -250,7 +253,7 @@ def plot_comparison_battery(dictionary,lista1,lista2):
     plt.xticks(rotation=45)  # Ruota le etichette dell'asse x per una migliore leggibilità
     plt.grid(True)  # Aggiungi una griglia per facilitare la lettura
     plt.xticks(battery_wh_dataframe_ga["datetime"], battery_wh_dataframe_ga["datetime"].dt.strftime('%H'), rotation=10)
-    plt.title("Confronto Energia in Batteria")
+    plt.title("Battery Energy Comparison")
     # Mostra il grafico
     plt.tight_layout()
 
@@ -267,10 +270,10 @@ def plot_time(time1,time2):
     fig, ax = plt.subplots()
 
     # Barre per Algoritmo 1 (spostate leggermente a sinistra)
-    bar1 = ax.bar(index - bar_width*0.7, algorithm2_times_ga, bar_width, color="#F8961E", label='GA')
+    bar1 = ax.bar(index - bar_width*0.7, algorithm2_times_ga, bar_width, color=color_ga, label='GA')
 
     # Barre per Algoritmo 2 (spostate leggermente a destra)
-    bar2 = ax.bar(index + bar_width*0.7, algorithm1_times_mixed, bar_width, color="#577590", label='MixedVariableGa')
+    bar2 = ax.bar(index + bar_width*0.7, algorithm1_times_mixed, bar_width, color=color_mixed, label='MixedVariableGa')
 
     # Aggiunta delle etichette e del titolo
     ax.set_ylabel('Execution time (s)')
@@ -280,8 +283,8 @@ def plot_time(time1,time2):
     ax.set_xlim([-0.5, 0.5])
 
     # Aggiungere le etichette sotto le barre
-    ax.text(index[0] - bar_width * 0.7, -0.05, 'GA', ha='center', va='top', fontsize=12)
-    ax.text(index[0] + bar_width * 0.7, -0.05, 'Mixed', ha='center', va='top', fontsize=12)
+    ax.text(index[0] - bar_width * 0.7, -0.55, 'GA', ha='center', va='top', fontsize=12)
+    ax.text(index[0] + bar_width * 0.7, -0.55, 'Mixed', ha='center', va='top', fontsize=12)
 
     # Mostrare il grafico
     plt.tight_layout()
