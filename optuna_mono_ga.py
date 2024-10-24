@@ -35,8 +35,8 @@ def objective(trial):
 # La tua funzione obiettivo asincrona con ottimizzazione di crossover e mutazione
 async def objective_async(trial):
     # Parametri che Optuna ottimizza
-    pop_size = trial.suggest_int('pop_size', 10, 20)           # Pop size tra 10 e 500
-    n_gen = trial.suggest_int('n_gen', 1, 10)                 # Generazioni tra 50 e 300
+    pop_size = trial.suggest_int('pop_size', 300, 600)           # Pop size tra 10 e 500
+    n_gen = trial.suggest_int('n_gen', 150, 250)                 # Generazioni tra 50 e 300
 
     prob_cross = trial.suggest_float('prob_cross',0.3,0.8)          #probabilità di crossover
     prob_mut_bit = trial.suggest_float('prob_mut_bit',0.1,0.2)          #probabilità di mutazione

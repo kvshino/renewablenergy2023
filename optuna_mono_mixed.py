@@ -20,10 +20,10 @@ def objective(trial):
 # La tua funzione obiettivo asincrona con ottimizzazione di crossover e mutazione
 async def objective_async(trial):
     # Parametri che Optuna ottimizza
-    pop_size = trial.suggest_int('pop_size', 10, 50)            # Pop size tra 10 e 500
-    n_gen = trial.suggest_int('n_gen', 5, 30)                   # Generazioni tra 50 e 300
-    prob_mut_pm = trial.suggest_float('prob_mut_pm',0.1,0.3)
-    prob_mut_bit = trial.suggest_float('prob_mut_bit',0.3,0.9)
+    pop_size = trial.suggest_int('pop_size', 300, 600)            # Pop size tra 10 e 500
+    n_gen = trial.suggest_int('n_gen', 150, 250)                   # Generazioni tra 50 e 300
+    prob_mut_pm = trial.suggest_float('prob_mut_pm',0.3,0.8)
+    prob_mut_bit = trial.suggest_float('prob_mut_bit',0.1,0.3)
 
     n_threads = 24  # o un altro valore
 
@@ -46,11 +46,11 @@ async def objective_async(trial):
                                      verbose=False)
 
     # Valutazione finale da minimizzare o massimizzare
-    return -np.min(res.pop.get("F"))  # Supponiamo di voler massimizzare "F"
+    return np.min(res.pop.get("F"))  # Supponiamo di voler massimizzare "F"
 
 # Crea uno studio Optuna
-study = optuna.create_study(storage ="sqlite:///mixed.db",direction="maximize")  # Modifica 'maximize' o 'minimize' a seconda del tuo obiettivo
-study.optimize(objective, n_trials=50)  # Esegui 50 prove di ottimizzazione
+study = optuna.create_study(storage ="sqlite:///mixed.db",direction="minimize")  # Modifica 'maximize' o 'minimize' a seconda del tuo obiettivo
+study.optimize(objective, n_trials=100)  # Esegui 50 prove di ottimizzazione
 
 # Stampa il risultato migliore
 best_trial = study.best_trial

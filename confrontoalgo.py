@@ -15,16 +15,16 @@ warnings.filterwarnings("ignore", category=FutureWarning)
 
 color_ga ="#a066cb"
 color_mixed =color="#86c7ed"
-
+delta =10
 async def mixed():
     polynomial_batt = battery_function()
     polynomial_inverter = inverter_function()
 
-    with freeze_time(datetime.now()) as frozen_datetime:
+    with freeze_time(datetime.now() - timedelta(hours=delta)) as frozen_datetime:
         dict = {}
         sampling = 0
-        pop_size = 150
-        gen = 40
+        pop_size = 500
+        gen = 200
 
         data = setup(polynomial_inverter,"csv/socsmixed.csv")
         prices = await get_future_day_italian_market(data)
@@ -42,9 +42,9 @@ async def mixed():
                 dict[f"battery_capacity{i}"] = data["battery_capacity"]
 
             if i == 0:
-                data["res"], data["history"] = start_genetic_algorithm(data=data, pop_size=pop_size, n_gen=gen, n_threads=24, sampling=None, verbose=False)  
+                data["res"], data["history"] = start_genetic_algorithm(data=data, pop_size=pop_size, n_gen=gen, n_threads=24,prob_mut_bit=0.14,prob_mut_pm=0.75, sampling=None, verbose=False)  
             else:
-                data["res"], data["history"] = start_genetic_algorithm(data=data, pop_size=pop_size, n_gen=gen, n_threads=24, sampling=sampling, verbose=False)
+                data["res"], data["history"] = start_genetic_algorithm(data=data, pop_size=pop_size, n_gen=gen, n_threads=24,prob_mut_bit=0.14,prob_mut_pm=0.75, sampling=sampling, verbose=False)
             
             print("Fine Esecuzione Ora " + str(i+1))
 
@@ -82,12 +82,12 @@ async def ga():
     polynomial_batt = battery_function()
     polynomial_inverter = inverter_function()
 
-    with freeze_time(datetime.now()) as frozen_datetime:
+    with freeze_time(datetime.now()- timedelta(hours=delta)) as frozen_datetime:
 
         dict={}
         sampling=0
-        pop_size =150
-        gen = 40
+        pop_size =500
+        gen = 200
 
         data = setup(polynomial_inverter,"csv/socsga.csv")
         prices = await get_future_day_italian_market(data)
@@ -105,9 +105,9 @@ async def ga():
                 dict[f"battery_capacity{i}"] = data["battery_capacity"]
 
             if i == 0:
-                data["res"], data["history"] = start_GA_genetic_algorithm(data=data, pop_size=pop_size, n_gen=gen, n_threads=24, sampling=None, verbose=False)  #Checked OK
+                data["res"], data["history"] = start_GA_genetic_algorithm(data=data, pop_size=pop_size, n_gen=gen, n_threads=24,prob_cross=0.72,prob_mut_bit=0.102,prob_mut_int=0.47, sampling=None, verbose=False)  #Checked OK
             else:
-                data["res"], data["history"] = start_GA_genetic_algorithm(data=data, pop_size=pop_size, n_gen=gen, n_threads=24, sampling=sampling, verbose=False)
+                data["res"], data["history"] = start_GA_genetic_algorithm(data=data, pop_size=pop_size, n_gen=gen, n_threads=24,prob_cross=0.72,prob_mut_bit=0.102,prob_mut_int=0.47, sampling=sampling, verbose=False)
             
             print("Fine Esecuzione Ora " + str(i+1))
 
@@ -145,7 +145,7 @@ async def ga():
 
 def plot_cost_comparison(dictionary):
     # Imposta l'ora corrente e crea la colonna del tempo
-    current_datetime = datetime.now() + timedelta(hours=1)
+    current_datetime = datetime.now() + timedelta(hours=1)- timedelta(hours=delta)
     time_column = pd.date_range(start=current_datetime.replace(minute=0, second=0, microsecond=0), periods=24, freq='H')
 
     # Creazione dei DataFrame con i dati
@@ -167,7 +167,7 @@ def plot_cost_comparison(dictionary):
     plt.xlabel("Datetime")
     plt.ylabel("Euro €")
     plt.legend()  # Mostra la legenda per distinguere le curve
-    plt.ylim(-5, 2)  # Puoi regolare o rimuovere questi limiti
+    plt.ylim(-2, 2)  # Puoi regolare o rimuovere questi limiti
     plt.xticks(rotation=45)  # Ruota le etichette dell'asse x per una migliore leggibilità
     plt.grid(True)  # Aggiungi una griglia per facilitare la lettura
     plt.xticks(cost_dataframe_mixed["datetime"], cost_dataframe_mixed["datetime"].dt.strftime('%H'), rotation=10)
@@ -177,7 +177,7 @@ def plot_cost_comparison(dictionary):
 
 
 def plot_co2_comparison_algo(dictionary):
-    current_datetime = datetime.now() + timedelta(hours=1)
+    current_datetime = datetime.now() + timedelta(hours=1)- timedelta(hours=delta)
     time_column =pd.date_range(start=current_datetime.replace(minute=0, second=0, microsecond=0), periods=24, freq='H') 
 
     co2_mixed_dataframe = pd.DataFrame({'datetime': time_column, 'value': dictionary["co2_mixed"]})
@@ -204,12 +204,13 @@ def plot_co2_comparison_algo(dictionary):
     plt.tight_layout()
 
 def plot_comparison_degradation(lista1,lista2):
-    current_datetime = datetime.now() + timedelta(hours=1)
+    current_datetime = datetime.now() + timedelta(hours=1)- timedelta(hours=delta)
     time_column =pd.date_range(start=current_datetime.replace(minute=0, second=0, microsecond=0), periods=24, freq='H') 
 
     degradation_plant_dataframe_mixed = pd.DataFrame({'datetime': time_column, 'value': lista1})
 
     degradation_plant_dataframe_ga = pd.DataFrame({'datetime': time_column, 'value':lista2})
+    plt.figure(figsize=(10, 6))
 
     # Tracciare tutte le curve sullo stesso grafico
     plt.plot(degradation_plant_dataframe_mixed["datetime"], degradation_plant_dataframe_mixed["value"], color=color_mixed, label="Mixed")
@@ -228,7 +229,7 @@ def plot_comparison_degradation(lista1,lista2):
 
 
 def plot_comparison_battery(dictionary,lista1,lista2):
-    current_datetime = datetime.now() + timedelta(hours=1)
+    current_datetime = datetime.now() + timedelta(hours=1)- timedelta(hours=delta)
     time_column =pd.date_range(start=current_datetime.replace(minute=0, second=0, microsecond=0) - timedelta(hours=1), periods=24, freq='H') 
 
     actual_percentage_mixed = dictionary["apercentage_mixed"]

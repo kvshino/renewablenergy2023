@@ -5,7 +5,10 @@ import seaborn as sns
 import pandas as pd
 from functions import *
 
-
+color_algo ="#a066cb"
+color_noalgo="#86c7ed"
+color_nobatt="#1836B2"
+color_noplant="#873E63"
 
 def plot_graph(data, x, y, title, color, label):
     """
@@ -23,7 +26,7 @@ def plot_graph(data, x, y, title, color, label):
     """
     sns.set(rc={'axes.facecolor': '#edf1ef', 'figure.facecolor': '#edf1ef'})
 
-    plt.figure(title, facecolor='#edf1ef')
+    plt.figure(title,figsize=(10, 6), facecolor='#edf1ef')
 
     sns.set(font_scale=1.48)
     ax = sns.lineplot(data, x=x, y=y, color=color)
@@ -148,34 +151,30 @@ def plot_GME_prices(dictionary):
     current_datetime = datetime.now() + timedelta(hours=1)
     time_column =pd.date_range(start=current_datetime.replace(minute=0, second=0, microsecond=0), periods=24, freq='H')
     prices_list = dictionary_to_list(dictionary, "prices")
-
     expected_prices_dataframe = pd.DataFrame({'datetime': time_column, 'value':prices_list})
-    plot_graph(expected_prices_dataframe, "datetime", "value", "Stima Prezzi Energia", "#F3722C", "€")
+    plot_graph(expected_prices_dataframe, "datetime", "value", "Energy Price Estimate", "#F3722C", "€")
 
 
 def plot_production(dictionary):
     current_datetime = datetime.now() + timedelta(hours=1)
     time_column =pd.date_range(start=current_datetime.replace(minute=0, second=0, microsecond=0), periods=24, freq='H')
-
     lista = dictionary_to_list(dictionary, "production")
     expected_production_dataframe = pd.DataFrame({'datetime': time_column, 'value': lista})
-    plot_graph(expected_production_dataframe, "datetime", "value", "Stima Produzione PV", "#F3722C", "Wh")
+    plot_graph(expected_production_dataframe, "datetime", "value", "Estimated PV Production", "#F3722C", "Wh")
 
 def plot_load(dictionary):
     current_datetime = datetime.now() + timedelta(hours=1)
     time_column =pd.date_range(start=current_datetime.replace(minute=0, second=0, microsecond=0), periods=24, freq='H')
-
     lista = dictionary_to_list(dictionary, "load")
-    expected_load_dataframe = pd.DataFrame({'datetime': time_column, 'value': lista})
-    plot_graph(expected_load_dataframe, "datetime", "value", "Stima Carico", "#F94144", "Wh")
+    expected_load_dataframe = pd.DataFrame({'datetime': time_column, 'value': lista})        
+    plot_graph(expected_load_dataframe, "datetime", "value", "Estimated Load", "#F94144", "Wh")
 
 def plot_costi_plant(dictionary):
     current_datetime = datetime.now() + timedelta(hours=1)
     time_column =pd.date_range(start=current_datetime.replace(minute=0, second=0, microsecond=0), periods=24, freq='H')
-
     cost_dataframe = pd.DataFrame({'datetime': time_column, 'value': dictionary["sum_algo"]})
-    cost_dataframe["value"] = cost_dataframe["value"].multiply(-1)
-    plot_graph(cost_dataframe, "datetime", "value", "Stima costi in bolletta (guadagno positivo)", "#577590", "Euro €")
+    cost_dataframe["value"] = cost_dataframe["value"].multiply(-1)    
+    plot_graph(cost_dataframe, "datetime", "value", "Cost Comparison ( Positive Earnings)", color_algo, "Euro €")
 
 def plot_scambio_rete(dictionary):
 
@@ -199,7 +198,7 @@ def plot_scambio_rete(dictionary):
     difference_dataframe = pd.DataFrame({'datetime': time_column, 'value': difference})
 
     plot_graph_hist(difference_dataframe, "datetime", "value",
-               "Stima scambio energetico con la rete elettrica (acquisto positivo)", "#43AA8B", "Wh")
+               "Estimated energy exchange with the electricity grid (positive purchase)", "#43AA8B", "Wh")
 
 def plot_energia_batteria(dictionary):
     current_datetime = datetime.now() + timedelta(hours=1)
@@ -210,7 +209,7 @@ def plot_energia_batteria(dictionary):
     
     battery_wh = [float(dictionary["soc_min"] * dictionary[f"battery_capacity{i}"]) + (percentage * (float(dictionary["soc_max"] * dictionary[f"battery_capacity{i}"]) - float(dictionary["soc_min"] * dictionary[f"battery_capacity{i}"]))) for i,percentage in enumerate(actual_percentage_algo)]
     battery_wh_dataframe = pd.DataFrame({'datetime': time_column, 'value': battery_wh})
-    plot_graph(battery_wh_dataframe, "datetime", "value", "Stima energia in batteria", "#90BE6D", "Wh")
+    plot_graph(battery_wh_dataframe, "datetime", "value", "Battery energy estimate", color_algo, "Wh")
 
 
 def plot_percentage_battery(dictionary):
@@ -225,7 +224,7 @@ def plot_percentage_battery(dictionary):
     actual_percentage_dataframe["value"] = actual_percentage_dataframe["value"].multiply(dictionary["soc_max"] - dictionary["soc_min"])
     actual_percentage_dataframe["value"] = actual_percentage_dataframe["value"].add(dictionary["soc_min"])
     actual_percentage_dataframe["value"] = actual_percentage_dataframe["value"].multiply(100)
-    plot_graph(actual_percentage_dataframe, "datetime", "value", "Stima percentuale batteria", "#90BE6D", "%")
+    plot_graph(actual_percentage_dataframe, "datetime", "value", "Battery energy percentage estimate", color_algo, "%")
 
 def plot_battery_status(dictionary):
     current_datetime = datetime.now() + timedelta(hours=1)
@@ -234,8 +233,8 @@ def plot_battery_status(dictionary):
     quantity_delta_battery = dictionary["quantity_delta_battery_algo"]
 
     quantity_delta_battery_dataframe = pd.DataFrame({'datetime': time_column, 'value': quantity_delta_battery})
-    plot_graph_hist(quantity_delta_battery_dataframe, "datetime", "value", "Stima carica/scarica batteria (carica positiva)",
-               "#4D908E", "Wh")
+    plot_graph_hist(quantity_delta_battery_dataframe, "datetime", "value", "Battery charge/discharge estimate (positive charge)",
+               color_algo, "Wh")
 
 def plot_co2_plant(dictionary):
     current_datetime = datetime.now() + timedelta(hours=1)
@@ -244,7 +243,7 @@ def plot_co2_plant(dictionary):
     co2_algo = dictionary["co2_algo"]
     co2_plant_dataframe = pd.DataFrame({'datetime': time_column, 'value': co2_algo})
     plot_graph(co2_plant_dataframe, "datetime", "value",
-                "Co2 immessa con impianto ", "#577590", "Grammi")
+                "Co2 introduced with the system ", color_algo, "Grams")
     
 def plot_degradation(dictionary):
     current_datetime = datetime.now() + timedelta(hours=1)
@@ -253,7 +252,7 @@ def plot_degradation(dictionary):
     lista = dictionary_to_list(dictionary,"battery_capacity")
     co2_plant_dataframe = pd.DataFrame({'datetime': time_column, 'value': lista})
     plot_graph(co2_plant_dataframe, "datetime", "value",
-                "Degradazione Impianto", "#577590", "Wha")
+                "Plant degradation", color_algo, "Wha")
 
 def plot_production_algo_inverter(dictionary):
     current_datetime = datetime.now() + timedelta(hours=1)
@@ -264,7 +263,7 @@ def plot_production_algo_inverter(dictionary):
         lista[i] = lista[i] * dictionary["polynomial_inverter"](dictionary["ratio_algo"][i])
 
     expected_production_dataframe = pd.DataFrame({'datetime': time_column, 'value': lista})
-    plot_graph(expected_production_dataframe, "datetime", "value", "Stima Produzione PV con efficienza Inverter", "#F3722C", "Wh")
+    plot_graph(expected_production_dataframe, "datetime", "value", "Estimate of PV production with inverter efficiency", color_algo, "Wh")
 
 def plot_inverter_efficency(dictionary):
     current_datetime = datetime.now() + timedelta(hours=1)
@@ -275,7 +274,7 @@ def plot_inverter_efficency(dictionary):
         risultato.append(dictionary["polynomial_inverter"](dictionary["ratio_algo"][i]))
 
     efficiency_dataframe = pd.DataFrame({'datetime': time_column, 'value': risultato})
-    plot_graph(efficiency_dataframe, "datetime", "value", "Efficienza Inverter", "#F3722C", "%")
+    plot_graph(efficiency_dataframe, "datetime", "value", "Inverter Efficency", color_algo, "%")
 
 ########################################################################################
 #       NO BATTERY FUNCTION
@@ -289,7 +288,7 @@ def plot_scambio_rete_nobattery(dictionary):
     power_to_grid_df["value"] = power_to_grid_df["value"].multiply(-1)
 
     plot_graph_hist(power_to_grid_df, "datetime", "value",
-               "Stima scambio energetico con la rete elettrica (Acquisto positivo) senza Batteria", "#43AA8B", "Wh")
+               "Estimated energy exchange with the electricity grid (Positive purchase) without battery", "#43AA8B", "Wh")
 
 def plot_co2_nobattery(dictionary):
 
@@ -298,7 +297,7 @@ def plot_co2_nobattery(dictionary):
 
     co2_plant_dataframe = pd.DataFrame({'datetime': time_column, 'value': dictionary["co2_nobattery"]})
     plot_graph(co2_plant_dataframe, "datetime", "value",
-                "Co2 immessa con impianto senza Batteria ", "#577590", "Grammi")
+                "Co2 introduced with system without battery ", color_nobatt, "Grams")
     
 def plot_costi_plant_nobattery(dictionary):
 
@@ -306,8 +305,8 @@ def plot_costi_plant_nobattery(dictionary):
     time_column = pd.date_range(start=current_datetime.replace(minute=0, second=0, microsecond=0), periods=24, freq='H')
     pv_only_dataframe = pd.DataFrame({'datetime': time_column, 'value': dictionary["sum_nobattery"]})
 
-    plot_graph(pv_only_dataframe, "datetime", "value", "Stima costi in bolletta (guadagno positivo) (senza batteria)",
-               "#577590", "Euro €")    
+    plot_graph(pv_only_dataframe, "datetime", "value", "Estimated costs on the bill (positive profit) (without battery)",
+               color_nobatt, "Euro €")    
     
 ########################################################################################
 #       NO PLANT
@@ -319,7 +318,7 @@ def plot_co2_noplant(dictionary):
     co2_dataframe = pd.DataFrame({'datetime': time_column, 'value': dictionary["co2_noplant"]})
     co2_dataframe["value"] = co2_dataframe["value"].multiply(-1)                             
     plot_graph(co2_dataframe, "datetime", "value",
-               "Co2 immessa senza impianto ", "#577590", "Grammi ")
+               "Co2 introduced without system", color_noplant, "Grams ")
 
 def plot_costi_noplant(dictionary):
     current_datetime = datetime.now() + timedelta(hours=1)
@@ -327,7 +326,7 @@ def plot_costi_noplant(dictionary):
 
     consumption_only_dataframe = pd.DataFrame({'datetime': time_column, 'value': dictionary["sum_noplant"]})
     plot_graph(consumption_only_dataframe, "datetime", "value",
-               "Stima costi in bolletta (guadagno positivo) (senza batteria e senza PV)", "#577590", "Euro €")
+               "Estimated costs on the bill (positive profit) (without battery and without PV)", color_noplant, "Euro €")
 
 def plot_scambio_rete_noplant(dictionary):
     current_datetime = datetime.now() + timedelta(hours=1)
@@ -336,7 +335,7 @@ def plot_scambio_rete_noplant(dictionary):
     power_to_grid_df = pd.DataFrame({'datetime': time_column, 'value': dictionary["power_to_grid_noplant"]})
 
     plot_graph_hist(power_to_grid_df, "datetime", "value",
-               "Stima scambio energetico con la rete elettrica (Acquisto positivo) senza Impianto", "#43AA8B", "Wh")
+               "Estimated energy exchange with the electricity grid (Positive purchase) without system", "#43AA8B", "Wh")
 
 ########################################################################################
 #       NO ALGORITHM FUNCTION
@@ -351,14 +350,14 @@ def plot_scambio_rete_noalgo(dictionary):
     power_to_grid_df["value"] = power_to_grid_df["value"].multiply(-1)
 
     plot_graph_hist(power_to_grid_df, "datetime", "value",
-               "Stima scambio energetico con la rete elettrica (Acquisto positivo) senza Algoritmo", "#43AA8B", "Wh")
+               "Estimated energy exchange with the electricity grid (Positive purchase) without Algorithm", "#43AA8B", "Wh")
 
 def plot_costi_noalgo(dictionary):
     current_datetime = datetime.now() + timedelta(hours=1)
     time_column =pd.date_range(start=current_datetime.replace(minute=0, second=0, microsecond=0), periods=24, freq='H')
     cost_dataframe = pd.DataFrame({'datetime': time_column, 'value': dictionary["sum_noalgo"]})
     cost_dataframe["value"] = cost_dataframe["value"].multiply(-1)
-    plot_graph(cost_dataframe, "datetime", "value", "Stima costi in bolletta (guadagno positivo) senza Algoritmo", "#577590", "Euro €")
+    plot_graph(cost_dataframe, "datetime", "value", "Estimate costs on the bill (positive profit) without Algorithm", color_noalgo, "Euro €")
 
 def plot_energia_batteria_noalgo(dictionary):    
     current_datetime = datetime.now() + timedelta(hours=1)
@@ -366,7 +365,7 @@ def plot_energia_batteria_noalgo(dictionary):
                                 periods=25, freq='H')
 
     battery_wh_dataframe = pd.DataFrame({'datetime': time_column, 'value': dictionary["actual_battery_level_noalgo"]})
-    plot_graph(battery_wh_dataframe, "datetime", "value", "Stima energia in batteria senza Algoritmo", "#90BE6D", "Wh")
+    plot_graph(battery_wh_dataframe, "datetime", "value", "Estimate battery energy without Algorithm", color_noalgo, "Wh")
 
 def plot_co2_noalgo(dictionary):
 
@@ -374,7 +373,7 @@ def plot_co2_noalgo(dictionary):
     time_column =pd.date_range(start=current_datetime.replace(minute=0, second=0, microsecond=0), periods=24, freq='H') 
     co2_plant_dataframe = pd.DataFrame({'datetime': time_column, 'value': dictionary["co2_noalgo"]})
     plot_graph(co2_plant_dataframe, "datetime", "value",
-                "Co2 immessa con impianto senza Algoritmo ", "#577590", "Grammi")
+                "Co2 introduced with system without Algorithm", color_noalgo, "Grams")
 
 
 def plot_degradation_noalgo(dictionary):
@@ -383,7 +382,7 @@ def plot_degradation_noalgo(dictionary):
     time_column =pd.date_range(start=current_datetime.replace(minute=0, second=0, microsecond=0), periods=24, freq='H') 
     co2_plant_dataframe = pd.DataFrame({'datetime': time_column, 'value':dictionary["quantity_battery_degradation_noalgo"]})
     plot_graph(co2_plant_dataframe, "datetime", "value",
-                "Degradazione Impianto senza Algoritmo ", "#577590", "Wh")
+                "System Degradation without Algorithm ", color_noalgo, "Wh")
     
 ########################################################################################
 #       Comparison Plots
@@ -400,22 +399,21 @@ def plot_co2_comparison_algo(dictionary):
     co2_plant_dataframe_noplant["value"] = co2_plant_dataframe_noplant["value"].multiply(-1)                             
 
    # Creazione della figura
-    plt.figure(figsize=(10, 6))
 
     # Tracciare tutte le curve sullo stesso grafico
-    plt.plot(co2_plant_dataframe["datetime"], co2_plant_dataframe["value"], color="#577590", label="With PV and battery")
-    plt.plot(co2_plant_dataframe_nobattery["datetime"], co2_plant_dataframe_nobattery["value"], color="#90BE6D", label="With PV")
-    plt.plot(co2_plant_dataframe_noplant["datetime"], co2_plant_dataframe_noplant["value"], color="#F94144", label="Without PV")
-    plt.plot(co2_plant_dataframe_noalgo["datetime"], co2_plant_dataframe_noalgo["value"], color="#F8961E", label="With PV and battery NO ALGORITHM")
+    plt.plot(co2_plant_dataframe["datetime"], co2_plant_dataframe["value"], color=color_algo, label="With PV and battery")
+    plt.plot(co2_plant_dataframe_nobattery["datetime"], co2_plant_dataframe_nobattery["value"], color=color_nobatt, label="With PV")
+    plt.plot(co2_plant_dataframe_noplant["datetime"], co2_plant_dataframe_noplant["value"], color=color_noplant, label="Without PV")
+    plt.plot(co2_plant_dataframe_noalgo["datetime"], co2_plant_dataframe_noalgo["value"], color=color_noalgo, label="With PV and battery NO ALGORITHM")
 
     # Impostazioni del grafico
     plt.xlabel("Datetime")
-    plt.ylabel("Grammi di Co2")
+    plt.ylabel("Co2 Grams")
     plt.legend()  # Mostra la legenda per distinguere le curve
     plt.xticks(rotation=45)  # Ruota le etichette dell'asse x per una migliore leggibilità
     plt.grid(True)  # Aggiungi una griglia per facilitare la lettura
     plt.xticks(co2_plant_dataframe_noalgo["datetime"], co2_plant_dataframe_noalgo["datetime"].dt.strftime('%H'), rotation=10)
-    plt.title("Confronto emissioni di Co2")
+    plt.title("Co2 Emissions Comparison")
     # Mostra il grafico
     plt.tight_layout()
 
@@ -436,13 +434,12 @@ def plot_cost_comparison(dictionary):
     cost_dataframe_noalgo["value"] = cost_dataframe_noalgo["value"].multiply(-1)
 
     # Creazione della figura
-    plt.figure(figsize=(10, 6))
 
     # Tracciare tutte le curve sullo stesso grafico
-    plt.plot(cost_dataframe_algo["datetime"], cost_dataframe_algo["value"], color="#577590", label="With PV and battery")
-    plt.plot(cost_dataframe_nobattery["datetime"], cost_dataframe_nobattery["value"], color="#90BE6D", label="With PV")
-    plt.plot(cost_dataframe_noplant["datetime"], cost_dataframe_noplant["value"], color="#F94144", label="Without PV")
-    plt.plot(cost_dataframe_noalgo["datetime"], cost_dataframe_noalgo["value"], color="#F8961E", label="With PV and battery NO ALGORITHM")
+    plt.plot(cost_dataframe_algo["datetime"], cost_dataframe_algo["value"], color=color_algo, label="With PV and battery")
+    plt.plot(cost_dataframe_nobattery["datetime"], cost_dataframe_nobattery["value"], color=color_nobatt, label="With PV")
+    plt.plot(cost_dataframe_noplant["datetime"], cost_dataframe_noplant["value"], color=color_noplant, label="Without PV")
+    plt.plot(cost_dataframe_noalgo["datetime"], cost_dataframe_noalgo["value"], color=color_noalgo, label="With PV and battery NO ALGORITHM")
 
     # Impostazioni del grafico
     plt.xlabel("Datetime")
@@ -452,7 +449,7 @@ def plot_cost_comparison(dictionary):
     plt.xticks(rotation=45)  # Ruota le etichette dell'asse x per una migliore leggibilità
     plt.grid(True)  # Aggiungi una griglia per facilitare la lettura
     plt.xticks(cost_dataframe_algo["datetime"], cost_dataframe_algo["datetime"].dt.strftime('%H'), rotation=10)
-    plt.title("Confronto costi (Guadagno Positivo)")
+    plt.title("Cost Comparison ( Positive Earnings)")
     # Mostra il grafico
     plt.tight_layout()
 
@@ -465,10 +462,11 @@ def plot_comparison_degradation(dictionary):
     lista = dictionary_to_list(dictionary, "battery_capacity")
     degradation_plant_dataframe = pd.DataFrame({'datetime': time_column, 'value': lista})
     degradation_plant_dataframe_noalgo = pd.DataFrame({'datetime': time_column, 'value': dictionary["quantity_battery_degradation_noalgo"]})
+   
 
     # Tracciare tutte le curve sullo stesso grafico
-    plt.plot(degradation_plant_dataframe["datetime"], degradation_plant_dataframe["value"], color="#577590", label="With Algoritm")
-    plt.plot(degradation_plant_dataframe_noalgo["datetime"], degradation_plant_dataframe_noalgo["value"], color="#F8961E", label="With PV and battery NO ALGORITHM")
+    plt.plot(degradation_plant_dataframe["datetime"], degradation_plant_dataframe["value"], color=color_algo, label="With Algoritm")
+    plt.plot(degradation_plant_dataframe_noalgo["datetime"], degradation_plant_dataframe_noalgo["value"], color=color_noalgo, label="With PV and battery NO ALGORITHM")
 
     # Impostazioni del grafico
     plt.xlabel("Datetime")
@@ -477,7 +475,7 @@ def plot_comparison_degradation(dictionary):
     plt.xticks(rotation=45)  # Ruota le etichette dell'asse x per una migliore leggibilità
     plt.grid(True)  # Aggiungi una griglia per facilitare la lettura
     plt.xticks(degradation_plant_dataframe["datetime"], degradation_plant_dataframe["datetime"].dt.strftime('%H'), rotation=10)
-    plt.title("Confronto Degradazione Batteria")
+    plt.title("Battery Degradation Comparison")
     # Mostra il grafico
     plt.tight_layout()
 
@@ -492,11 +490,10 @@ def plot_comparison_battery(dictionary):
 
     battery_dataframe_noalgo = pd.DataFrame({'datetime': time_column, 'value': dictionary["actual_battery_level_noalgo"]})
 
-    plt.figure(figsize=(10, 6))
 
     # Tracciare tutte le curve sullo stesso grafico
-    plt.plot(battery_wh_dataframe["datetime"], battery_wh_dataframe["value"], color="#577590", label="With Algoritm")
-    plt.plot(battery_dataframe_noalgo["datetime"], battery_dataframe_noalgo["value"], color="#F8961E", label="With PV and battery NO ALGORITHM")
+    plt.plot(battery_wh_dataframe["datetime"], battery_wh_dataframe["value"], color=color_algo, label="With Algoritm")
+    plt.plot(battery_dataframe_noalgo["datetime"], battery_dataframe_noalgo["value"], color=color_noalgo, label="With PV and battery NO ALGORITHM")
 
     # Impostazioni del grafico
     plt.xlabel("Datetime")
@@ -505,6 +502,6 @@ def plot_comparison_battery(dictionary):
     plt.xticks(rotation=45)  # Ruota le etichette dell'asse x per una migliore leggibilità
     plt.grid(True)  # Aggiungi una griglia per facilitare la lettura
     plt.xticks(battery_wh_dataframe["datetime"], battery_wh_dataframe["datetime"].dt.strftime('%H'), rotation=10)
-    plt.title("Confronto Energia in Batteria")
+    plt.title("Energy in Battery Comparison")
     # Mostra il grafico
     plt.tight_layout()

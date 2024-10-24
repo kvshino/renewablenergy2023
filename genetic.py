@@ -341,7 +341,7 @@ def start_genetic_algorithm(data, pop_size, n_gen, n_threads,prob_mut_bit =0.2,p
     res = minimize(problem,
                    algorithm,
                    termination= termination, 
-                   seed= 10,#random.randint(0, 99999)
+                   seed= random.randint(0, 99999),
                    verbose=verbose,
                    output=MyOutput(),
                    save_history=True)
