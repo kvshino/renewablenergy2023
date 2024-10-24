@@ -23,7 +23,7 @@ async def main():
 
         dict={}
         sampling=0
-        pop_size =10
+        pop_size =4
         gen = 2
 
         data = setup(polynomial_inverter)

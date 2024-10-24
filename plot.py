@@ -26,7 +26,7 @@ def plot_graph(data, x, y, title, color, label):
     """
     sns.set(rc={'axes.facecolor': '#edf1ef', 'figure.facecolor': '#edf1ef'})
 
-    plt.figure(title,figsize=(10, 6), facecolor='#edf1ef')
+    plt.figure(title,figsize=(14, 8), facecolor='#edf1ef')
 
     sns.set(font_scale=1.48)
     ax = sns.lineplot(data, x=x, y=y, color=color)
@@ -36,7 +36,7 @@ def plot_graph(data, x, y, title, color, label):
     plt.title(title, weight='bold')
 
 def plot_graph_hist(data, x, y, title, color, label):
-    plt.figure(title,facecolor='#edf1ef')
+    plt.figure(title,figsize=(14, 8),facecolor='#edf1ef')
     colors = ['#F94144' if value < 0 else '#90BE6D' for value in data['value']]
     plt.bar(data['datetime'], data['value'], width=0.02, color=colors)
     plt.xticks(data['datetime'], data['datetime'].dt.strftime('%d/%m Ore:%H:%M'), rotation=90)
@@ -399,6 +399,7 @@ def plot_co2_comparison_algo(dictionary):
     co2_plant_dataframe_noplant["value"] = co2_plant_dataframe_noplant["value"].multiply(-1)                             
 
    # Creazione della figura
+    plt.figure(figsize=(14, 8),facecolor='#edf1ef')
 
     # Tracciare tutte le curve sullo stesso grafico
     plt.plot(co2_plant_dataframe["datetime"], co2_plant_dataframe["value"], color=color_algo, label="With PV and battery")
@@ -413,7 +414,9 @@ def plot_co2_comparison_algo(dictionary):
     plt.xticks(rotation=45)  # Ruota le etichette dell'asse x per una migliore leggibilità
     plt.grid(True)  # Aggiungi una griglia per facilitare la lettura
     plt.xticks(co2_plant_dataframe_noalgo["datetime"], co2_plant_dataframe_noalgo["datetime"].dt.strftime('%H'), rotation=10)
-    plt.title("Co2 Emissions Comparison")
+    title ="Co2 Emissions Comparison"
+    plt.title(title, weight='bold')
+
     # Mostra il grafico
     plt.tight_layout()
 
@@ -434,6 +437,7 @@ def plot_cost_comparison(dictionary):
     cost_dataframe_noalgo["value"] = cost_dataframe_noalgo["value"].multiply(-1)
 
     # Creazione della figura
+    plt.figure(figsize=(14, 8),facecolor='#edf1ef')
 
     # Tracciare tutte le curve sullo stesso grafico
     plt.plot(cost_dataframe_algo["datetime"], cost_dataframe_algo["value"], color=color_algo, label="With PV and battery")
@@ -449,7 +453,11 @@ def plot_cost_comparison(dictionary):
     plt.xticks(rotation=45)  # Ruota le etichette dell'asse x per una migliore leggibilità
     plt.grid(True)  # Aggiungi una griglia per facilitare la lettura
     plt.xticks(cost_dataframe_algo["datetime"], cost_dataframe_algo["datetime"].dt.strftime('%H'), rotation=10)
-    plt.title("Cost Comparison ( Positive Earnings)")
+    
+    title ="Cost Comparison ( Positive Earnings)"
+    plt.title(title, weight='bold')
+
+
     # Mostra il grafico
     plt.tight_layout()
 
@@ -463,6 +471,7 @@ def plot_comparison_degradation(dictionary):
     degradation_plant_dataframe = pd.DataFrame({'datetime': time_column, 'value': lista})
     degradation_plant_dataframe_noalgo = pd.DataFrame({'datetime': time_column, 'value': dictionary["quantity_battery_degradation_noalgo"]})
    
+    plt.figure(figsize=(14, 8),facecolor='#edf1ef')
 
     # Tracciare tutte le curve sullo stesso grafico
     plt.plot(degradation_plant_dataframe["datetime"], degradation_plant_dataframe["value"], color=color_algo, label="With Algoritm")
@@ -475,7 +484,9 @@ def plot_comparison_degradation(dictionary):
     plt.xticks(rotation=45)  # Ruota le etichette dell'asse x per una migliore leggibilità
     plt.grid(True)  # Aggiungi una griglia per facilitare la lettura
     plt.xticks(degradation_plant_dataframe["datetime"], degradation_plant_dataframe["datetime"].dt.strftime('%H'), rotation=10)
-    plt.title("Battery Degradation Comparison")
+    title ="Battery Degradation Comparison"
+    plt.title(title, weight='bold')
+
     # Mostra il grafico
     plt.tight_layout()
 
@@ -490,6 +501,7 @@ def plot_comparison_battery(dictionary):
 
     battery_dataframe_noalgo = pd.DataFrame({'datetime': time_column, 'value': dictionary["actual_battery_level_noalgo"]})
 
+    plt.figure(figsize=(14, 8),facecolor='#edf1ef')
 
     # Tracciare tutte le curve sullo stesso grafico
     plt.plot(battery_wh_dataframe["datetime"], battery_wh_dataframe["value"], color=color_algo, label="With Algoritm")
@@ -502,6 +514,9 @@ def plot_comparison_battery(dictionary):
     plt.xticks(rotation=45)  # Ruota le etichette dell'asse x per una migliore leggibilità
     plt.grid(True)  # Aggiungi una griglia per facilitare la lettura
     plt.xticks(battery_wh_dataframe["datetime"], battery_wh_dataframe["datetime"].dt.strftime('%H'), rotation=10)
-    plt.title("Energy in Battery Comparison")
+
+    title ="Energy in Battery Comparison"
+    plt.title(title, weight='bold')
+
     # Mostra il grafico
     plt.tight_layout()
