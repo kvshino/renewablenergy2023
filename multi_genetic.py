@@ -165,7 +165,7 @@ def start_genetic_algorithm(data, pop_size, n_gen, n_threads, prob_mut_bit=0.5, 
                 #Caso in cui si sceglie di caricare la batteria
                 if charge:                                                  
 
-                    posso_caricare_di = upper_limit - effettivo_in_batteria
+                    posso_caricare_di = max(upper_limit - effettivo_in_batteria, 0)
 
                     #Viene calcolato di quanto caricare la batteria
                     quantity_charging_battery = ((posso_caricare_di * percentage) / 100) / data["battery_charging_efficiency"]
@@ -199,8 +199,6 @@ def start_genetic_algorithm(data, pop_size, n_gen, n_threads, prob_mut_bit=0.5, 
                     else:
                         
                         quantity_bought_from_not_renewable_sources =  ((quantity_charging_battery - delta_production_after_inverter)) * percentage_production_not_renewable["Difference"][j]
-                        co2_emissions = co2_emissions + (quantity_bought_from_not_renewable_sources * data["coal_percentage"] * data["coal_pollution"]) + (quantity_bought_from_not_renewable_sources * data["gas_percentage"] * data["gas_pollution"]) + (quantity_bought_from_not_renewable_sources * data["oil_percentage"] * data["oil_pollution"]) + penality_sum
-
 
                         if data["estimate"]["consumo"].values[j] + quantity_charging_battery > data["inverter_nominal_power"]:
                             penality_batt = penality_batt + (1 - data["inverter_nominal_power"]/(data["estimate"]["consumo"].values[j] + quantity_charging_battery))
@@ -209,6 +207,8 @@ def start_genetic_algorithm(data, pop_size, n_gen, n_threads, prob_mut_bit=0.5, 
                         if( quantity_charging_battery > data["maximum_power_absorption"] + delta_production_after_inverter):
                             penality_sum = penality_sum + (1 -  (data["maximum_power_absorption"] + delta_production_after_inverter) / quantity_charging_battery)
 
+
+                        co2_emissions = co2_emissions + (quantity_bought_from_not_renewable_sources * data["coal_percentage"] * data["coal_pollution"]) + (quantity_bought_from_not_renewable_sources * data["gas_percentage"] * data["gas_pollution"]) + (quantity_bought_from_not_renewable_sources * data["oil_percentage"] * data["oil_pollution"]) + penality_sum
                         #Viene acquistata energia
                         sum = sum + ((quantity_charging_battery - delta_production_after_inverter)) * data["prices"]["prezzo"].iloc[j]+penality_sum
                     
@@ -219,7 +219,7 @@ def start_genetic_algorithm(data, pop_size, n_gen, n_threads, prob_mut_bit=0.5, 
                 else:
 
                     #Viene calcolato di quanto scaricare la batteria
-                    posso_scaricare_di=effettivo_in_batteria-lower_limit
+                    posso_scaricare_di= max(effettivo_in_batteria-lower_limit, 0)
                     quantity_discharging_battery=((posso_scaricare_di*percentage)/100)*data["battery_discharging_efficiency"]
 
                                   
@@ -257,14 +257,15 @@ def start_genetic_algorithm(data, pop_size, n_gen, n_threads, prob_mut_bit=0.5, 
                     #Produco poco e consumo di più
                     else:
                         quantity_bought_from_not_renewable_sources = (- (delta_production_after_inverter + quantity_discharging_battery)) * percentage_production_not_renewable["Difference"][j]
-                        co2_emissions = co2_emissions + (quantity_bought_from_not_renewable_sources * data["coal_percentage"] * data["coal_pollution"]) + (quantity_bought_from_not_renewable_sources * data["gas_percentage"] * data["gas_pollution"]) + (quantity_bought_from_not_renewable_sources * data["oil_percentage"] * data["oil_pollution"]) + penality_sum
 
                         if data["estimate"]["consumo"].values[j] > data["inverter_nominal_power"]:
                             penality_batt = penality_batt + (1 - data["inverter_nominal_power"]/(data["estimate"]["consumo"].values[j]))
                             penality_sum = penality_sum + (1 - data["inverter_nominal_power"]/(data["estimate"]["consumo"].values[j]))                    
                         
+
+                        co2_emissions = co2_emissions + (quantity_bought_from_not_renewable_sources * data["coal_percentage"] * data["coal_pollution"]) + (quantity_bought_from_not_renewable_sources * data["gas_percentage"] * data["gas_pollution"]) + (quantity_bought_from_not_renewable_sources * data["oil_percentage"] * data["oil_pollution"]) + penality_sum
                         #Produco di meno di quanto consumo, compro il resto
-                        sum = sum + (- (delta_production_after_inverter + quantity_discharging_battery/data["battery_discharging_efficiency"]) *
+                        sum = sum + (- (delta_production_after_inverter + quantity_discharging_battery) *
                                      data["prices"]["prezzo"].iloc[j])+penality_sum
 
 
@@ -317,11 +318,16 @@ def start_genetic_algorithm(data, pop_size, n_gen, n_threads, prob_mut_bit=0.5, 
             self.data["co2_emissions"].append(np.min(np.linalg.norm(F, axis=0)))
     
 
+    pop_size=650
+    n_gen=300
+    prob_mut_bit=0.1775
+    prob_mut_int=0.5958
+
     pool = ThreadPool(n_threads)
     runner = StarmapParallelization(pool.starmap)
     problem = MixedVariableProblem(elementwise_runner=runner)
 
-    termination= DefaultMultiObjectiveTermination(xtol=0.001, n_max_gen=n_gen, n_skip=1, period=30)
+    termination= DefaultMultiObjectiveTermination(xtol=0.001, n_max_gen=n_gen, n_skip=1, period=50)
 
     survival = RankAndCrowding() 
     selection = CustomRandomSelection()
@@ -346,7 +352,7 @@ def start_genetic_algorithm(data, pop_size, n_gen, n_threads, prob_mut_bit=0.5, 
     res = minimize(problem,
                    algorithm,
                    termination= termination, 
-                   seed= 104,#random.randint(0, 99999),
+                   seed= random.randint(0, 99999),
                    verbose=verbose,
                    save_history=True,
                    callback = callback

@@ -2,8 +2,8 @@ import asyncio
 from functions import *
 import warnings
 from update_costs import *
-from genetic import *
-from genetic_ga import *
+from multi_genetic import *
+from multi_genetic_nsga import *
 from consumptions import *
 from plot import *
 from update_battery import *
@@ -13,58 +13,69 @@ import time
 
 warnings.filterwarnings("ignore", category=FutureWarning)
 
-color_ga ="#a066cb"
-color_mixed =color="#86c7ed"
-delta =10
-async def mixed():
+color_ga ="#004aad"
+color_mixed ="#ff5757"
+
+async def mixed(frozen_datetime):
     polynomial_batt = battery_function()
     polynomial_inverter = inverter_function()
 
-    with freeze_time(datetime.now() - timedelta(hours=delta)) as frozen_datetime:
-        dict = {}
-        sampling = 0
-        pop_size = 500
-        gen = 200
-
+    print("Inizio mixed: " + str(datetime.now()))
+    dict = {}
+    sampling = 0
+    pop_size = 10
+    gen = 4
+    data = setup(polynomial_inverter,"csv/socsmixed.csv")
+    prices = await get_future_day_italian_market(data)
+    production_not_rs = forecast_percentage_production_from_not_renewable_sources(api_key=data["api_key"], zona=data["entsoe_timezone"])
+    prices_copy = prices.copy()
+    production_not_rs_copy = production_not_rs.copy()
+    for i in range(24):
         data = setup(polynomial_inverter,"csv/socsmixed.csv")
-        prices = await get_future_day_italian_market(data)
-        production_not_rs = forecast_percentage_production_from_not_renewable_sources(api_key=data["api_key"], zona=data["entsoe_timezone"])
-
-        for i in range(24):
-            data = setup(polynomial_inverter,"csv/socsmixed.csv")
-            data["prices"] = prices
-            data["production_not_rs"] = production_not_rs  
-            data["polynomial"] = polynomial_batt
-            
-            if(i == 0):
-                dict["first_battery_value"] = data["socs"]
-                cycles = data["cycles"]
-                dict[f"battery_capacity{i}"] = data["battery_capacity"]
-
-            if i == 0:
-                data["res"], data["history"] = start_genetic_algorithm(data=data, pop_size=pop_size, n_gen=gen, n_threads=24,prob_mut_bit=0.14,prob_mut_pm=0.75, sampling=None, verbose=False)  
-            else:
-                data["res"], data["history"] = start_genetic_algorithm(data=data, pop_size=pop_size, n_gen=gen, n_threads=24,prob_mut_bit=0.14,prob_mut_pm=0.75, sampling=sampling, verbose=False)
-            
-            print("Fine Esecuzione Ora " + str(i+1))
-
-            dict[f"b{i}"] = data["res"].X["b0"]
-            dict[f"i{i}"] = data["res"].X["i0"]
-            dict[f"difference_of_production{i}"] = data["difference_of_production"][0]
-            dict[f"prices{i}"] = data["prices"]["prezzo"][0]
-            dict[f"production_not_rs{i}"] = data[f"production_not_rs"]["Difference"][0]
-            dict[f"load{i}"] = data["estimate"]["consumo"][0]
-            dict[f"production{i}"] = data["expected_production"]["production"][0]
-            
-            prices = shift_ciclico(prices, "prezzo")
-            production_not_rs = shift_ciclico(production_not_rs, "Difference")
+        data["prices"] = prices
+        data["production_not_rs"] = production_not_rs  
+        data["polynomial"] = polynomial_batt
         
-            all_populations = [a.pop for a in data["history"]]
-            sampling = shifting_individuals(all_populations[-1])
-            dict[f"battery_capacity{i+1}"] = update_battery_values(data, "csv/socsmixed.csv", dict[f"b{i}"], dict[f"i{i}"], polynomial_batt)
+        if(i == 0):
+            dict["first_battery_value"] = data["socs"]
+            cycles = data["cycles"]
+            dict[f"battery_capacity{i}"] = data["battery_capacity"]
 
-            frozen_datetime.tick(delta=timedelta(hours=1))
+        if i == 0:
+            data["res"], data["history"] = start_genetic_algorithm(data=data, pop_size=pop_size, n_gen=gen, n_threads=12, sampling=None, verbose=False)  
+        else:
+            data["res"], data["history"] = start_genetic_algorithm(data=data, pop_size=pop_size, n_gen=gen, n_threads=12, sampling=sampling, verbose=False)
+        
+        print("Fine Esecuzione Ora " + str(i+1))
 
+        F=data["res"].F
+        F_min = np.min(F, axis=0)
+        F_max = np.max(F, axis=0)
+        F_norm = (F - F_min) / (F_max - F_min)
+        distances = np.linalg.norm(F_norm, axis=1)
+        best_index = np.argmin(distances)
+
+
+        dict[f"b{i}"]=data["res"].X[best_index]["b0"]
+        dict[f"i{i}"]=data["res"].X[best_index]["i0"]
+
+
+        dict[f"difference_of_production{i}"] = data["difference_of_production"][0]
+        dict[f"prices{i}"] = data["prices"]["prezzo"][0]
+        dict[f"production_not_rs{i}"] = data[f"production_not_rs"]["Difference"][0]
+        dict[f"load{i}"] = data["estimate"]["consumo"][0]
+        dict[f"production{i}"] = data["expected_production"]["production"][0]
+        
+        prices = shift_ciclico(prices, "prezzo")
+        production_not_rs = shift_ciclico(production_not_rs, "Difference")
+    
+        all_populations = [a.pop for a in data["history"]]
+        sampling = shifting_individuals(all_populations[-1])
+        dict[f"battery_capacity{i+1}"] = update_battery_values(data, "csv/socsmixed.csv", dict[f"b{i}"], dict[f"i{i}"], polynomial_batt)
+        frozen_datetime.tick(delta=timedelta(hours=1))
+    
+    print("Fine mixed: " + str(datetime.now()))
+    
     dict["soc_min"] = data["soc_min"]
     dict["soc_max"] = data["soc_max"]
     dict["sold"] = data["sold"]
@@ -76,60 +87,66 @@ async def mixed():
     dict["sum_algo"], dict["actual_percentage_algo"], dict["quantity_delta_battery_algo"], dict["co2_algo"], dict["ratio_algo"] = evaluate(data, dict, cycles, polynomial_batt)
     lista = dictionary_to_list(dict,"battery_capacity")
 
-    return dict["sum_algo"], dict["actual_percentage_algo"], dict["co2_algo"], lista 
 
-async def ga():
+    return dict["sum_algo"], dict["actual_percentage_algo"], dict["co2_algo"], lista, prices_copy, production_not_rs_copy
+
+async def nsga(frozen_datetime, prices, production_not_rs):
     polynomial_batt = battery_function()
     polynomial_inverter = inverter_function()
 
-    with freeze_time(datetime.now()- timedelta(hours=delta)) as frozen_datetime:
 
-        dict={}
-        sampling=0
-        pop_size =500
-        gen = 200
+    dict={}
+    sampling=0
+    pop_size =10
+    gen = 4
+    print("Inizio nsga: " + str(datetime.now()))
+    for i in range(24):
 
         data = setup(polynomial_inverter,"csv/socsga.csv")
-        prices = await get_future_day_italian_market(data)
-        production_not_rs = forecast_percentage_production_from_not_renewable_sources(api_key=data["api_key"], zona=data["entsoe_timezone"])
-        for i in range(24):
+        data["prices"] = prices 
+        data["production_not_rs"] = production_not_rs  
+        data["polynomial"] = polynomial_batt
 
-            data = setup(polynomial_inverter,"csv/socsga.csv")
-            data["prices"] = prices 
-            data["production_not_rs"] = production_not_rs  
-            data["polynomial"] = polynomial_batt
+        if(i==0):
+            dict["first_battery_value"]=data["socs"]
+            cycles = data["cycles"]
+            dict[f"battery_capacity{i}"] = data["battery_capacity"]
 
-            if(i==0):
-                dict["first_battery_value"]=data["socs"]
-                cycles = data["cycles"]
-                dict[f"battery_capacity{i}"] = data["battery_capacity"]
-
-            if i == 0:
-                data["res"], data["history"] = start_GA_genetic_algorithm(data=data, pop_size=pop_size, n_gen=gen, n_threads=24,prob_cross=0.72,prob_mut_bit=0.102,prob_mut_int=0.47, sampling=None, verbose=False)  #Checked OK
-            else:
-                data["res"], data["history"] = start_GA_genetic_algorithm(data=data, pop_size=pop_size, n_gen=gen, n_threads=24,prob_cross=0.72,prob_mut_bit=0.102,prob_mut_int=0.47, sampling=sampling, verbose=False)
-            
-            print("Fine Esecuzione Ora " + str(i+1))
-
-            dict[f"b{i}"]=data["res"].X[0]
-            dict[f"i{i}"]=data["res"].X[1]
-
-
-            dict[f"difference_of_production{i}"] = data["difference_of_production"][0]
-            dict[f"prices{i}"] = data["prices"]["prezzo"][0]
-            dict[f"production_not_rs{i}"] = data[f"production_not_rs"]["Difference"][0]
-            dict[f"load{i}"] = data["estimate"]["consumo"][0]
-            dict[f"production{i}"] = data["expected_production"]["production"][0]
-            
-            prices = shift_ciclico(prices, "prezzo")
-            production_not_rs = shift_ciclico(production_not_rs, "Difference")
+        if i == 0:
+            data["res"], data["history"] = start_nsga2_genetic_algorithm(data=data, pop_size=pop_size, n_gen=gen, n_threads=12, sampling=None, verbose=False)  #Checked OK
+        else:
+            data["res"], data["history"] = start_nsga2_genetic_algorithm(data=data, pop_size=pop_size, n_gen=gen, n_threads=12, sampling=sampling, verbose=False)
         
-            all_populations = [a.pop for a in data["history"]]
-            sampling = shifting_GA_individuals(all_populations[-1])
-            dict[f"battery_capacity{i+1}"] = update_battery_values(data, "csv/socsga.csv", dict[f"b{i}"], dict[f"i{i}"], polynomial_batt)
+        print("Fine Esecuzione Ora " + str(i+1))
 
-            frozen_datetime.tick(delta=timedelta(hours=1))
+        F=data["res"].F
+        F_min = np.min(F, axis=0)
+        F_max = np.max(F, axis=0)
+        F_norm = (F - F_min) / (F_max - F_min)
+        distances = np.linalg.norm(F_norm, axis=1)
+        best_index = np.argmin(distances)
 
+
+        dict[f"b{i}"]=round(data["res"].X[best_index][0])
+        dict[f"i{i}"]=round(data["res"].X[best_index][1])
+
+
+        dict[f"difference_of_production{i}"] = data["difference_of_production"][0]
+        dict[f"prices{i}"] = data["prices"]["prezzo"][0]
+        dict[f"production_not_rs{i}"] = data[f"production_not_rs"]["Difference"][0]
+        dict[f"load{i}"] = data["estimate"]["consumo"][0]
+        dict[f"production{i}"] = data["expected_production"]["production"][0]
+        
+        prices = shift_ciclico(prices, "prezzo")
+        production_not_rs = shift_ciclico(production_not_rs, "Difference")
+    
+        all_populations = [a.pop for a in data["history"]]
+        sampling = shifting_nsga2_individuals(all_populations[-1])
+        dict[f"battery_capacity{i+1}"] = update_battery_values(data, "csv/socsga.csv", dict[f"b{i}"], dict[f"i{i}"], polynomial_batt)
+
+        frozen_datetime.tick(delta=timedelta(hours=1))
+
+    print("Fine nsga: " + str(datetime.now()))
 
     dict["soc_min"] = data["soc_min"]
     dict["soc_max"] = data["soc_max"]
@@ -159,9 +176,9 @@ def plot_cost_comparison(dictionary):
     plt.figure(figsize=(10, 6))
 
     # Tracciare tutte le curve sullo stesso grafico
-    plt.plot(cost_dataframe_mixed["datetime"], cost_dataframe_mixed["value"], color=color_mixed, label="MIXED")
+    plt.plot(cost_dataframe_mixed["datetime"], cost_dataframe_mixed["value"], color=color_mixed, label="Mixed")
 
-    plt.plot(cost_dataframe_ga["datetime"], cost_dataframe_ga["value"], color=color_ga, label="GA")
+    plt.plot(cost_dataframe_ga["datetime"], cost_dataframe_ga["value"], color=color_ga, label="Nsga2")
 
     # Impostazioni del grafico
     plt.xlabel("Datetime")
@@ -184,12 +201,12 @@ def plot_co2_comparison_algo(dictionary):
     co2_ga_dataframe = pd.DataFrame({'datetime': time_column, 'value': dictionary["co2_ga"]})
 
 
-   # Creazione della figura
+# Creazione della figura
     plt.figure(figsize=(10, 6))
 
     # Tracciare tutte le curve sullo stesso grafico
-    plt.plot(co2_mixed_dataframe["datetime"], co2_mixed_dataframe["value"], color=color_mixed, label="MIXED")
-    plt.plot(co2_ga_dataframe["datetime"], co2_ga_dataframe["value"], color=color_ga, label="GA")
+    plt.plot(co2_mixed_dataframe["datetime"], co2_mixed_dataframe["value"], color=color_mixed, label="Mixed")
+    plt.plot(co2_ga_dataframe["datetime"], co2_ga_dataframe["value"], color=color_ga, label="Nsga2")
 
 
     # Impostazioni del grafico
@@ -214,7 +231,7 @@ def plot_comparison_degradation(lista1,lista2):
 
     # Tracciare tutte le curve sullo stesso grafico
     plt.plot(degradation_plant_dataframe_mixed["datetime"], degradation_plant_dataframe_mixed["value"], color=color_mixed, label="Mixed")
-    plt.plot(degradation_plant_dataframe_ga["datetime"], degradation_plant_dataframe_ga["value"], color=color_ga, label="GA")
+    plt.plot(degradation_plant_dataframe_ga["datetime"], degradation_plant_dataframe_ga["value"], color=color_ga, label="Nsga2")
 
     # Impostazioni del grafico
     plt.xlabel("Datetime")
@@ -235,7 +252,7 @@ def plot_comparison_battery(dictionary,lista1,lista2):
     actual_percentage_mixed = dictionary["apercentage_mixed"]
     battery_wh_mixed = [float(0.2 * lista1[i]) + (percentage * (float(0.8 * lista1[i] ) - float(0.2 * lista1[i]))) for i,percentage in enumerate(actual_percentage_mixed[:-1])]
     battery_wh_dataframe_mixed = pd.DataFrame({'datetime': time_column, 'value': battery_wh_mixed})
- 
+
 
     actual_percentage_ga = dictionary["apercentage_ga"]
     battery_wh_ga = [float(0.2 * lista2[i]) + (percentage * (float(0.8 *lista2[i] ) - float(0.2 * lista2[i]))) for i,percentage in enumerate(actual_percentage_ga[:-1])]
@@ -244,8 +261,8 @@ def plot_comparison_battery(dictionary,lista1,lista2):
     plt.figure(figsize=(10, 6))
 
     # Tracciare tutte le curve sullo stesso grafico
-    plt.plot(battery_wh_dataframe_mixed["datetime"], battery_wh_dataframe_mixed["value"], color=color_mixed, label="MIXED")
-    plt.plot(battery_wh_dataframe_ga["datetime"], battery_wh_dataframe_ga["value"], color=color_ga, label="GA")
+    plt.plot(battery_wh_dataframe_mixed["datetime"], battery_wh_dataframe_mixed["value"], color=color_mixed, label="Mixed")
+    plt.plot(battery_wh_dataframe_ga["datetime"], battery_wh_dataframe_ga["value"], color=color_ga, label="Nsga2")
 
     # Impostazioni del grafico
     plt.xlabel("Datetime")
@@ -271,7 +288,7 @@ def plot_time(time1,time2):
     fig, ax = plt.subplots()
 
     # Barre per Algoritmo 1 (spostate leggermente a sinistra)
-    bar1 = ax.bar(index - bar_width*0.7, algorithm2_times_ga, bar_width, color=color_ga, label='GA')
+    bar1 = ax.bar(index - bar_width*0.7, algorithm2_times_ga, bar_width, color=color_ga, label='Nsga2')
 
     # Barre per Algoritmo 2 (spostate leggermente a destra)
     bar2 = ax.bar(index + bar_width*0.7, algorithm1_times_mixed, bar_width, color=color_mixed, label='MixedVariableGa')
@@ -284,7 +301,7 @@ def plot_time(time1,time2):
     ax.set_xlim([-0.5, 0.5])
 
     # Aggiungere le etichette sotto le barre
-    ax.text(index[0] - bar_width * 0.7, -0.55, 'GA', ha='center', va='top', fontsize=12)
+    ax.text(index[0] - bar_width * 0.7, -0.55, 'NSGA2', ha='center', va='top', fontsize=12)
     ax.text(index[0] + bar_width * 0.7, -0.55, 'Mixed', ha='center', va='top', fontsize=12)
 
     # Mostrare il grafico
@@ -294,31 +311,34 @@ async def main():
     # Await the mixed function since it is asynchronous
     dictionary ={}
     start_time = time.time()
-
-    dictionary["sum_mixed"],dictionary["apercentage_mixed"] , dictionary["co2_mixed"] , lista1 = await mixed()
+    t=datetime.now()
+    with freeze_time(t) as frozen_datetime:
+        dictionary["sum_mixed"],dictionary["apercentage_mixed"] , dictionary["co2_mixed"] , lista1, prices, production_not_rs = await mixed(frozen_datetime)
     end_time = time.time()
     execution_time_mixed = end_time - start_time
     print(f"Execution_time MixedVariableGa: {execution_time_mixed} seconds")
 
     start_time = time.time()
-    dictionary["sum_ga"], dictionary["apercentage_ga"],  dictionary["co2_ga"], lista2 = await ga()
+    with freeze_time(t) as frozen_datetime:
+        dictionary["sum_ga"], dictionary["apercentage_ga"],  dictionary["co2_ga"], lista2 = await nsga(frozen_datetime, prices, production_not_rs)
     end_time = time.time()
     execution_time_ga = end_time - start_time
     print(f"Execution_time Ga: {execution_time_ga} seconds")
 
-    plot_cost_comparison(dictionary)
-    plt.show()
+    with freeze_time(t) as frozen_datetime:
+        plot_cost_comparison(dictionary)
+        plt.show()
 
-    plot_co2_comparison_algo(dictionary)
-    plt.show()
+        plot_co2_comparison_algo(dictionary)
+        plt.show()
 
-    plot_comparison_degradation(lista1,lista2)
-    plt.show()
+        plot_comparison_degradation(lista1,lista2)
+        plt.show()
 
-    plot_comparison_battery(dictionary,lista1,lista2)
-    plt.show()
-    plot_time(execution_time_mixed,execution_time_ga)
-    plt.show()
+        plot_comparison_battery(dictionary,lista1,lista2)
+        plt.show()
+        plot_time(execution_time_mixed,execution_time_ga)
+        plt.show()
 
 
 if __name__ == "__main__":

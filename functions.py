@@ -39,7 +39,7 @@ def setup(polynomial_inverter, filename='csv/socs.csv') -> dict:
     data["polynomial_inverter"] = polynomial_inverter
     data["expected_production"] = get_expected_power_production_from_pv_24_hours_from_now(data)
     data["difference_of_production"] = difference_of_production(data)
-    data["production_not_rs"] = forecast_percentage_production_from_not_renewable_sources(api_key=data["api_key"])  
+    #data["production_not_rs"] = forecast_percentage_production_from_not_renewable_sources(api_key=data["api_key"])  
     
 
     with open(filename, 'r+') as file:
