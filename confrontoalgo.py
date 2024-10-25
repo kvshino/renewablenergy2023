@@ -162,7 +162,7 @@ async def nsga(frozen_datetime, prices, production_not_rs):
 
 def plot_cost_comparison(dictionary):
     # Imposta l'ora corrente e crea la colonna del tempo
-    current_datetime = datetime.now() + timedelta(hours=1)- timedelta(hours=delta)
+    current_datetime = datetime.now() + timedelta(hours=1)
     time_column = pd.date_range(start=current_datetime.replace(minute=0, second=0, microsecond=0), periods=24, freq='H')
 
     # Creazione dei DataFrame con i dati
@@ -194,7 +194,7 @@ def plot_cost_comparison(dictionary):
 
 
 def plot_co2_comparison_algo(dictionary):
-    current_datetime = datetime.now() + timedelta(hours=1)- timedelta(hours=delta)
+    current_datetime = datetime.now() + timedelta(hours=1)
     time_column =pd.date_range(start=current_datetime.replace(minute=0, second=0, microsecond=0), periods=24, freq='H') 
 
     co2_mixed_dataframe = pd.DataFrame({'datetime': time_column, 'value': dictionary["co2_mixed"]})
@@ -221,13 +221,12 @@ def plot_co2_comparison_algo(dictionary):
     plt.tight_layout()
 
 def plot_comparison_degradation(lista1,lista2):
-    current_datetime = datetime.now() + timedelta(hours=1)- timedelta(hours=delta)
+    current_datetime = datetime.now() + timedelta(hours=1)
     time_column =pd.date_range(start=current_datetime.replace(minute=0, second=0, microsecond=0), periods=24, freq='H') 
 
     degradation_plant_dataframe_mixed = pd.DataFrame({'datetime': time_column, 'value': lista1})
 
     degradation_plant_dataframe_ga = pd.DataFrame({'datetime': time_column, 'value':lista2})
-    plt.figure(figsize=(10, 6))
 
     # Tracciare tutte le curve sullo stesso grafico
     plt.plot(degradation_plant_dataframe_mixed["datetime"], degradation_plant_dataframe_mixed["value"], color=color_mixed, label="Mixed")
@@ -246,7 +245,7 @@ def plot_comparison_degradation(lista1,lista2):
 
 
 def plot_comparison_battery(dictionary,lista1,lista2):
-    current_datetime = datetime.now() + timedelta(hours=1)- timedelta(hours=delta)
+    current_datetime = datetime.now() + timedelta(hours=1)
     time_column =pd.date_range(start=current_datetime.replace(minute=0, second=0, microsecond=0) - timedelta(hours=1), periods=24, freq='H') 
 
     actual_percentage_mixed = dictionary["apercentage_mixed"]
