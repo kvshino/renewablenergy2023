@@ -186,13 +186,20 @@ def start_nsga2_genetic_algorithm(data, pop_size, n_gen, n_threads, prob_mut_bit
         def _do(self, problem, n_samples=24, **kwargs):
             X = np.full(pop_size, 1, dtype=object)
             
-            
-            for k in range(pop_size):
+            for k in range(len(sampling.X)):
                 individuo = np.full(48, 1.5, dtype=float)
                 for i in range(48):
-                    individuo[i] = sampling[k].X[i]
-
+                    individuo[i] = sampling.X[k][i]
                 X[k] = individuo
+            
+            for j in range(k+1, pop_size):
+                individuo = np.full(48, 1.5, dtype=float)
+                for i in range(48):
+                    if i%2 == 0:
+                        individuo[i] = random.choice([True, False])
+                    else:
+                        individuo[i] = random.randint(0, 100)
+                X[j] = individuo
 
             return X
     
@@ -254,13 +261,13 @@ def start_nsga2_genetic_algorithm(data, pop_size, n_gen, n_threads, prob_mut_bit
 
 
 def shifting_nsga2_individuals(population):
-    for individuo in population:
+    for individuo in population.X:
         for i in range(0,46, 2):
-            individuo.X[i] = individuo.X[i+2]
-            individuo.X[i+1] = individuo.X[i+3]
+            individuo[i] = individuo[i+2]
+            individuo[i+1] = individuo[i+3]
 
-        individuo.X[46] =  random.choice([True, False])
-        individuo.X[47] = random.randint(0, 100)
+        individuo[46] =  random.choice([True, False])
+        individuo[47] = random.randint(0, 100)
         
     return population
 

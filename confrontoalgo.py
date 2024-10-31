@@ -69,8 +69,8 @@ async def mixed(frozen_datetime):
         prices = shift_ciclico(prices, "prezzo")
         production_not_rs = shift_ciclico(production_not_rs, "Difference")
     
-        all_populations = [a.pop for a in data["history"]]
-        sampling = shifting_individuals(all_populations[-1])
+        # all_populations = [a.pop for a in data["history"]]
+        sampling = shifting_individuals(data["res"])
         dict[f"battery_capacity{i+1}"] = update_battery_values(data, "csv/socsmixed.csv", dict[f"b{i}"], dict[f"i{i}"], polynomial_batt)
         frozen_datetime.tick(delta=timedelta(hours=1))
     
@@ -140,8 +140,8 @@ async def nsga(frozen_datetime, prices, production_not_rs):
         prices = shift_ciclico(prices, "prezzo")
         production_not_rs = shift_ciclico(production_not_rs, "Difference")
     
-        all_populations = [a.pop for a in data["history"]]
-        sampling = shifting_nsga2_individuals(all_populations[-1])
+        # all_populations = [a.pop for a in data["history"]]
+        sampling = shifting_nsga2_individuals(data["res"])
         dict[f"battery_capacity{i+1}"] = update_battery_values(data, "csv/socsga.csv", dict[f"b{i}"], dict[f"i{i}"], polynomial_batt)
 
         frozen_datetime.tick(delta=timedelta(hours=1))
@@ -158,7 +158,42 @@ async def nsga(frozen_datetime, prices, production_not_rs):
     lista = dictionary_to_list(dict,"battery_capacity")
 
     dict["sum_algo"],dict["actual_percentage_algo"],dict["quantity_delta_battery_algo"],dict["co2_algo"] ,dict["ratio_algo"]= evaluate(data, dict,cycles,polynomial_batt)
+    
+    plot_GME_prices(dict)
+    plt.show()
+    plot_production(dict)
+    plt.show()
+    plot_load(dict)
+    plt.show()
     return dict["sum_algo"], dict["actual_percentage_algo"],  dict["co2_algo"],lista
+
+
+
+
+def plot_GME_prices(dictionary):
+    current_datetime = datetime.now() + timedelta(hours=1)
+    time_column =pd.date_range(start=current_datetime.replace(minute=0, second=0, microsecond=0), periods=24, freq='H')
+    prices_list = dictionary_to_list(dictionary, "prices")
+    expected_prices_dataframe = pd.DataFrame({'datetime': time_column, 'value':prices_list})
+    plot_graph(expected_prices_dataframe, "datetime", "value", "Energy Price Estimate", "#F3722C", "€")
+
+
+def plot_production(dictionary):
+    current_datetime = datetime.now() + timedelta(hours=1)
+    time_column =pd.date_range(start=current_datetime.replace(minute=0, second=0, microsecond=0), periods=24, freq='H')
+    lista = dictionary_to_list(dictionary, "production")
+    expected_production_dataframe = pd.DataFrame({'datetime': time_column, 'value': lista})
+    plot_graph(expected_production_dataframe, "datetime", "value", "Estimated PV Production", "#F3722C", "Wh")
+
+def plot_load(dictionary):
+    current_datetime = datetime.now() + timedelta(hours=1)
+    time_column =pd.date_range(start=current_datetime.replace(minute=0, second=0, microsecond=0), periods=24, freq='H')
+    lista = dictionary_to_list(dictionary, "load")
+    expected_load_dataframe = pd.DataFrame({'datetime': time_column, 'value': lista})        
+    plot_graph(expected_load_dataframe, "datetime", "value", "Estimated Load", "#F94144", "Wh")
+
+
+
 
 def plot_cost_comparison(dictionary):
     # Imposta l'ora corrente e crea la colonna del tempo

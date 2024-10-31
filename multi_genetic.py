@@ -291,14 +291,22 @@ def start_genetic_algorithm(data, pop_size, n_gen, n_threads, prob_mut_bit=0.5, 
             X = np.full(pop_size, 1, dtype=object)
             
             
-            for k in range(pop_size):
+            for k in range(len(sampling.X)):
                 dict={}
                 for i in range(24):
-                    dict[f"b{i}"] = sampling[k].X[f"b{i}"]
-                    dict[f"i{i}"] = sampling[k].X[f"i{i}"]
+                    dict[f"b{i}"] = sampling.X[k][f"b{i}"]
+                    dict[f"i{i}"] = sampling.X[k][f"i{i}"]
 
                 X[k] = dict
 
+            for j in range(k+1, pop_size):
+                dict={}
+                for i in range(24):
+                    dict[f"b{i}"] = random.choice([True, False])
+                    dict[f"i{i}"] = random.randint(0, 100)
+
+                X[j] = dict
+            
             return X
     
     class MyCallback(Callback):
@@ -368,13 +376,13 @@ def start_genetic_algorithm(data, pop_size, n_gen, n_threads, prob_mut_bit=0.5, 
 
 
 def shifting_individuals(population):
-    for individuo in population:
+    for individuo in population.X:
         for i in range(23):
-            individuo.X[f"b{i}"] = individuo.X[f"b{i+1}"]
-            individuo.X[f"i{i}"] = individuo.X[f"i{i+1}"]
+            individuo[f"b{i}"] = individuo[f"b{i+1}"]
+            individuo[f"i{i}"] = individuo[f"i{i+1}"]
 
-        individuo.X["b23"] =  random.choice([True, False])
-        individuo.X["i23"] = random.randint(0, 100)
+        individuo["b23"] =  random.choice([True, False])
+        individuo["i23"] = random.randint(0, 100)
     
     return population
 

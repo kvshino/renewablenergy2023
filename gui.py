@@ -65,6 +65,9 @@ def init_gui(data,dictionary):
                 case "Grafico 13: Efficienza Inverter":
                     plot_inverter_efficency(dictionary)
                     plt.show()
+                case "Grafico 14: Co2 percentuali":
+                    plot_co2_percentuali(dictionary)
+                    plt.show()
                
 
 
@@ -220,7 +223,7 @@ def init_gui(data,dictionary):
                                         "Grafico 7: Energia in Batteria","Grafico 8: Percentuale Energia in Batteria",
                                         "Grafico 9: Scambio Energia in Batteria","Grafico 10: Co2 immessa con Impianto",
                                         "Grafico 11: Degradazione Batteria", "Grafico 12: Produzione Fotovoltaica dopo l'efficienza dell'Inverter",
-                                        "Grafico 13: Efficienza Inverter" ])
+                                        "Grafico 13: Efficienza Inverter", "Grafico 14: Co2 percentuali"])
     
     combo1.current(0)  # Imposta il primo valore come selezionato di default
 

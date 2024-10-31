@@ -3,7 +3,7 @@ import pandas as pd
 import random
 
 
-def get_true_load_consumption():
+def get_true_load_consumption(data):
     """
         Returns a dataframe containing the load consumption history.
         From the actual hour back to the earliest ones.
@@ -23,14 +23,18 @@ def get_true_load_consumption():
                             (pd.to_datetime(df['data'], format='%Y%m%d') > pd.to_datetime(one_month_ago.strftime('%Y%m%d')))]
         
         if(df_troncato.empty == True):
-            create_dummy_database_consumption("csv/consumptions.csv")
-            df_troncato = pd.read_csv("csv/consumptions.csv")
+            df_troncato = collect_data_from_north_italy_houses(data)
+            if(df_troncato.empty == True):
+                print("non dovrei essere qui")
+                create_dummy_database_consumption("csv/consumptions.csv")
+                df_troncato = pd.read_csv("csv/consumptions.csv")
 
     except(Exception):
-            create_dummy_database_consumption("csv/consumptions.csv")
-            df_troncato = pd.read_csv("csv/consumptions.csv")
+            df_troncato = collect_data_from_north_italy_houses(data)
+            if(df_troncato.empty == True):
+                create_dummy_database_consumption("csv/consumptions.csv")
+                df_troncato = pd.read_csv("csv/consumptions.csv")
         
-
     return df_troncato
 
 
@@ -64,6 +68,19 @@ def get_estimate_load_consumption(dataframe: pd.DataFrame):
     return df
 
 
+def collect_data_from_north_italy_houses(data):
+    df = pd.read_csv("csv/building"+str(data["buliding"])+".csv")
+
+    df['index'] = pd.to_datetime(df['index'])
+    df['index'] = df['index'].apply(lambda x: x.replace(year=2024)) 
+    df['ora'] = df['index'].dt.hour
+    df['data'] = df['index'].dt.strftime('%Y%m%d')
+    df.rename(columns={'valore': 'consumo'}, inplace=True)
+
+    current_date = datetime.now()
+    start_date = current_date - timedelta(days=30)
+    filtered_df = df[(df['index'] >= start_date) & (df['index'] <= current_date)]
+    return filtered_df
 
 
 def create_dummy_database_consumption(file_name="csv/dummy_database.csv"):

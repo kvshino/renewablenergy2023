@@ -34,7 +34,7 @@ def setup(polynomial_inverter, filename='csv/socs.csv') -> dict:
     
 
     #Checked OK, anche con grafico
-    data["estimate"] = get_estimate_load_consumption(get_true_load_consumption())  # It gives an estimation of the load consumption
+    data["estimate"] = get_estimate_load_consumption(get_true_load_consumption(data))  # It gives an estimation of the load consumption
     
     data["polynomial_inverter"] = polynomial_inverter
     data["expected_production"] = get_expected_power_production_from_pv_24_hours_from_now(data)
