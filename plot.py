@@ -5,10 +5,10 @@ import seaborn as sns
 import pandas as pd
 from functions import *
 
-color_algo ="#a066cb"
-color_noalgo="#86c7ed"
-color_nobatt="#1836B2"
-color_noplant="#873E63"
+color_algo ="#004aad"
+color_noalgo="#ff5757"
+color_nobatt="#2e9438"
+color_noplant="#dbc818"
 
 def plot_graph(data, x, y, title, color, label):
     """
@@ -153,6 +153,14 @@ def plot_GME_prices(dictionary):
     prices_list = dictionary_to_list(dictionary, "prices")
     expected_prices_dataframe = pd.DataFrame({'datetime': time_column, 'value':prices_list})
     plot_graph(expected_prices_dataframe, "datetime", "value", "Energy Price Estimate", "#F3722C", "€")
+
+def plot_co2_percentuali(dictionary):
+    current_datetime = datetime.now() + timedelta(hours=1)
+    time_column =pd.date_range(start=current_datetime.replace(minute=0, second=0, microsecond=0), periods=24, freq='H')
+    production_not_rs_list = dictionary_to_list(dictionary, "production_not_rs")
+    expected_production_not_rs_dataframe = pd.DataFrame({'datetime': time_column, 'value':production_not_rs_list})
+    plot_graph(expected_production_not_rs_dataframe, "datetime", "value", "Percentage NOT renewable energy", "#F3722C", "%")
+    
 
 
 def plot_production(dictionary):
@@ -402,10 +410,10 @@ def plot_co2_comparison_algo(dictionary):
     plt.figure(figsize=(14, 8),facecolor='#edf1ef')
 
     # Tracciare tutte le curve sullo stesso grafico
-    plt.plot(co2_plant_dataframe["datetime"], co2_plant_dataframe["value"], color=color_algo, label="With PV and battery")
-    plt.plot(co2_plant_dataframe_nobattery["datetime"], co2_plant_dataframe_nobattery["value"], color=color_nobatt, label="With PV")
-    plt.plot(co2_plant_dataframe_noplant["datetime"], co2_plant_dataframe_noplant["value"], color=color_noplant, label="Without PV")
-    plt.plot(co2_plant_dataframe_noalgo["datetime"], co2_plant_dataframe_noalgo["value"], color=color_noalgo, label="With PV and battery NO ALGORITHM")
+    plt.plot(co2_plant_dataframe["datetime"], co2_plant_dataframe["value"], color=color_algo, label="Pv and battery with EMS")
+    plt.plot(co2_plant_dataframe_nobattery["datetime"], co2_plant_dataframe_nobattery["value"], color=color_nobatt, label="PV")
+    plt.plot(co2_plant_dataframe_noplant["datetime"], co2_plant_dataframe_noplant["value"], color=color_noplant, label="Nothing")
+    plt.plot(co2_plant_dataframe_noalgo["datetime"], co2_plant_dataframe_noalgo["value"], color=color_noalgo, label="PV and battery without EMS")
 
     # Impostazioni del grafico
     plt.xlabel("Datetime")
@@ -440,10 +448,10 @@ def plot_cost_comparison(dictionary):
     plt.figure(figsize=(14, 8),facecolor='#edf1ef')
 
     # Tracciare tutte le curve sullo stesso grafico
-    plt.plot(cost_dataframe_algo["datetime"], cost_dataframe_algo["value"], color=color_algo, label="With PV and battery")
-    plt.plot(cost_dataframe_nobattery["datetime"], cost_dataframe_nobattery["value"], color=color_nobatt, label="With PV")
-    plt.plot(cost_dataframe_noplant["datetime"], cost_dataframe_noplant["value"], color=color_noplant, label="Without PV")
-    plt.plot(cost_dataframe_noalgo["datetime"], cost_dataframe_noalgo["value"], color=color_noalgo, label="With PV and battery NO ALGORITHM")
+    plt.plot(cost_dataframe_algo["datetime"], cost_dataframe_algo["value"], color=color_algo, label="Pv and battery with EMS")
+    plt.plot(cost_dataframe_nobattery["datetime"], cost_dataframe_nobattery["value"], color=color_nobatt, label="PV")
+    plt.plot(cost_dataframe_noplant["datetime"], cost_dataframe_noplant["value"], color=color_noplant, label="Nothing")
+    plt.plot(cost_dataframe_noalgo["datetime"], cost_dataframe_noalgo["value"], color=color_noalgo, label="Pv and battery without EMS")
 
     # Impostazioni del grafico
     plt.xlabel("Datetime")
@@ -474,8 +482,8 @@ def plot_comparison_degradation(dictionary):
     plt.figure(figsize=(14, 8),facecolor='#edf1ef')
 
     # Tracciare tutte le curve sullo stesso grafico
-    plt.plot(degradation_plant_dataframe["datetime"], degradation_plant_dataframe["value"], color=color_algo, label="With Algoritm")
-    plt.plot(degradation_plant_dataframe_noalgo["datetime"], degradation_plant_dataframe_noalgo["value"], color=color_noalgo, label="With PV and battery NO ALGORITHM")
+    plt.plot(degradation_plant_dataframe["datetime"], degradation_plant_dataframe["value"], color=color_algo, label="Pv and battery with EMS")
+    plt.plot(degradation_plant_dataframe_noalgo["datetime"], degradation_plant_dataframe_noalgo["value"], color=color_noalgo, label="Pv and battery without EMS")
 
     # Impostazioni del grafico
     plt.xlabel("Datetime")
@@ -504,8 +512,8 @@ def plot_comparison_battery(dictionary):
     plt.figure(figsize=(14, 8),facecolor='#edf1ef')
 
     # Tracciare tutte le curve sullo stesso grafico
-    plt.plot(battery_wh_dataframe["datetime"], battery_wh_dataframe["value"], color=color_algo, label="With Algoritm")
-    plt.plot(battery_dataframe_noalgo["datetime"], battery_dataframe_noalgo["value"], color=color_noalgo, label="With PV and battery NO ALGORITHM")
+    plt.plot(battery_wh_dataframe["datetime"], battery_wh_dataframe["value"], color=color_algo, label="Pv and battery with EMS")
+    plt.plot(battery_dataframe_noalgo["datetime"], battery_dataframe_noalgo["value"], color=color_noalgo, label="Pv and battery without EMS")
 
     # Impostazioni del grafico
     plt.xlabel("Datetime")

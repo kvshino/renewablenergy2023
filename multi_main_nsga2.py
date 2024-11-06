@@ -23,7 +23,7 @@ async def main():
     polynomial_batt = battery_function()
     polynomial_inverter = inverter_function()
 
-    with freeze_time(datetime.now()) as frozen_datetime:
+    with freeze_time(datetime.now()-timedelta(hours=5)) as frozen_datetime:
 
         dictionary={}
 
@@ -35,7 +35,7 @@ async def main():
         data = setup(polynomial_inverter)
         prices = await get_future_day_italian_market(data)
         production_not_rs = forecast_percentage_production_from_not_renewable_sources(api_key=data["api_key"], zona=data["entsoe_timezone"])
-
+        print(datetime.now())
         for i in range(24):
 
             data = setup(polynomial_inverter)
@@ -59,6 +59,7 @@ async def main():
             F_min = np.min(F, axis=0)
             F_max = np.max(F, axis=0)
             F_norm = (F - F_min) / (F_max - F_min)
+            # F_norm[:,1] = F_norm[:,1] / 2
             distances = np.linalg.norm(F_norm, axis=1)
             best_index = np.argmin(distances)
 
