@@ -22,10 +22,13 @@ from pymoo.util.misc import random_permuations
 import math
 
 
-def start_nsga2_genetic_algorithm(data, pop_size, n_gen, n_threads, prob_mut_bit = 0.5, prob_mut_int = 0.8, prob_cross=0.5, sampling=None,verbose=False):
+def start_nsga2_genetic_algorithm(data, pop_size=650, n_gen=250, n_threads=12, prob_mut_bit = 0.3744, prob_mut_int = 0.6164, prob_cross=0.5531, sampling=None,verbose=False):
+    
+    
     class MixedVariableProblem(ElementwiseProblem):
 
         def __init__(self, n_couples=24, **kwargs):
+            self.gens=1
             super().__init__(
             n_var=48,  
             n_obj=3,   
@@ -36,15 +39,15 @@ def start_nsga2_genetic_algorithm(data, pop_size, n_gen, n_threads, prob_mut_bit
 
 
         def _evaluate(self, X, out, *args, **kwargs):
-
             sum = 0                                                         #variabile che viene usata come contenitore per determinare l'andamento della stringa nel corso della valutazione
             delta_production = data["difference_of_production"]             #variabile che mi dice quantitativamente se la produzione di energia supera il consumo e viceversa
             sold = data["sold"]                                             #variabile che mi dice il prezzo della vendita dell'energia
             actual_percentage = [float(data["socs"])]                          #viene memorizzato l'attuale livello della batteria
             co2_emissions=0
             percentage_production_not_renewable = data["production_not_rs"]
-            penality_sum = 0
-            penality_batt = 0
+            penalty_costs = 0
+            penalty_batt = 0
+            penalty_co2=0
             cycles = data["cycles"]
             battery_capacity = round(data["polynomial"](cycles) * data["battery_nominal_capacity"], 4)
             boolean_vars = [round(X[i]) for i in range(0, 48, 2)]  
@@ -62,7 +65,7 @@ def start_nsga2_genetic_algorithm(data, pop_size, n_gen, n_threads, prob_mut_bit
 
                 #Caso in cui si sceglie di caricare la batteria
                 if charge:                                                  
-
+                    
                     posso_caricare_di = max(upper_limit - effettivo_in_batteria, 0)
 
                     #Viene calcolato di quanto caricare la batteria
@@ -76,10 +79,11 @@ def start_nsga2_genetic_algorithm(data, pop_size, n_gen, n_threads, prob_mut_bit
 
                     #Si controlla che la carica della batteria non sia maggiore di quella fisicamente ottenibile
                     if(quantity_charging_battery > data["maximum_power_battery_exchange"]):
-                        penality_batt = penality_batt + (1 -  data["maximum_power_battery_exchange"] / quantity_charging_battery)
+                        penalty_batt = penalty_batt + data["polynomial"](cycles+(quantity_charging_battery-data["maximum_power_battery_exchange"])/battery_capacity)
 
-                    if(quantity_charging_battery > data["maximum_power_absorption"]):      
-                        penality_sum = penality_sum + (1 -  data["maximum_power_absorption"] / quantity_charging_battery)
+                    if(quantity_charging_battery > data["maximum_power_absorption"]):
+                        penalty_costs = penalty_costs + (quantity_charging_battery - data["maximum_power_absorption"])*data["prices"]["prezzo"].iloc[j]
+                        penalty_co2 = penalty_co2 + (quantity_charging_battery - data["maximum_power_absorption"])* percentage_production_not_renewable["Difference"][j]
                     
 
                     delta_production_after_inverter = data["expected_production"]["production"][j] * data["polynomial_inverter"](ratio) - data["estimate"]["consumo"].values[j]
@@ -87,8 +91,7 @@ def start_nsga2_genetic_algorithm(data, pop_size, n_gen, n_threads, prob_mut_bit
                     if quantity_charging_battery - delta_production_after_inverter < 0:
 
                         if data["estimate"]["consumo"].values[j] + quantity_charging_battery + (quantity_charging_battery - delta_production_after_inverter) > data["inverter_nominal_power"]:
-                            penality_batt = penality_batt + (1 - data["inverter_nominal_power"]/(data["estimate"]["consumo"].values[j] + quantity_charging_battery + (quantity_charging_battery - delta_production_after_inverter)))
-                        
+                            penalty_batt = penalty_batt + data["polynomial"](cycles+(data["estimate"]["consumo"].values[j] + quantity_charging_battery + (quantity_charging_battery - delta_production_after_inverter)-data["inverter_nominal_power"])/battery_capacity)
                         #Il surplus di energia viene venduto
                         sum = sum + ((quantity_charging_battery - delta_production_after_inverter) * sold)  # sum = sum - rimborso
 
@@ -99,11 +102,12 @@ def start_nsga2_genetic_algorithm(data, pop_size, n_gen, n_threads, prob_mut_bit
                         quantity_bought_from_not_renewable_sources =  ((quantity_charging_battery - delta_production_after_inverter)) * percentage_production_not_renewable["Difference"][j]
 
                         if data["estimate"]["consumo"].values[j] + quantity_charging_battery > data["inverter_nominal_power"]:
-                            penality_batt = penality_batt + (1 - data["inverter_nominal_power"]/(data["estimate"]["consumo"].values[j] + quantity_charging_battery))
+                            penalty_batt = penalty_batt + data["polynomial"](cycles+(data["estimate"]["consumo"].values[j] + quantity_charging_battery - data["inverter_nominal_power"])/battery_capacity)
 
                         #Viene fatto un controllo che NON permette di acquistare più energia di quanto il contratto stipulato dall'utente permetta
                         if( quantity_charging_battery > data["maximum_power_absorption"] + delta_production_after_inverter):
-                            penality_sum = penality_sum + (1 -  (data["maximum_power_absorption"] + delta_production_after_inverter) / quantity_charging_battery)
+                            penalty_costs = penalty_costs + (quantity_charging_battery-(data["maximum_power_absorption"] + delta_production_after_inverter))* data["prices"]["prezzo"].iloc[j]
+                            penalty_co2 = penalty_co2 + (quantity_charging_battery-(data["maximum_power_absorption"] + delta_production_after_inverter))* percentage_production_not_renewable["Difference"][j]
 
 
                         co2_emissions = co2_emissions + (quantity_bought_from_not_renewable_sources * data["coal_percentage"] * data["coal_pollution"]) + (quantity_bought_from_not_renewable_sources * data["gas_percentage"] * data["gas_pollution"]) + (quantity_bought_from_not_renewable_sources * data["oil_percentage"] * data["oil_pollution"]) 
@@ -131,10 +135,11 @@ def start_nsga2_genetic_algorithm(data, pop_size, n_gen, n_threads, prob_mut_bit
 
                     #Si controlla che la scarica della batteria non sia maggiore di quella fisicamente ottenibile
                     if(quantity_discharging_battery > data["maximum_power_battery_exchange"]):
-                        penality_batt = penality_batt + (1 -  data["maximum_power_battery_exchange"] / quantity_discharging_battery)
+                        penalty_batt = penalty_batt + data["polynomial"](cycles+(quantity_discharging_battery-data["maximum_power_battery_exchange"])/battery_capacity)
                     
                     if(quantity_discharging_battery > data["maximum_power_absorption"]):
-                        penality_sum = penality_sum + (1 -  data["maximum_power_absorption"] / quantity_discharging_battery)
+                        penalty_costs = penalty_costs + (quantity_discharging_battery-data["maximum_power_absorption"])*sold
+                        penalty_co2 = penalty_co2 + (quantity_discharging_battery-data["maximum_power_absorption"])* percentage_production_not_renewable["Difference"][j]
 
 
                     delta_production_after_inverter = data["expected_production"]["production"][j] * data["polynomial_inverter"](ratio) - data["estimate"]["consumo"].values[j]
@@ -142,13 +147,15 @@ def start_nsga2_genetic_algorithm(data, pop_size, n_gen, n_threads, prob_mut_bit
                     if delta_production_after_inverter + quantity_discharging_battery > 0:
 
                         if data["estimate"]["consumo"].values[j] + (delta_production_after_inverter + quantity_discharging_battery) > data["inverter_nominal_power"]:
-                            penality_batt = penality_batt + (1 - data["inverter_nominal_power"]/(data["estimate"]["consumo"].values[j] + (delta_production_after_inverter + quantity_discharging_battery)))
-                            penality_sum = penality_sum + (1 - data["inverter_nominal_power"]/(data["estimate"]["consumo"].values[j] + (delta_production_after_inverter + quantity_discharging_battery)))
-
+                            penalty_batt= penalty_batt+data["polynomial"](cycles+(data["estimate"]["consumo"].values[j] + (delta_production_after_inverter + quantity_discharging_battery)- data["inverter_nominal_power"])/battery_capacity)
+                            penalty_costs=penalty_costs+(data["estimate"]["consumo"].values[j] + (delta_production_after_inverter + quantity_discharging_battery)- data["inverter_nominal_power"]) * sold
+                            penalty_co2=penalty_co2+(data["estimate"]["consumo"].values[j] + (delta_production_after_inverter + quantity_discharging_battery)- data["inverter_nominal_power"])  * percentage_production_not_renewable["Difference"][j]
+                           
                         #Si controlla di non prendere più energia dalla batteria di quanto il contatore sia in grado di gestire
                         if(quantity_discharging_battery + delta_production_after_inverter > data["maximum_power_absorption"]):
-                            penality_sum = penality_sum + (1 -  data["maximum_power_absorption"] / (quantity_discharging_battery + delta_production_after_inverter))
-
+                            penalty_costs = penalty_costs + (quantity_discharging_battery + delta_production_after_inverter - data["maximum_power_absorption"])* sold
+                            penalty_co2 = penalty_co2 + (quantity_discharging_battery + delta_production_after_inverter - data["maximum_power_absorption"])* percentage_production_not_renewable["Difference"][j]
+                            
                      #Produco di più di quanto consumo, vendo il resto
                         sum = sum - ((delta_production_after_inverter + quantity_discharging_battery) * sold)
 
@@ -157,9 +164,10 @@ def start_nsga2_genetic_algorithm(data, pop_size, n_gen, n_threads, prob_mut_bit
                         quantity_bought_from_not_renewable_sources = ( - (delta_production_after_inverter + quantity_discharging_battery)) * percentage_production_not_renewable["Difference"][j]
 
                         if data["estimate"]["consumo"].values[j] > data["inverter_nominal_power"]:
-                            penality_batt = penality_batt + (1 - data["inverter_nominal_power"]/(data["estimate"]["consumo"].values[j]))
-                            penality_sum = penality_sum + (1 - data["inverter_nominal_power"]/(data["estimate"]["consumo"].values[j]))                    
-
+                            penalty_batt=penalty_batt+data["polynomial"](cycles+((data["estimate"]["consumo"].values[j]-data["inverter_nominal_power"])/battery_capacity)) 
+                            penalty_costs=penalty_costs+(data["estimate"]["consumo"].values[j]-data["inverter_nominal_power"]) * data["prices"]["prezzo"].iloc[j]
+                            penalty_co2=penalty_co2+(data["estimate"]["consumo"].values[j]-data["inverter_nominal_power"]) * percentage_production_not_renewable["Difference"][j]
+                            
                         co2_emissions = co2_emissions + (quantity_bought_from_not_renewable_sources * data["coal_percentage"] * data["coal_pollution"]) + (quantity_bought_from_not_renewable_sources * data["gas_percentage"] * data["gas_pollution"]) + (quantity_bought_from_not_renewable_sources * data["oil_percentage"] * data["oil_pollution"]) 
                         #Produco di meno di quanto consumo, compro il resto
                         sum = sum + (- (delta_production_after_inverter + quantity_discharging_battery) *
@@ -172,12 +180,18 @@ def start_nsga2_genetic_algorithm(data, pop_size, n_gen, n_threads, prob_mut_bit
 
                     #Viene aggiornato il valore della batteria, dopo la scarica
                     actual_percentage.append((effettivo_in_batteria - (quantity_discharging_battery/data["battery_discharging_efficiency"]) - lower_limit) / ( upper_limit - lower_limit))
+            
+
+            cost_objective=sum+(0.5*self.gens)*penalty_costs
+            batt_objective=(-battery_capacity/data["battery_nominal_capacity"])+(0.5*self.gens)*penalty_batt
+            co2_objective=(co2_emissions/1000)+(0.5*self.gens)*penalty_co2
             #Terminata la simulazione, viene attribuito un voto alla stringa in input, dato da tre fattori:
             # - Il costo
             # - L'utilizzo della batteria
             # - Emissioni CO2
 
-            out["F"] = [sum+penality_sum, (-battery_capacity/data["battery_nominal_capacity"])+penality_batt, (co2_emissions/1000)+penality_sum]
+
+            out["F"] = [cost_objective, batt_objective, co2_objective]
             
 
 
@@ -204,27 +218,13 @@ def start_nsga2_genetic_algorithm(data, pop_size, n_gen, n_threads, prob_mut_bit
             return X
     
     class MyCallback(Callback):
-        def __init__(self):
+        def __init__(self, problem):
             super().__init__()
-            self.data["costs"] = []
-            self.data["battery_degradation"] = []
-            self.data["co2_emissions"] = []
+            self.problem=problem
 
         def notify(self, algorithm):
-            # Prendi i migliori individui in ogni generazione (popolazione attuale)
-            F = algorithm.pop.get("F")
-            # Trova l'individuo con il miglior valore rispetto ai 3 obiettivi
-            
-            self.data["costs"].append(np.min(np.linalg.norm(F, axis=0)))
-            self.data["battery_degradation"].append(np.min(np.linalg.norm(F, axis=0)))
-            self.data["co2_emissions"].append(np.min(np.linalg.norm(F, axis=0)))
+            self.problem.gens+=1
 
-
-    pop_size=650
-    n_gen=280
-    prob_cross=0.5531 
-    prob_mut_bit=0.3744 
-    prob_mut_int=0.6164 
     
 
     pool = ThreadPool(n_threads)
@@ -242,15 +242,17 @@ def start_nsga2_genetic_algorithm(data, pop_size, n_gen, n_threads, prob_mut_bit
         algorithm = NSGA2(pop_size, survival=survival, selection=selection, crossover=crossover, mutation=mutation)
     else:
         algorithm = NSGA2(pop_size, sampling=MySampling(), survival=survival, selection=selection, crossover=crossover, mutation=mutation)
-        
-    callback = MyCallback()
+
+ 
+    callback = MyCallback(problem)
     res = minimize(problem,
                    algorithm,
                    termination= termination, 
                    seed= random.randint(0, 99999),
                    verbose=verbose,
                    save_history=True,
-                   callback = callback)
+                   callback = callback
+                   )
     
     pool.close()
     pool.join()

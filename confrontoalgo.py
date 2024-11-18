@@ -9,12 +9,21 @@ from plot import *
 from update_battery import *
 from test_inv import *
 from freezegun import freeze_time
-import time
+import time as tm
+from pymoo.visualization.scatter import Scatter
+from gui import *
+import threading
+import json as jj
 
 warnings.filterwarnings("ignore", category=FutureWarning)
 
 color_ga ="#004aad"
 color_mixed ="#ff5757"
+
+cartella_MVGA=cartella="../../../Desktop/risultati/confronto/MVGA/"
+cartella_NSGAII=cartella="../../../Desktop/risultati/confronto/NSGAII/"
+
+
 
 async def mixed(frozen_datetime):
     polynomial_batt = battery_function()
@@ -23,13 +32,11 @@ async def mixed(frozen_datetime):
     print("Inizio mixed: " + str(datetime.now()))
     dict = {}
     sampling = 0
-    pop_size = 10
-    gen = 4
+    pop_size = 650
+    gen = 300
     data = setup(polynomial_inverter,"csv/socsmixed.csv")
     prices = await get_future_day_italian_market(data)
     production_not_rs = forecast_percentage_production_from_not_renewable_sources(api_key=data["api_key"], zona=data["entsoe_timezone"])
-    prices_copy = prices.copy()
-    production_not_rs_copy = production_not_rs.copy()
     for i in range(24):
         data = setup(polynomial_inverter,"csv/socsmixed.csv")
         data["prices"] = prices
@@ -55,10 +62,13 @@ async def mixed(frozen_datetime):
         distances = np.linalg.norm(F_norm, axis=1)
         best_index = np.argmin(distances)
 
+        now=datetime.now().strftime("%Y-%m-%d_%H")
+        if not os.path.exists(f"{cartella_MVGA}Fronte_di_Pareto"):
+            os.makedirs(cartella_MVGA+"Fronte_di_Pareto")  
+        np.savetxt(f"{cartella_MVGA}Fronte_di_Pareto/{now}.txt", F_norm, fmt="%.8f") 
 
-        dict[f"b{i}"]=data["res"].X[best_index]["b0"]
-        dict[f"i{i}"]=data["res"].X[best_index]["i0"]
-
+        dict[f"b{i}"]= bool(data["res"].X[best_index]["b0"])
+        dict[f"i{i}"]=int(data["res"].X[best_index]["i0"])
 
         dict[f"difference_of_production{i}"] = data["difference_of_production"][0]
         dict[f"prices{i}"] = data["prices"]["prezzo"][0]
@@ -87,18 +97,24 @@ async def mixed(frozen_datetime):
     dict["sum_algo"], dict["actual_percentage_algo"], dict["quantity_delta_battery_algo"], dict["co2_algo"], dict["ratio_algo"] = evaluate(data, dict, cycles, polynomial_batt)
     lista = dictionary_to_list(dict,"battery_capacity")
 
+    del dict["polynomial_inverter"]
+    with open(f"{cartella_MVGA}dictionary.json", "w") as file:
+        jj.dump(dict, file, indent=4)  
 
-    return dict["sum_algo"], dict["actual_percentage_algo"], dict["co2_algo"], lista, prices_copy, production_not_rs_copy
+    return dict["sum_algo"], dict["actual_percentage_algo"], dict["co2_algo"], lista
 
-async def nsga(frozen_datetime, prices, production_not_rs):
+async def nsga(frozen_datetime):
     polynomial_batt = battery_function()
     polynomial_inverter = inverter_function()
 
 
     dict={}
     sampling=0
-    pop_size =10
-    gen = 4
+    pop_size =650
+    gen = 280
+    data = setup(polynomial_inverter,"csv/socsga.csv")
+    prices = await get_future_day_italian_market(data)
+    production_not_rs = forecast_percentage_production_from_not_renewable_sources(api_key=data["api_key"], zona=data["entsoe_timezone"])
     print("Inizio nsga: " + str(datetime.now()))
     for i in range(24):
 
@@ -125,6 +141,12 @@ async def nsga(frozen_datetime, prices, production_not_rs):
         F_norm = (F - F_min) / (F_max - F_min)
         distances = np.linalg.norm(F_norm, axis=1)
         best_index = np.argmin(distances)
+
+
+        now=datetime.now().strftime("%Y-%m-%d_%H")
+        if not os.path.exists(f"{cartella_MVGA}Fronte_di_Pareto"):
+            os.makedirs(cartella_NSGAII+"Fronte_di_Pareto")  
+        np.savetxt(f"{cartella_NSGAII}Fronte_di_Pareto/{now}.txt", F_norm, fmt="%.8f") 
 
 
         dict[f"b{i}"]=round(data["res"].X[best_index][0])
@@ -159,221 +181,51 @@ async def nsga(frozen_datetime, prices, production_not_rs):
 
     dict["sum_algo"],dict["actual_percentage_algo"],dict["quantity_delta_battery_algo"],dict["co2_algo"] ,dict["ratio_algo"]= evaluate(data, dict,cycles,polynomial_batt)
     
-    plot_GME_prices(dict)
-    plt.show()
-    plot_production(dict)
-    plt.show()
-    plot_load(dict)
-    plt.show()
+    del dict["polynomial_inverter"]
+    with open(f"{cartella_NSGAII}dictionary.json", "w") as file:
+        jj.dump(dict, file, indent=4) 
+
     return dict["sum_algo"], dict["actual_percentage_algo"],  dict["co2_algo"],lista
 
 
 
 
-def plot_GME_prices(dictionary):
-    current_datetime = datetime.now() + timedelta(hours=1)
-    time_column =pd.date_range(start=current_datetime.replace(minute=0, second=0, microsecond=0), periods=24, freq='H')
-    prices_list = dictionary_to_list(dictionary, "prices")
-    expected_prices_dataframe = pd.DataFrame({'datetime': time_column, 'value':prices_list})
-    plot_graph(expected_prices_dataframe, "datetime", "value", "Energy Price Estimate", "#F3722C", "€")
 
-
-def plot_production(dictionary):
-    current_datetime = datetime.now() + timedelta(hours=1)
-    time_column =pd.date_range(start=current_datetime.replace(minute=0, second=0, microsecond=0), periods=24, freq='H')
-    lista = dictionary_to_list(dictionary, "production")
-    expected_production_dataframe = pd.DataFrame({'datetime': time_column, 'value': lista})
-    plot_graph(expected_production_dataframe, "datetime", "value", "Estimated PV Production", "#F3722C", "Wh")
-
-def plot_load(dictionary):
-    current_datetime = datetime.now() + timedelta(hours=1)
-    time_column =pd.date_range(start=current_datetime.replace(minute=0, second=0, microsecond=0), periods=24, freq='H')
-    lista = dictionary_to_list(dictionary, "load")
-    expected_load_dataframe = pd.DataFrame({'datetime': time_column, 'value': lista})        
-    plot_graph(expected_load_dataframe, "datetime", "value", "Estimated Load", "#F94144", "Wh")
-
-
-
-
-def plot_cost_comparison(dictionary):
-    # Imposta l'ora corrente e crea la colonna del tempo
-    current_datetime = datetime.now() + timedelta(hours=1)
-    time_column = pd.date_range(start=current_datetime.replace(minute=0, second=0, microsecond=0), periods=24, freq='H')
-
-    # Creazione dei DataFrame con i dati
-    cost_dataframe_mixed = pd.DataFrame({'datetime': time_column, 'value': dictionary["sum_mixed"]})
-    cost_dataframe_mixed["value"] = cost_dataframe_mixed["value"].multiply(-1)
-
-    cost_dataframe_ga = pd.DataFrame({'datetime': time_column, 'value': dictionary["sum_ga"]})
-    cost_dataframe_ga["value"] = cost_dataframe_ga["value"].multiply(-1)
-
-    # Creazione della figura
-    plt.figure(figsize=(10, 6))
-
-    # Tracciare tutte le curve sullo stesso grafico
-    plt.plot(cost_dataframe_mixed["datetime"], cost_dataframe_mixed["value"], color=color_mixed, label="Mixed")
-
-    plt.plot(cost_dataframe_ga["datetime"], cost_dataframe_ga["value"], color=color_ga, label="Nsga2")
-
-    # Impostazioni del grafico
-    plt.xlabel("Datetime")
-    plt.ylabel("Euro €")
-    plt.legend()  # Mostra la legenda per distinguere le curve
-    plt.ylim(-2, 2)  # Puoi regolare o rimuovere questi limiti
-    plt.xticks(rotation=45)  # Ruota le etichette dell'asse x per una migliore leggibilità
-    plt.grid(True)  # Aggiungi una griglia per facilitare la lettura
-    plt.xticks(cost_dataframe_mixed["datetime"], cost_dataframe_mixed["datetime"].dt.strftime('%H'), rotation=10)
-    plt.title("Cost Comparison ( Positive Earnings)")
-    # Mostra il grafico
-    plt.tight_layout()
-
-
-def plot_co2_comparison_algo(dictionary):
-    current_datetime = datetime.now() + timedelta(hours=1)
-    time_column =pd.date_range(start=current_datetime.replace(minute=0, second=0, microsecond=0), periods=24, freq='H') 
-
-    co2_mixed_dataframe = pd.DataFrame({'datetime': time_column, 'value': dictionary["co2_mixed"]})
-    co2_ga_dataframe = pd.DataFrame({'datetime': time_column, 'value': dictionary["co2_ga"]})
-
-
-# Creazione della figura
-    plt.figure(figsize=(10, 6))
-
-    # Tracciare tutte le curve sullo stesso grafico
-    plt.plot(co2_mixed_dataframe["datetime"], co2_mixed_dataframe["value"], color=color_mixed, label="Mixed")
-    plt.plot(co2_ga_dataframe["datetime"], co2_ga_dataframe["value"], color=color_ga, label="Nsga2")
-
-
-    # Impostazioni del grafico
-    plt.xlabel("Datetime")
-    plt.ylabel("Co2 Grams")
-    plt.legend()  # Mostra la legenda per distinguere le curve
-    plt.xticks(rotation=45)  # Ruota le etichette dell'asse x per una migliore leggibilità
-    plt.grid(True)  # Aggiungi una griglia per facilitare la lettura
-    plt.xticks(co2_mixed_dataframe["datetime"], co2_mixed_dataframe["datetime"].dt.strftime('%H'), rotation=10)
-    plt.title("Co2 Emissions Comparison")
-    # Mostra il grafico
-    plt.tight_layout()
-
-def plot_comparison_degradation(lista1,lista2):
-    current_datetime = datetime.now() + timedelta(hours=1)
-    time_column =pd.date_range(start=current_datetime.replace(minute=0, second=0, microsecond=0), periods=24, freq='H') 
-
-    degradation_plant_dataframe_mixed = pd.DataFrame({'datetime': time_column, 'value': lista1})
-
-    degradation_plant_dataframe_ga = pd.DataFrame({'datetime': time_column, 'value':lista2})
-
-    # Tracciare tutte le curve sullo stesso grafico
-    plt.plot(degradation_plant_dataframe_mixed["datetime"], degradation_plant_dataframe_mixed["value"], color=color_mixed, label="Mixed")
-    plt.plot(degradation_plant_dataframe_ga["datetime"], degradation_plant_dataframe_ga["value"], color=color_ga, label="Nsga2")
-
-    # Impostazioni del grafico
-    plt.xlabel("Datetime")
-    plt.ylabel("Wh")
-    plt.legend()  # Mostra la legenda per distinguere le curve
-    plt.xticks(rotation=45)  # Ruota le etichette dell'asse x per una migliore leggibilità
-    plt.grid(True)  # Aggiungi una griglia per facilitare la lettura
-    plt.xticks(degradation_plant_dataframe_ga["datetime"], degradation_plant_dataframe_ga["datetime"].dt.strftime('%H'), rotation=10)
-    plt.title("Battery Degradation Comparison")
-    # Mostra il grafico
-    plt.tight_layout()
-
-
-def plot_comparison_battery(dictionary,lista1,lista2):
-    current_datetime = datetime.now() + timedelta(hours=1)
-    time_column =pd.date_range(start=current_datetime.replace(minute=0, second=0, microsecond=0) - timedelta(hours=1), periods=24, freq='H') 
-
-    actual_percentage_mixed = dictionary["apercentage_mixed"]
-    battery_wh_mixed = [float(0.2 * lista1[i]) + (percentage * (float(0.8 * lista1[i] ) - float(0.2 * lista1[i]))) for i,percentage in enumerate(actual_percentage_mixed[:-1])]
-    battery_wh_dataframe_mixed = pd.DataFrame({'datetime': time_column, 'value': battery_wh_mixed})
-
-
-    actual_percentage_ga = dictionary["apercentage_ga"]
-    battery_wh_ga = [float(0.2 * lista2[i]) + (percentage * (float(0.8 *lista2[i] ) - float(0.2 * lista2[i]))) for i,percentage in enumerate(actual_percentage_ga[:-1])]
-    battery_wh_dataframe_ga = pd.DataFrame({'datetime': time_column, 'value': battery_wh_ga})
-
-    plt.figure(figsize=(10, 6))
-
-    # Tracciare tutte le curve sullo stesso grafico
-    plt.plot(battery_wh_dataframe_mixed["datetime"], battery_wh_dataframe_mixed["value"], color=color_mixed, label="Mixed")
-    plt.plot(battery_wh_dataframe_ga["datetime"], battery_wh_dataframe_ga["value"], color=color_ga, label="Nsga2")
-
-    # Impostazioni del grafico
-    plt.xlabel("Datetime")
-    plt.ylabel("Wh")
-    plt.legend()  # Mostra la legenda per distinguere le curve
-    plt.xticks(rotation=45)  # Ruota le etichette dell'asse x per una migliore leggibilità
-    plt.grid(True)  # Aggiungi una griglia per facilitare la lettura
-    plt.xticks(battery_wh_dataframe_ga["datetime"], battery_wh_dataframe_ga["datetime"].dt.strftime('%H'), rotation=10)
-    plt.title("Battery Energy Comparison")
-    # Mostra il grafico
-    plt.tight_layout()
-
-def plot_time(time1,time2):
-    input_sizes = ['']  # Aggiorna l'input con un'etichetta valida
-    algorithm1_times_mixed = [time1]  # Tempi per Algoritmo 1
-    algorithm2_times_ga = [time2]  # Tempi per Algoritmo 2
-
-    # Creiamo un array per la posizione delle barre sull'asse X
-    bar_width = 0.15  # Larghezza delle barre
-    index = np.arange(len(input_sizes))  # Posizioni per l'asse X
-
-    # Creazione del grafico
-    fig, ax = plt.subplots()
-
-    # Barre per Algoritmo 1 (spostate leggermente a sinistra)
-    bar1 = ax.bar(index - bar_width*0.7, algorithm2_times_ga, bar_width, color=color_ga, label='Nsga2')
-
-    # Barre per Algoritmo 2 (spostate leggermente a destra)
-    bar2 = ax.bar(index + bar_width*0.7, algorithm1_times_mixed, bar_width, color=color_mixed, label='MixedVariableGa')
-
-    # Aggiunta delle etichette e del titolo
-    ax.set_ylabel('Execution time (s)')
-    ax.set_title('Comparison of the execution times')
-    ax.set_xticks(index)
-    ax.set_xticklabels(input_sizes)
-    ax.set_xlim([-0.5, 0.5])
-
-    # Aggiungere le etichette sotto le barre
-    ax.text(index[0] - bar_width * 0.7, -0.55, 'NSGA2', ha='center', va='top', fontsize=12)
-    ax.text(index[0] + bar_width * 0.7, -0.55, 'Mixed', ha='center', va='top', fontsize=12)
-
-    # Mostrare il grafico
-    plt.tight_layout()
 
 async def main():
     # Await the mixed function since it is asynchronous
+    os.makedirs("../../../Desktop/risultati/confronto/", exist_ok=True)
     dictionary ={}
-    start_time = time.time()
+    start_time = tm.time()
     t=datetime.now()
     with freeze_time(t) as frozen_datetime:
-        dictionary["sum_mixed"],dictionary["apercentage_mixed"] , dictionary["co2_mixed"] , lista1, prices, production_not_rs = await mixed(frozen_datetime)
-    end_time = time.time()
+        dictionary["sum_mixed"],dictionary["apercentage_mixed"] , dictionary["co2_mixed"] , lista1 = await mixed(frozen_datetime)
+    end_time = tm.time()
     execution_time_mixed = end_time - start_time
     print(f"Execution_time MixedVariableGa: {execution_time_mixed} seconds")
 
-    start_time = time.time()
+    start_time = tm.time()
     with freeze_time(t) as frozen_datetime:
-        dictionary["sum_ga"], dictionary["apercentage_ga"],  dictionary["co2_ga"], lista2 = await nsga(frozen_datetime, prices, production_not_rs)
-    end_time = time.time()
+        dictionary["sum_ga"], dictionary["apercentage_ga"],  dictionary["co2_ga"], lista2 = await nsga(frozen_datetime)
+    end_time = tm.time()
     execution_time_ga = end_time - start_time
     print(f"Execution_time Ga: {execution_time_ga} seconds")
 
-    with freeze_time(t) as frozen_datetime:
-        plot_cost_comparison(dictionary)
-        plt.show()
+    with open(cartella_MVGA+'lista1.json', 'w') as f:
+        jj.dump(lista1, f, indent=4)  # `indent=4` per un formato leggibile
 
-        plot_co2_comparison_algo(dictionary)
-        plt.show()
+    with open(cartella_NSGAII+'lista2.json', 'w') as f:
+        jj.dump(lista2, f, indent=4)  # `indent=4` per un formato leggibile
 
-        plot_comparison_degradation(lista1,lista2)
-        plt.show()
+    with open(cartella_NSGAII+'confronto.json', 'w') as f:
+        jj.dump(dictionary, f, indent=4)  # `indent=4` per un formato leggibile
 
-        plot_comparison_battery(dictionary,lista1,lista2)
-        plt.show()
-        plot_time(execution_time_mixed,execution_time_ga)
-        plt.show()
+    
+    
+    print("fine")
 
+def run_asyncio():
+    asyncio.run(main())
 
 if __name__ == "__main__":
 # Now we run the async main function

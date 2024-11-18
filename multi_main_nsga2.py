@@ -11,11 +11,14 @@ from test_inv import *
 
 from freezegun import freeze_time
 
-import matplotlib.pyplot as plt
 import numpy as np
+import json
+
 
 warnings.filterwarnings("ignore", category=FutureWarning)
 
+
+cartella="../../../Desktop/risultati/photos/"
 
 
 async def main():
@@ -23,25 +26,26 @@ async def main():
     polynomial_batt = battery_function()
     polynomial_inverter = inverter_function()
 
-    with freeze_time(datetime.now()-timedelta(hours=5)) as frozen_datetime:
+    with freeze_time(datetime.now()-timedelta(hours=9)) as frozen_datetime:
 
         dictionary={}
 
         sampling=0
 
-        pop_size=10
-        n_gen=5
+        pop_size=60#650
+        n_gen=12#280
 
         data = setup(polynomial_inverter)
         prices = await get_future_day_italian_market(data)
         production_not_rs = forecast_percentage_production_from_not_renewable_sources(api_key=data["api_key"], zona=data["entsoe_timezone"])
-        print(datetime.now())
+        print(datetime.now() )
         for i in range(24):
 
             data = setup(polynomial_inverter)
             data["prices"] = prices 
             data["production_not_rs"] = production_not_rs
             data["polynomial"] = polynomial_batt
+            
 
             if(i==0):
                 cycles = data["cycles"]
@@ -59,10 +63,16 @@ async def main():
             F_min = np.min(F, axis=0)
             F_max = np.max(F, axis=0)
             F_norm = (F - F_min) / (F_max - F_min)
-            # F_norm[:,1] = F_norm[:,1] / 2
+            #F_norm[:,1] = F_norm[:,1] / 2
             distances = np.linalg.norm(F_norm, axis=1)
             best_index = np.argmin(distances)
 
+            
+            now=datetime.now().strftime("%Y-%m-%d_%H")
+            if not os.path.exists(f"{cartella}Fronte_di_Pareto"):
+                os.makedirs(cartella+"Fronte_di_Pareto")  
+            np.savetxt(f"{cartella}Fronte_di_Pareto/{now}.txt", F_norm, fmt="%.8f") 
+                
 
             dictionary[f"b{i}"]=round(data["res"].X[best_index][0])
             dictionary[f"i{i}"]=round(data["res"].X[best_index][1])
@@ -99,9 +109,11 @@ async def main():
         dictionary["sum_noplant"],dictionary["co2_noplant"],dictionary["power_to_grid_noplant"]= simulation_noplant(data,dictionary)    
 
         print(datetime.now())
-        plot_co2_percentuali(dictionary)
-        plt.show()
-        init_gui(data,dictionary)
+        
+        del dictionary["polynomial_inverter"]
+        with open(f"{cartella}dictionary.json", "w") as file:
+            json.dump(dictionary, file, indent=4)  
+
     print(datetime.now()-ora)
 
 if __name__ == "__main__":

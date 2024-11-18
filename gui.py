@@ -281,7 +281,100 @@ def init_gui(data,dictionary):
 
 
 
+def save_plots(dictionary, folder_name, flag=False):
 
+    os.makedirs(folder_name, exist_ok=True)
+
+    # Creazione dei percorsi completi per i file
+    
+
+
+    plot_GME_prices(dictionary)
+    plt.tight_layout()
+    plt.savefig(os.path.join(folder_name, "Estimated Energy Prices"))
+    plt.close()
+
+    plot_load(dictionary)
+    plt.tight_layout()
+    plt.savefig(os.path.join(folder_name, "Estimated Consumption"))
+    plt.close()
+
+    plot_production(dictionary)
+    plt.tight_layout()
+    plt.savefig(os.path.join(folder_name, "Estimated Photovoltaic Production"))
+    plt.close()
+
+    plot_costi_plant(dictionary)
+    plt.tight_layout()
+    plt.savefig(os.path.join(folder_name, "Cost Objective Results"))
+    plt.close()
+
+    plot_scambio_rete(dictionary)
+    plt.tight_layout()
+    plt.savefig(os.path.join(folder_name, "Energy Exchanged with the grid (Positive Earnings)"))
+    plt.close()
+
+    plot_energia_batteria(dictionary)
+    plt.tight_layout()
+    plt.savefig(os.path.join(folder_name, "Energy in the Battery"))
+    plt.close()
+
+    plot_percentage_battery(dictionary)
+    plt.tight_layout()
+    plt.savefig(os.path.join(folder_name, "Percentage Energy in the Battery"))
+    plt.close()
+
+    plot_battery_status(dictionary)
+    plt.tight_layout()
+    plt.savefig(os.path.join(folder_name, "Delta in the Battery"))
+    plt.close()
+
+    plot_co2_plant(dictionary)   
+    plt.tight_layout()
+    plt.savefig(os.path.join(folder_name, "CO2 objective results"))
+    plt.close()
+
+    plot_degradation(dictionary)
+    plt.tight_layout()
+    plt.savefig(os.path.join(folder_name, "Battery Degradation objective results"))
+    plt.close()
+
+    plot_production_algo_inverter(dictionary)
+    plt.tight_layout()
+    plt.savefig(os.path.join(folder_name, "Estimated Photovoltaic Production with Inverter Efficiency"))
+    plt.close()
+
+
+    plot_inverter_efficency(dictionary)
+    plt.tight_layout()
+    plt.savefig(os.path.join(folder_name, "Inverter Efficiency"))
+    plt.close()
+
+    plot_co2_percentuali(dictionary)
+    plt.tight_layout()
+    plt.savefig(os.path.join(folder_name, "CO2 percentages"))
+    plt.close()
+
+    if flag == True:
+        plot_cost_comparison(dictionary)
+        plt.tight_layout()
+        plt.savefig(os.path.join(folder_name, "Cost objective Comparison among different Scenarios"))
+        plt.close()
+
+        plot_co2_comparison_algo(dictionary)
+        plt.tight_layout()
+        plt.savefig(os.path.join(folder_name, "CO2 objective Comparison among different Scenarios"))
+        plt.close()
+
+        plot_comparison_degradation(dictionary)
+        plt.tight_layout()
+        plt.savefig(os.path.join(folder_name, "Battery Degradation objective Comparison among different Scenarios"))
+        plt.close()
+
+        plot_comparison_battery(dictionary)
+        plt.tight_layout()
+        plt.savefig(os.path.join(folder_name, "Battery Levels Comparison among different Scenarios"))
+        plt.close()
 
 
 

@@ -13,6 +13,10 @@ from datetime import datetime, timedelta
 
 
 import pandas as pd
+import matplotlib.pyplot as plt
+import numpy as np
+from scipy.interpolate import griddata
+import os
 
 
 def setup(polynomial_inverter, filename='csv/socs.csv') -> dict:
@@ -119,9 +123,17 @@ def forecast_percentage_production_from_not_renewable_sources(api_key, zona="IT_
 
 def dictionary_to_list(dictionary, string, number=24):
     lista = []
-    for i in range(number):
-        lista.append(dictionary[string + str(i)])
-    
+    i = 0  # Inizializza il contatore
+    while True:
+        key = string + str(i)
+        value = dictionary.get(key)  # Usa get per evitare errori se la chiave non esiste
+
+        if value is None:  # Interrompi il ciclo se il valore è `None`
+            break
+
+        lista.append(value)
+        i += 1  # Passa alla chiave successiva
+
     return lista
 
 
@@ -137,7 +149,7 @@ def shift_ciclico(df, stringa):
     return df
 
 
-def simulation_no_algorithm(data,dictionary, cycles, polynomial):
+def simulation_no_algorithm(data,dictionary, cycles, polynomial, hours=24):
     sum = []
     sum.append(0)
     co2_emissions = []
@@ -157,7 +169,7 @@ def simulation_no_algorithm(data,dictionary, cycles, polynomial):
 
     power_to_grid = []
 
-    for j in range(24):
+    for j in range(hours):
         
         upper_limit = (dictionary["soc_max"] * battery_capacity)
         lower_limit = (dictionary["soc_min"] * battery_capacity)
@@ -275,3 +287,111 @@ def co2_quantity_emission_algo(data,perc,to_buy):
     +(quantity_bought_from_not_renewable_sources * data["gas_percentage"] * data["gas_pollution"])  
     +(quantity_bought_from_not_renewable_sources * data["oil_percentage"] * data["oil_pollution"])
     return co2_emissions
+
+
+def plot_and_save_results(solutions, objective_names, folder_name, filename_2d='grafici_2D.png', filename_3d='grafico_3D.png'): 
+    if solutions.shape[1] != 3:
+        raise ValueError("Le soluzioni devono avere esattamente 3 colonne per gli obiettivi.")
+    if len(objective_names) != 3:
+        raise ValueError("Devi fornire esattamente 3 nomi per gli obiettivi.")
+    
+    # Creazione della cartella se non esiste
+    os.makedirs(folder_name, exist_ok=True)
+
+    # Creazione dei percorsi completi per i file
+    path_2d = os.path.join(folder_name, filename_2d)
+    path_3d = os.path.join(folder_name, filename_3d)
+    path_3d_zoom = os.path.join(folder_name, "zoom"+filename_3d)
+
+    # Estrazione degli obiettivi
+    f1, f2, f3 = solutions[:, 0], solutions[:, 1], solutions[:, 2]
+    nome_f1, nome_f2, nome_f3 = objective_names
+
+    # --- Grafici 2D a due a due ---
+    fig, axes = plt.subplots(1, 3, figsize=(18, 6))
+
+    # Plot (f1, f2)
+    axes[0].scatter(f1, f2, c='blue', alpha=0.7)
+    axes[0].set_xlabel(nome_f1)
+    axes[0].set_ylabel(nome_f2)
+    axes[0].set_title(f'{nome_f1} vs {nome_f2}')
+
+    # Plot (f2, f3)
+    axes[1].scatter(f2, f3, c='green', alpha=0.7)
+    axes[1].set_xlabel(nome_f2)
+    axes[1].set_ylabel(nome_f3)
+    axes[1].set_title(f'{nome_f2} vs {nome_f3}')
+
+    # Plot (f1, f3)
+    axes[2].scatter(f1, f3, c='red', alpha=0.7)
+    axes[2].set_xlabel(nome_f1)
+    axes[2].set_ylabel(nome_f3)
+    axes[2].set_title(f'{nome_f1} vs {nome_f3}')
+
+    # Salva il grafico 2D
+    plt.tight_layout()
+    plt.savefig(path_2d)
+    plt.close()
+
+    # --- Grafico 3D con superficie ---
+    fig = plt.figure(figsize=(10, 8))
+    ax = fig.add_subplot(111, projection='3d')
+
+    # Scatter dei punti
+    ax.scatter(f1, f2, f3, c='purple', alpha=0.8)
+
+    # Creazione di una griglia per la superficie
+    grid_x, grid_y = np.mgrid[
+        np.min(f1):np.max(f1):50j,
+        np.min(f2):np.max(f2):50j
+    ]
+
+    # Interpolazione dei valori f3
+    grid_z = griddata((f1, f2), f3, (grid_x, grid_y), method='linear')
+
+    # Plot della superficie (opzionale)
+    if grid_z is not None:
+        ax.plot_surface(grid_x, grid_y, grid_z, alpha=0.3, cmap='viridis')
+
+    ax.set_xlabel(nome_f1)
+    ax.set_ylabel(nome_f2)
+    ax.set_zlabel(nome_f3)
+    ax.set_title('3D Pareto Front')
+
+    # Salva il grafico 3D
+    plt.savefig(path_3d)
+    plt.close()
+
+    fig = plt.figure(figsize=(10, 8))
+    ax = fig.add_subplot(111, projection='3d')
+
+    # Scatter dei punti
+    ax.scatter(f1, f2, f3, c='purple', alpha=0.8)
+
+    # Creazione di una griglia per la superficie
+    grid_x, grid_y = np.mgrid[
+        np.min(f1):np.max(f1):50j,
+        np.min(f2):np.max(f2):50j
+    ]
+
+    # Interpolazione dei valori f3
+    grid_z = griddata((f1, f2), f3, (grid_x, grid_y), method='linear')
+
+    # Plot della superficie (opzionale)
+    if grid_z is not None:
+        ax.plot_surface(grid_x, grid_y, grid_z, alpha=0.3, cmap='viridis')
+
+    ax.set_xlim([0, 0.5])
+    ax.set_ylim([0, 0.5])
+    ax.set_zlim([0, 0.5])
+
+    ax.set_xlabel(nome_f1)
+    ax.set_ylabel(nome_f2)
+    ax.set_zlabel(nome_f3)
+    ax.set_title('Zoom 3D Pareto Front')
+
+    # Salva il grafico 3D
+    plt.savefig(path_3d_zoom)
+    plt.close()
+    
+
