@@ -18,7 +18,7 @@ import json
 warnings.filterwarnings("ignore", category=FutureWarning)
 
 
-cartella="../../../Desktop/risultati/photos/"
+cartella="../../../Desktop/risultati/metaBatteria/"
 
 
 async def main():
@@ -26,14 +26,14 @@ async def main():
     polynomial_batt = battery_function()
     polynomial_inverter = inverter_function()
 
-    with freeze_time(datetime.now()-timedelta(hours=9)) as frozen_datetime:
+    with freeze_time(datetime.now()) as frozen_datetime:
 
         dictionary={}
 
         sampling=0
 
-        pop_size=60#650
-        n_gen=12#280
+        pop_size=650
+        n_gen=280
 
         data = setup(polynomial_inverter)
         prices = await get_future_day_italian_market(data)

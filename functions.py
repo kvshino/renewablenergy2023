@@ -393,5 +393,61 @@ def plot_and_save_results(solutions, objective_names, folder_name, filename_2d='
     # Salva il grafico 3D
     plt.savefig(path_3d_zoom)
     plt.close()
+
+
+
+def plot_and_save_2d_pareto(solutions, objective_names, folder_name, filename_full='grafico_2D.png', filename_zoom='grafico_2D_zoom.png'):
+    """
+    Genera e salva i grafici 2D di un fronte di Pareto bidimensionale.
+    
+    Args:
+        solutions (np.ndarray): Un array numpy di forma (n, 2) contenente le soluzioni (due obiettivi).
+        objective_names (list): Una lista di due stringhe con i nomi degli obiettivi.
+        folder_name (str): Il nome della cartella dove salvare i grafici.
+        filename_full (str): Nome del file per il grafico completo.
+        filename_zoom (str): Nome del file per il grafico zoomato attorno all'origine.
+    """
+    # Controllo input
+    if solutions.shape[1] != 2:
+        raise ValueError("Le soluzioni devono avere esattamente 2 colonne per gli obiettivi.")
+    if len(objective_names) != 2:
+        raise ValueError("Devi fornire esattamente 2 nomi per gli obiettivi.")
+
+    # Creazione della cartella se non esiste
+    os.makedirs(folder_name, exist_ok=True)
+
+    # Creazione dei percorsi completi per i file
+    path_full = os.path.join(folder_name, filename_full)
+    path_zoom = os.path.join(folder_name, filename_zoom)
+
+    # Estrazione degli obiettivi
+    f1, f2 = solutions[:, 0], solutions[:, 1]
+    nome_f1, nome_f2 = objective_names
+
+    # --- Grafico completo ---
+    plt.figure(figsize=(8, 6))
+    plt.scatter(f1, f2, c='blue', alpha=0.7)
+    plt.xlabel(nome_f1)
+    plt.ylabel(nome_f2)
+    plt.title(f'Pareto Front: {nome_f1} vs {nome_f2}')
+    plt.grid(True)
+
+    # Salva il grafico completo
+    plt.savefig(path_full)
+    plt.close()
+
+    # --- Grafico zoomato attorno all'origine ---
+    plt.figure(figsize=(8, 6))
+    plt.scatter(f1, f2, c='red', alpha=0.7)
+    plt.xlim([0, 0.5])
+    plt.ylim([0, 0.5])
+    plt.xlabel(nome_f1)
+    plt.ylabel(nome_f2)
+    plt.title(f'Pareto Front (Zoom): {nome_f1} vs {nome_f2}')
+    plt.grid(True)
+
+    # Salva il grafico zoomato
+    plt.savefig(path_zoom)
+    plt.close()
     
 

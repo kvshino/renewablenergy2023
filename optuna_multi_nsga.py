@@ -58,7 +58,7 @@ data= asyncio.run(obtaining_data())
 
 
 # Crea uno studio Optuna per ottimizzare i parametri
-study = optuna.create_study(storage="sqlite:///nsga.db", directions=["minimize", "minimize", "minimize"])
+study = optuna.create_study(storage="sqlite:///nsga.db", directions=["minimize", "minimize"])
 study.optimize(objective, n_trials=150)
 
 # Visualizza i risultati

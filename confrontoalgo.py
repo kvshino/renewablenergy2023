@@ -197,7 +197,7 @@ async def main():
     os.makedirs("../../../Desktop/risultati/confronto/", exist_ok=True)
     dictionary ={}
     start_time = tm.time()
-    t=datetime.now()
+    t=datetime.now()-timedelta(hours=4)
     with freeze_time(t) as frozen_datetime:
         dictionary["sum_mixed"],dictionary["apercentage_mixed"] , dictionary["co2_mixed"] , lista1 = await mixed(frozen_datetime)
     end_time = tm.time()

@@ -170,7 +170,7 @@ def start_genetic_algorithm(data, pop_size=650, n_gen=300, n_threads=12, prob_mu
 
                     #Si controlla che la carica della batteria non sia maggiore di quella fisicamente ottenibile
                     if(quantity_charging_battery > data["maximum_power_battery_exchange"]):
-                        penalty_batt = penalty_batt + data["polynomial"](cycles+(quantity_charging_battery-data["maximum_power_battery_exchange"])/battery_capacity)
+                        penalty_batt = penalty_batt + (battery_capacity-round(data["polynomial"](cycles+(quantity_charging_battery-data["maximum_power_battery_exchange"])/battery_capacity)* data["battery_nominal_capacity"], 4))
 
                     if(quantity_charging_battery > data["maximum_power_absorption"]):
                         penalty_costs = penalty_costs + (quantity_charging_battery - data["maximum_power_absorption"])*data["prices"]["prezzo"].iloc[j]
@@ -182,7 +182,7 @@ def start_genetic_algorithm(data, pop_size=650, n_gen=300, n_threads=12, prob_mu
                     if quantity_charging_battery - delta_production_after_inverter < 0:
 
                         if data["estimate"]["consumo"].values[j] + quantity_charging_battery + (quantity_charging_battery - delta_production_after_inverter) > data["inverter_nominal_power"]:
-                            penalty_batt = penalty_batt + data["polynomial"](cycles+(data["estimate"]["consumo"].values[j] + quantity_charging_battery + (quantity_charging_battery - delta_production_after_inverter)-data["inverter_nominal_power"])/battery_capacity)
+                            penalty_batt = penalty_batt + (battery_capacity-round(data["polynomial"](cycles+(data["estimate"]["consumo"].values[j] + quantity_charging_battery + (quantity_charging_battery - delta_production_after_inverter)-data["inverter_nominal_power"])/battery_capacity)* data["battery_nominal_capacity"], 4))
                         #Il surplus di energia viene venduto
                         sum = sum + ((quantity_charging_battery - delta_production_after_inverter) * sold)  # sum = sum - rimborso
 
@@ -193,7 +193,7 @@ def start_genetic_algorithm(data, pop_size=650, n_gen=300, n_threads=12, prob_mu
                         quantity_bought_from_not_renewable_sources =  ((quantity_charging_battery - delta_production_after_inverter)) * percentage_production_not_renewable["Difference"][j]
 
                         if data["estimate"]["consumo"].values[j] + quantity_charging_battery > data["inverter_nominal_power"]:
-                            penalty_batt = penalty_batt + data["polynomial"](cycles+(data["estimate"]["consumo"].values[j] + quantity_charging_battery - data["inverter_nominal_power"])/battery_capacity)
+                            penalty_batt = penalty_batt + (battery_capacity-round(data["polynomial"](cycles+(data["estimate"]["consumo"].values[j] + quantity_charging_battery - data["inverter_nominal_power"])/battery_capacity)* data["battery_nominal_capacity"], 4))
 
                         #Viene fatto un controllo che NON permette di acquistare più energia di quanto il contratto stipulato dall'utente permetta
                         if( quantity_charging_battery > data["maximum_power_absorption"] + delta_production_after_inverter):
@@ -226,7 +226,7 @@ def start_genetic_algorithm(data, pop_size=650, n_gen=300, n_threads=12, prob_mu
 
                     #Si controlla che la scarica della batteria non sia maggiore di quella fisicamente ottenibile
                     if(quantity_discharging_battery > data["maximum_power_battery_exchange"]):
-                        penalty_batt = penalty_batt + data["polynomial"](cycles+(quantity_discharging_battery-data["maximum_power_battery_exchange"])/battery_capacity)
+                        penalty_batt = penalty_batt + (battery_capacity-round(data["polynomial"](cycles+(quantity_discharging_battery-data["maximum_power_battery_exchange"])/battery_capacity)* data["battery_nominal_capacity"], 4))
                     
                     if(quantity_discharging_battery > data["maximum_power_absorption"]):
                         penalty_costs = penalty_costs + (quantity_discharging_battery-data["maximum_power_absorption"])*sold
@@ -238,7 +238,7 @@ def start_genetic_algorithm(data, pop_size=650, n_gen=300, n_threads=12, prob_mu
                     if delta_production_after_inverter + quantity_discharging_battery > 0:
 
                         if data["estimate"]["consumo"].values[j] + (delta_production_after_inverter + quantity_discharging_battery) > data["inverter_nominal_power"]:
-                            penalty_batt= penalty_batt+data["polynomial"](cycles+(data["estimate"]["consumo"].values[j] + (delta_production_after_inverter + quantity_discharging_battery)- data["inverter_nominal_power"])/battery_capacity)
+                            penalty_batt= penalty_batt+(battery_capacity-round(data["polynomial"](cycles+(data["estimate"]["consumo"].values[j] + (delta_production_after_inverter + quantity_discharging_battery)- data["inverter_nominal_power"])/battery_capacity)* data["battery_nominal_capacity"], 4))
                             penalty_costs=penalty_costs+(data["estimate"]["consumo"].values[j] + (delta_production_after_inverter + quantity_discharging_battery)- data["inverter_nominal_power"]) * sold
                             penalty_co2=penalty_co2+(data["estimate"]["consumo"].values[j] + (delta_production_after_inverter + quantity_discharging_battery)- data["inverter_nominal_power"])  * percentage_production_not_renewable["Difference"][j]
                            
@@ -255,7 +255,7 @@ def start_genetic_algorithm(data, pop_size=650, n_gen=300, n_threads=12, prob_mu
                         quantity_bought_from_not_renewable_sources = ( - (delta_production_after_inverter + quantity_discharging_battery)) * percentage_production_not_renewable["Difference"][j]
 
                         if data["estimate"]["consumo"].values[j] > data["inverter_nominal_power"]:
-                            penalty_batt=penalty_batt+data["polynomial"](cycles+((data["estimate"]["consumo"].values[j]-data["inverter_nominal_power"])/battery_capacity)) 
+                            penalty_batt=penalty_batt+(battery_capacity-round(data["polynomial"](cycles+((data["estimate"]["consumo"].values[j]-data["inverter_nominal_power"])/battery_capacity)) * data["battery_nominal_capacity"], 4))
                             penalty_costs=penalty_costs+(data["estimate"]["consumo"].values[j]-data["inverter_nominal_power"]) * data["prices"]["prezzo"].iloc[j]
                             penalty_co2=penalty_co2+(data["estimate"]["consumo"].values[j]-data["inverter_nominal_power"]) * percentage_production_not_renewable["Difference"][j]
                             
