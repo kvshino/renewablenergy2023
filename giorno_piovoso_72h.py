@@ -18,7 +18,7 @@ import json
 warnings.filterwarnings("ignore", category=FutureWarning)
 
 
-cartella="../../../Desktop/risultati/convergenza3obiettivi/"
+cartella="../../../Desktop/risultati/giornoPiovoso72h_650_NuovaPen_SPER3/"
 
 
 async def main():
@@ -26,7 +26,7 @@ async def main():
     polynomial_batt = battery_function()
     polynomial_inverter = inverter_function()
 
-    with freeze_time(datetime.now()+timedelta(hours=1)) as frozen_datetime:
+    with freeze_time(datetime.now()-timedelta(hours=7)) as frozen_datetime:
 
         dictionary={}
 
@@ -37,26 +37,23 @@ async def main():
 
         data = setup(polynomial_inverter)
         prices = await get_future_day_italian_market(data)
-        prices = pd.read_csv("prices.csv", skipinitialspace=True)
-        production = pd.read_csv("production.csv", skipinitialspace=True)
-        consumption = pd.read_csv("consumption.csv", skipinitialspace=True)
+        production=pd.read_csv("production.csv", skipinitialspace=True)
+        #prices = pd.read_csv("prices.csv", skipinitialspace=True)
         production_not_rs = forecast_percentage_production_from_not_renewable_sources(api_key=data["api_key"], zona=data["entsoe_timezone"])
         print(datetime.now() )
-        for i in range(24):
+        for i in range(72):
 
             data = setup(polynomial_inverter)
             data["prices"] = prices 
             data["production_not_rs"] = production_not_rs
             data["polynomial"] = polynomial_batt
-
             data["expected_production"]=pd.DataFrame(pd.date_range(start=datetime.now().replace(minute=0, second=0, microsecond=0) - timedelta(hours=1),
                                 periods=24, freq='h'))
-            data["expected_production"] = production
+            data["expected_production"] = production.iloc[i:i+24]
             data["expected_production"] = data["expected_production"].reset_index()
-            data["estimate"]["consumo"]=consumption["consumption"]
             data["difference_of_production"] = difference_of_production(data)
-            
 
+            
             if(i==0):
                 cycles = data["cycles"]
                 dictionary["first_battery_value"]=data["socs"]
@@ -80,7 +77,7 @@ async def main():
             F_min = np.min(F, axis=0)
             F_max = np.max(F, axis=0)
             F_norm = (F - F_min) / (F_max - F_min)
-            #F_norm[:,1] = F_norm[:,1] / 3
+            #F_norm[:,1] = F_norm[:,1] / 3           
             distances = np.linalg.norm(F_norm, axis=1)
             best_index = np.argmin(distances)
 
@@ -97,14 +94,15 @@ async def main():
 
             prices = shift_ciclico(prices, "prezzo")
             production_not_rs = shift_ciclico(production_not_rs, "Difference")
-            production = shift_ciclico(production, "production")
-            consumption=shift_ciclico(consumption, "consumption")
+            production_not_rs['Difference'] = production_not_rs['Difference'].clip(upper=1)
 
             
             sampling = shifting_nsga2_individuals(data["res"])
 
             dictionary[f"battery_capacity{i+1}"] = update_battery_values(data, "csv/socs.csv", dictionary[f"b{i}"], dictionary[f"i{i}"], polynomial_batt)
 
+            with open(f"{cartella}dictionary.json", "w") as file:
+                json.dump(dictionary, file, indent=4)  
             frozen_datetime.tick(delta=timedelta(hours=1))
 
 
@@ -116,8 +114,8 @@ async def main():
         dictionary["battery_discharging_efficiency"] = data["battery_discharging_efficiency"]
         dictionary["polynomial_inverter"] = polynomial_inverter
 
-        dictionary["sum_algo"],dictionary["actual_percentage_algo"],dictionary["quantity_delta_battery_algo"],dictionary["co2_algo"], dictionary["ratio_algo"] = evaluate(data, dictionary,  cycles, polynomial_batt)
-        dictionary["sum_noalgo"],dictionary["actual_battery_level_noalgo"],dictionary["quantity_battery_degradation_noalgo"],dictionary["co2_noalgo"],dictionary["power_to_grid_noalgo"], dictionary["ratio_noalgo"] =simulation_no_algorithm(data,dictionary, cycles, polynomial_batt)
+        dictionary["sum_algo"],dictionary["actual_percentage_algo"],dictionary["quantity_delta_battery_algo"],dictionary["co2_algo"], dictionary["ratio_algo"] = evaluate(data, dictionary,  cycles, polynomial_batt, 72)
+        dictionary["sum_noalgo"],dictionary["actual_battery_level_noalgo"],dictionary["quantity_battery_degradation_noalgo"],dictionary["co2_noalgo"],dictionary["power_to_grid_noalgo"], dictionary["ratio_noalgo"] =simulation_no_algorithm(data,dictionary, cycles, polynomial_batt, 72)
         dictionary["sum_nobattery"],dictionary["co2_nobattery"],dictionary["power_to_grid_nobattery"], dictionary["ratio_nobattery"]  = simulation_nobattery(data,dictionary)
         dictionary["sum_noplant"],dictionary["co2_noplant"],dictionary["power_to_grid_noplant"]= simulation_noplant(data,dictionary)    
 

@@ -24,7 +24,7 @@ from pymoo.util.misc import random_permuations
 import math
 
 
-def evaluate(data, variables_values, cycles, polynomial):
+def evaluate(data, variables_values, cycles, polynomial, hours=24):
     sum = []
     sum.append(0)
     co2_emissions = []
@@ -39,12 +39,12 @@ def evaluate(data, variables_values, cycles, polynomial):
     ratio_list = []
 
     # valori negativi indicano consumi ,positivi guadagni
-    for j in range(24):
+    for j in range(hours):
         charge = variables_values[f"b{j}"]
         percentage = variables_values[f"i{j}"]
         quantity_charging_battery = None
         quantity_discharging_battery = None
-
+        print(str(charge)+ " " + str(percentage))
         
         upper_limit = (data["soc_max"] * battery_capacity)
         lower_limit = (data["soc_min"] * battery_capacity)
@@ -107,7 +107,7 @@ def evaluate(data, variables_values, cycles, polynomial):
             cycles = round(cycles+(scarico/battery_capacity), 5)
             battery_capacity = round(polynomial(cycles) * variables_values["battery_nominal_capacity"], 4)
             actual_percentage.append((effettivo_in_batteria - (quantity_discharging_battery/data["battery_discharging_efficiency"]) - lower_limit) / ( upper_limit - lower_limit))
-
+        print(actual_percentage[j])
         ratio_list.append(ratio)
 
         if quantity_charging_battery != None:
@@ -274,8 +274,8 @@ def start_genetic_algorithm(data, pop_size=650, n_gen=300, n_threads=12, prob_mu
             
 
             cost_objective=sum+(0.5*self.gens)*penalty_costs
-            batt_objective=(-battery_capacity/data["battery_nominal_capacity"])+(0.5*self.gens)*penalty_batt
-            co2_objective=(co2_emissions/1000)+(0.5*self.gens)*penalty_co2
+            batt_objective=(-battery_capacity)+(0.5*self.gens)*penalty_batt
+            co2_objective=(co2_emissions)+(0.5*self.gens)*penalty_co2
             #Terminata la simulazione, viene attribuito un voto alla stringa in input, dato da tre fattori:
             # - Il costo
             # - L'utilizzo della batteria

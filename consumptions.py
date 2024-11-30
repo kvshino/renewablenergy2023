@@ -64,7 +64,6 @@ def get_estimate_load_consumption(dataframe: pd.DataFrame):
     df = pd.concat([df.iloc[next_hour.hour:], df.iloc[:next_hour.hour]])
 
     df.reset_index(drop=True, inplace=True)
-
     return df
 
 

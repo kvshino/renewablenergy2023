@@ -37,8 +37,8 @@ param_means = {param_name: np.mean(values) for param_name, values in param_dict.
 
 # Mostra le medie degli iperparametri
 print("Media degli iperparametri per i trial nel fronte di Pareto:")
-print('pop_size: ' + str(np.max(param_dict['pop_size'])))
-print('n_gen: ' + str(np.max(param_dict['n_gen'])))
+print('pop_size: ' + str(np.mean(param_dict['pop_size'])))
+print('n_gen: ' + str(np.mean(param_dict['n_gen'])))
 print('prob_mut_bit: ' + str(np.mean(param_dict['prob_mut_bit'])))
 print('prob_mut_int: ' + str(np.mean(param_dict['prob_mut_int'])))
 

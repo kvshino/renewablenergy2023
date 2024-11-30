@@ -31,7 +31,7 @@ def start_nsga2_genetic_algorithm(data, pop_size=650, n_gen=250, n_threads=12, p
             self.gens=1
             super().__init__(
             n_var=48,  
-            n_obj=2,   
+            n_obj=3,   
             n_constr=0, 
             xl=np.array([0 if i % 2 == 0 else 0 for i in range(48)]),  
             xu=np.array([1 if i % 2 == 0 else 100 for i in range(48)])  
@@ -50,8 +50,10 @@ def start_nsga2_genetic_algorithm(data, pop_size=650, n_gen=250, n_threads=12, p
             penalty_co2=0
             cycles = data["cycles"]
             battery_capacity = round(data["polynomial"](cycles) * data["battery_nominal_capacity"], 4)
+            app_bc = battery_capacity
             boolean_vars = [round(X[i]) for i in range(0, 48, 2)]  
             integer_vars = [round(X[i]) for i in range(1, 48, 2)]
+            #count=0
 
             for j in range(24):                                             #Viene eseguita una predizione per le successive 24 ore         
                 charge = boolean_vars[j]
@@ -89,6 +91,9 @@ def start_nsga2_genetic_algorithm(data, pop_size=650, n_gen=250, n_threads=12, p
                     delta_production_after_inverter = data["expected_production"]["production"][j] * data["polynomial_inverter"](ratio) - data["estimate"]["consumo"].values[j]
                     #Viene controllata se la produzione dei pannelli è maggiore del consumo domestico unito al consumo della carica della batteria
                     if quantity_charging_battery - delta_production_after_inverter < 0:
+
+                        # if quantity_charging_battery > 0:
+                        #     count+=delta_production_after_inverter-quantity_charging_battery
 
                         if data["estimate"]["consumo"].values[j] + quantity_charging_battery + (quantity_charging_battery - delta_production_after_inverter) > data["inverter_nominal_power"]:
                             penalty_batt = penalty_batt + (battery_capacity-round(data["polynomial"](cycles+(data["estimate"]["consumo"].values[j] + quantity_charging_battery + (quantity_charging_battery - delta_production_after_inverter)-data["inverter_nominal_power"])/battery_capacity)* data["battery_nominal_capacity"], 4))
@@ -180,23 +185,33 @@ def start_nsga2_genetic_algorithm(data, pop_size=650, n_gen=250, n_threads=12, p
 
                     #Viene aggiornato il valore della batteria, dopo la scarica
                     actual_percentage.append((effettivo_in_batteria - (quantity_discharging_battery/data["battery_discharging_efficiency"]) - lower_limit) / ( upper_limit - lower_limit))
-                if penalty_batt < 0:
-                    print("BATTERIA NEGATIVO")
-                if penalty_costs < 0:
-                    print("COSTI NEGATIVO")
-                if penalty_co2 < 0:
-                    print("CO2 NEGATIVO")
+                
 
-            cost_objective=sum+(0.5*self.gens)*penalty_costs
-            batt_objective=(-battery_capacity/data["battery_nominal_capacity"])+(0.5*self.gens)*penalty_batt
-            co2_objective=(co2_emissions/1000)+(0.5*self.gens)*penalty_co2
+
+            effettivo_in_batteria=lower_limit+(actual_percentage[24]*(upper_limit-lower_limit))
+            if(effettivo_in_batteria < lower_limit+((upper_limit-lower_limit))/2):
+                penalty_costs+= (((lower_limit+((upper_limit-lower_limit)/2)) - effettivo_in_batteria)*data["prices"]["prezzo"].mean()) ##QUI
+                #penalty_batt+=(battery_capacity-round(data["polynomial"](cycles+((lower_limit+((upper_limit-lower_limit)/2))-effettivo_in_batteria) * data["battery_nominal_capacity"]), 4))/(battery_capacity*1.3)  ##QUI
+                penalty_batt+=(round(data["polynomial"](cycles+((lower_limit+((upper_limit-lower_limit)/2))-effettivo_in_batteria) /battery_capacity), 4))
+                penalty_co2+=((lower_limit+((upper_limit-lower_limit)/2)) - effettivo_in_batteria) * percentage_production_not_renewable["Difference"].mean()
+
+            if penalty_batt < 0:
+                print("BATTERIA NEGATIVO")
+            if penalty_costs < 0:
+                print("COSTI NEGATIVO")
+            if penalty_co2 < 0:
+                print("CO2 NEGATIVO")
+
+            cost_objective=sum+(0.1*self.gens)*penalty_costs
+            batt_objective=(-battery_capacity)+(0.1*self.gens)*penalty_batt
+            co2_objective=(co2_emissions)+(0.1*self.gens)*penalty_co2
             #Terminata la simulazione, viene attribuito un voto alla stringa in input, dato da tre fattori:
             # - Il costo
             # - L'utilizzo della batteria
             # - Emissioni CO2
 
 
-            out["F"] = [cost_objective, batt_objective]
+            out["F"] = [cost_objective, batt_objective, co2_objective]
             
 
 

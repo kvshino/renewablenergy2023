@@ -20,12 +20,12 @@ warnings.filterwarnings("ignore", category=FutureWarning)
 color_ga ="#004aad"
 color_mixed ="#ff5757"
 
-cartella_MVGA=cartella="../../../Desktop/risultati/confronto/MVGA/"
-cartella_NSGAII=cartella="../../../Desktop/risultati/confronto/NSGAII/"
+cartella_MVGA=cartella="../../../Desktop/risultati/convergenza_e_confronto_3_ob/MVGA/"
+cartella_NSGAII=cartella="../../../Desktop/risultati/convergenza_e_confronto_3_ob/NSGAII/"
 
 
 
-async def mixed(frozen_datetime):
+async def mixed(frozen_datetime, prices, production, consumption, production_not_rs):
     polynomial_batt = battery_function()
     polynomial_inverter = inverter_function()
 
@@ -34,14 +34,18 @@ async def mixed(frozen_datetime):
     sampling = 0
     pop_size = 650
     gen = 300
-    data = setup(polynomial_inverter,"csv/socsmixed.csv")
-    prices = await get_future_day_italian_market(data)
-    production_not_rs = forecast_percentage_production_from_not_renewable_sources(api_key=data["api_key"], zona=data["entsoe_timezone"])
     for i in range(24):
         data = setup(polynomial_inverter,"csv/socsmixed.csv")
-        data["prices"] = prices
-        data["production_not_rs"] = production_not_rs  
+        data["prices"] = prices 
+        data["production_not_rs"] = production_not_rs
         data["polynomial"] = polynomial_batt
+
+        data["expected_production"]=pd.DataFrame(pd.date_range(start=datetime.now().replace(minute=0, second=0, microsecond=0) - timedelta(hours=1),
+                            periods=24, freq='h'))
+        data["expected_production"] = production
+        data["expected_production"] = data["expected_production"].reset_index()
+        data["estimate"]["consumo"]=consumption["consumption"]
+        data["difference_of_production"] = difference_of_production(data)
         
         if(i == 0):
             dict["first_battery_value"] = data["socs"]
@@ -56,6 +60,12 @@ async def mixed(frozen_datetime):
         print("Fine Esecuzione Ora " + str(i+1))
 
         F=data["res"].F
+
+        now=datetime.now().strftime("%Y-%m-%d_%H")
+        if not os.path.exists(f"{cartella_MVGA}Fronte_di_Pareto"):
+            os.makedirs(cartella_MVGA+"Fronte_di_Pareto")  
+        np.savetxt(f"{cartella_MVGA}Fronte_di_Pareto/{now}_NON_normalizzato.txt", F, fmt="%.8f") 
+
         F_min = np.min(F, axis=0)
         F_max = np.max(F, axis=0)
         F_norm = (F - F_min) / (F_max - F_min)
@@ -78,6 +88,8 @@ async def mixed(frozen_datetime):
         
         prices = shift_ciclico(prices, "prezzo")
         production_not_rs = shift_ciclico(production_not_rs, "Difference")
+        production = shift_ciclico(production, "production")
+        consumption=shift_ciclico(consumption, "consumption")
     
         # all_populations = [a.pop for a in data["history"]]
         sampling = shifting_individuals(data["res"])
@@ -103,15 +115,15 @@ async def mixed(frozen_datetime):
 
     return dict["sum_algo"], dict["actual_percentage_algo"], dict["co2_algo"], lista
 
-async def nsga(frozen_datetime):
+async def nsga(frozen_datetime, prices, production, consumption, production_not_rs):
     polynomial_batt = battery_function()
     polynomial_inverter = inverter_function()
 
 
     dict={}
     sampling=0
-    pop_size =650
-    gen = 280
+    pop_size = 650
+    gen = 250
     data = setup(polynomial_inverter,"csv/socsga.csv")
     prices = await get_future_day_italian_market(data)
     production_not_rs = forecast_percentage_production_from_not_renewable_sources(api_key=data["api_key"], zona=data["entsoe_timezone"])
@@ -120,8 +132,15 @@ async def nsga(frozen_datetime):
 
         data = setup(polynomial_inverter,"csv/socsga.csv")
         data["prices"] = prices 
-        data["production_not_rs"] = production_not_rs  
+        data["production_not_rs"] = production_not_rs
         data["polynomial"] = polynomial_batt
+
+        data["expected_production"]=pd.DataFrame(pd.date_range(start=datetime.now().replace(minute=0, second=0, microsecond=0) - timedelta(hours=1),
+                            periods=24, freq='h'))
+        data["expected_production"] = production
+        data["expected_production"] = data["expected_production"].reset_index()
+        data["estimate"]["consumo"]=consumption["consumption"]
+        data["difference_of_production"] = difference_of_production(data)
 
         if(i==0):
             dict["first_battery_value"]=data["socs"]
@@ -136,6 +155,12 @@ async def nsga(frozen_datetime):
         print("Fine Esecuzione Ora " + str(i+1))
 
         F=data["res"].F
+
+        now=datetime.now().strftime("%Y-%m-%d_%H")
+        if not os.path.exists(f"{cartella_NSGAII}Fronte_di_Pareto"):
+            os.makedirs(cartella_NSGAII+"Fronte_di_Pareto")  
+        np.savetxt(f"{cartella_NSGAII}Fronte_di_Pareto/{now}_NON_normalizzato.txt", F, fmt="%.8f") 
+
         F_min = np.min(F, axis=0)
         F_max = np.max(F, axis=0)
         F_norm = (F - F_min) / (F_max - F_min)
@@ -161,6 +186,8 @@ async def nsga(frozen_datetime):
         
         prices = shift_ciclico(prices, "prezzo")
         production_not_rs = shift_ciclico(production_not_rs, "Difference")
+        production = shift_ciclico(production, "production")
+        consumption=shift_ciclico(consumption, "consumption")
     
         # all_populations = [a.pop for a in data["history"]]
         sampling = shifting_nsga2_individuals(data["res"])
@@ -197,16 +224,26 @@ async def main():
     os.makedirs("../../../Desktop/risultati/confronto/", exist_ok=True)
     dictionary ={}
     start_time = tm.time()
-    t=datetime.now()-timedelta(hours=4)
+    t=datetime.now()#+timedelta(hours=1)
+
+    data=setup(inverter_function())
+    prices = pd.read_csv("prices.csv", skipinitialspace=True)
+    production = pd.read_csv("production.csv", skipinitialspace=True)
+    consumption = pd.read_csv("consumption.csv", skipinitialspace=True)
+    production_not_rs = forecast_percentage_production_from_not_renewable_sources(api_key=data["api_key"], zona=data["entsoe_timezone"])
+    print(prices)
+    print(production)
+
+
     with freeze_time(t) as frozen_datetime:
-        dictionary["sum_mixed"],dictionary["apercentage_mixed"] , dictionary["co2_mixed"] , lista1 = await mixed(frozen_datetime)
+        dictionary["sum_mixed"],dictionary["apercentage_mixed"] , dictionary["co2_mixed"] , lista1 = await mixed(frozen_datetime, prices, production, consumption, production_not_rs)
     end_time = tm.time()
     execution_time_mixed = end_time - start_time
     print(f"Execution_time MixedVariableGa: {execution_time_mixed} seconds")
 
     start_time = tm.time()
     with freeze_time(t) as frozen_datetime:
-        dictionary["sum_ga"], dictionary["apercentage_ga"],  dictionary["co2_ga"], lista2 = await nsga(frozen_datetime)
+        dictionary["sum_ga"], dictionary["apercentage_ga"],  dictionary["co2_ga"], lista2 = await nsga(frozen_datetime, prices, production, consumption, production_not_rs)
     end_time = tm.time()
     execution_time_ga = end_time - start_time
     print(f"Execution_time Ga: {execution_time_ga} seconds")

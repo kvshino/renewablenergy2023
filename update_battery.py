@@ -68,7 +68,7 @@ def update_battery_values(data, file_name, carica, percentuale, polynomial):
             # new_cycles = round(cycles+(carico/data["battery_capacity"]), 5)
             # y = polynomial(cycles) * data["battery_nominal_capacity"]
             file.write('\n' + str(result) + ", " + str(cycles)  + ", " + str(round(data["battery_capacity"],4)))
-
+        print(str(carica)+ " "+ str(percentuale)+ str(result))
         file.close()
 
     return round(data["battery_capacity"],4)

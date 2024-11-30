@@ -1,0 +1,318 @@
+import os
+import numpy as np
+from functions import *
+import json as jj
+from test_inv import *
+from gui import *
+from freezegun import freeze_time
+from multi_genetic import *
+
+
+base="../../../Desktop/risultati/Vincoli/"
+cartella = "../../../Desktop/risultati/Vincoli/simulazioneConVincoli/Fronte_di_Pareto"  
+cartella_NSGA = "../../../Desktop/risultati/Vincoli/simulazioneSenzaVincoli/Fronte_di_Pareto"  # Modifica con il percorso della tua cartella
+grafici = cartella[:-17]
+color_ga ="#ff5757"
+color_mixed ="#004aad"
+
+i=0
+
+
+def pareto_front(solutions):
+    # Crea un array booleano per tenere traccia delle soluzioni non dominate
+    is_non_dominated = np.ones(solutions.shape[0], dtype=bool)
+
+    # Confronta ogni soluzione con le altre
+    for i, solution in enumerate(solutions):
+        if is_non_dominated[i]:
+            for j, other_solution in enumerate(solutions):
+                if i != j and is_non_dominated[j]:
+                    # Se la soluzione j domina la soluzione i, segna i come dominata
+                    if all(other_solution <= solution) and any(other_solution < solution):
+                        is_non_dominated[i] = False
+                        break  # Non è più necessario confrontare la soluzione i
+
+    # Restituisce solo le soluzioni non dominate
+    return solutions[is_non_dominated]
+
+
+def normalize_arrays(array1, array2):
+    # Concateno i due array per calcolare massimo e minimo complessivi
+    combined = np.vstack((array1, array2))
+    
+    # Calcolo dei minimi e massimi per ogni colonna
+    min_vals = np.min(combined, axis=0)
+    max_vals = np.max(combined, axis=0)
+    
+    # Normalizzazione degli array
+    norm_array1 = (array1 - min_vals) / (max_vals - min_vals)
+    norm_array2 = (array2 - min_vals) / (max_vals - min_vals)
+    
+    return norm_array1, norm_array2
+
+
+def find_closest_to_utopia(array):
+    # Calcola la distanza euclidea di ciascun punto dall'origine (0, 0)
+    distances = np.linalg.norm(array, axis=1)
+    
+    # Trova l'indice della soluzione con distanza minima
+    min_index = np.argmin(distances)
+    
+    return min_index
+
+
+def plot_pareto_fronts(array1, array2, string1, string2, hour, min_MVGA, min_NSGA):
+    # Normalizzo gli array
+    norm_array1, norm_array2 = normalize_arrays(array1, array2)
+
+    # Trova la soluzione più vicina all'origine per entrambi gli array
+    closest_idx1 = find_closest_to_utopia(norm_array1)
+    closest_idx2 = find_closest_to_utopia(norm_array2)
+    # Plot delle soluzioni normalizzate
+    plt.figure(figsize=(14, 8))
+    
+    # Plot dell'array1
+    plt.scatter(norm_array1[:, 0], norm_array1[:, 1], c='blue', label=string1)
+    plt.scatter(norm_array1[min_MVGA, 0], norm_array1[min_MVGA, 1], c='green', s=100, label=string1+"-Best Solution")
+    
+    # Plot dell'array2
+    plt.scatter(norm_array2[:, 0], norm_array2[:, 1], c='red', label=string2)
+    plt.scatter(norm_array2[min_NSGA, 0], norm_array2[min_NSGA, 1], c='yellow', s=100, label=string2+"-Best Solution")
+    
+    # Aggiunge dettagli al grafico
+    # plt.axhline(0, color='gray', linewidth=0.5)
+    # plt.axvline(0, color='gray', linewidth=0.5)
+    plt.xlabel("Costs", fontsize=20)
+    plt.ylabel("Battery Degradation", fontsize=20)
+    plt.title('Confronto Fronti di Pareto Normalizzati')
+    plt.legend()
+    plt.grid(True)
+    plt.savefig(base+f"_normalized_{hour}")
+    plt.close()
+
+def plot_pareto_fronts_non_normalized(array1, array2, string1, string2, hour):
+    # Normalizzo gli array
+    norm_array1=array1
+    norm_array2=array2
+    
+
+    
+    # Plot delle soluzioni normalizzate
+    plt.figure(figsize=(14, 8))
+    
+    # Plot dell'array1
+    plt.scatter(norm_array1[:, 0], norm_array1[:, 1], c='blue', label=string1)
+    
+    # Plot dell'array2
+    plt.scatter(norm_array2[:, 0], norm_array2[:, 1], c='red', label=string2)
+    
+    # Aggiunge dettagli al grafico
+    # plt.axhline(0, color='gray', linewidth=0.5)
+    # plt.axvline(0, color='gray', linewidth=0.5)
+    plt.xlabel("Costs", fontsize=20)
+    plt.ylabel("Battery Degradation", fontsize=20)
+    plt.title('Confronto Fronti di Pareto NON Normalizzati')
+    plt.legend()
+    plt.grid(True)
+    plt.savefig(base+f"_NON_normalized_{hour}")
+    plt.close()
+
+
+
+
+F_non_norm=[]
+MVGA_min=[]
+number=0
+for filename in os.listdir(cartella):
+    if i == 0:
+        t=int(filename[11:13])
+        i=1
+
+    if filename.endswith(".txt"):
+        # Percorso completo del file
+        file_path = os.path.join(cartella, filename)
+        
+        # Carica il contenuto del file .txt in un np.ndarray
+        try:
+            F_non_norm.append(np.loadtxt(file_path))
+            F_min = np.min(F_non_norm[number], axis=0)
+            F_max = np.max(F_non_norm[number], axis=0)
+            F_norm = (F_non_norm[number] - F_min) / (F_max - F_min)
+            F_norm[:,1] = F_norm[:,1] 
+            MVGA_min.append(find_closest_to_utopia(F_norm))
+            F_non_norm[number]=pareto_front(F_non_norm[number])
+
+
+            print(f"Caricato {filename} con successo!")
+        except Exception as e:
+            print(f"Errore nel caricare {filename}: {e}")
+    number+=1
+
+
+grafici_NSGA = cartella_NSGA[:-17]
+# Lista per contenere gli array numpy letti dai file
+
+# Itera su tutti i file nella cartella
+number=0
+F_non_norm_nsga=[]
+NSGA_min=[]
+for filename in os.listdir(cartella_NSGA):
+    if filename.endswith(".txt"):
+        # Percorso completo del file
+        file_path = os.path.join(cartella_NSGA, filename)
+        
+        # Carica il contenuto del file .txt in un np.ndarray
+        try:
+            F_non_norm_nsga.append(np.loadtxt(file_path))
+            F_non_norm.append(np.loadtxt(file_path))
+            F_min = np.min(F_non_norm_nsga[number], axis=0)
+            F_max = np.max(F_non_norm_nsga[number], axis=0)
+            F_norm = (F_non_norm_nsga[number] - F_min) / (F_max - F_min)
+            F_norm[:,1] = F_norm[:,1] / 1.15
+            NSGA_min.append(find_closest_to_utopia(F_norm))
+            F_non_norm_nsga[number]=pareto_front(F_non_norm_nsga[number])
+            print(f"Caricato {filename} con successo!")
+        except Exception as e:
+            print(f"Errore nel caricare {filename}: {e}")
+    number+=1
+
+
+for number in range(0, 24):
+    plot_pareto_fronts_non_normalized(F_non_norm[number], F_non_norm_nsga[number], "With Contstraints", "Without Contstraints", (t+number))
+    plot_pareto_fronts(F_non_norm[number], F_non_norm_nsga[number], "With Contstraints", "Without Contstraints", (t+number), MVGA_min[number], NSGA_min[number])
+
+
+with freeze_time(datetime.now().replace(hour=t, minute=0, second=0, microsecond=0)) as frozen_datetime:
+    with open(grafici+"/dictionary.json", "r") as file:
+        dictionary = jj.load(file)
+
+    dictionary["polynomial_inverter"] = inverter_function()
+
+
+    # data=setup(inverter_function())
+    # for i in range(0,24):
+    #     dictionary[f"production{i}"] = dictionary[f"production{i}"] - 0.5*dictionary[f"production{i}"]
+    #     dictionary[f"difference_of_production{i}"] = dictionary[f"production{i}"] - dictionary[f"load{i}"]
+    
+    # dictionary["sum_algo"],dictionary["actual_percentage_algo"],dictionary["quantity_delta_battery_algo"],dictionary["co2_algo"], dictionary["ratio_algo"] = evaluate(data, dictionary,  0, battery_function())
+    
+
+    save_plots(dictionary, grafici, False)
+
+
+    with open(grafici_NSGA+"/dictionary.json", "r") as file:
+            dictionary_NSGA = jj.load(file)
+
+    dictionary_NSGA["polynomial_inverter"] = inverter_function()
+
+    save_plots(dictionary_NSGA, grafici_NSGA, False)
+
+    def plot_cost_comparison(dictionary1, dictionary2):
+        # Imposta l'ora corrente e crea la colonna del tempo
+        current_datetime = datetime.now() + timedelta(hours=1)
+        time_column = pd.date_range(start=current_datetime.replace(minute=0, second=0, microsecond=0), periods=len(dictionary1["sum_algo"]), freq='h')
+
+        # Creazione dei DataFrame con i dati
+        cost_dataframe_algo = pd.DataFrame({'datetime': time_column, 'value': dictionary1["sum_algo"]})
+        cost_dataframe_algo["value"] = cost_dataframe_algo["value"].multiply(-1)
+
+        cost_dataframe_algo2 = pd.DataFrame({'datetime': time_column, 'value': dictionary2["sum_algo"]})
+        cost_dataframe_algo2["value"] = cost_dataframe_algo2["value"].multiply(-1)
+
+        # Creazione della figura
+        plt.figure(figsize=(14, 8),facecolor='#edf1ef')
+
+        # Tracciare tutte le curve sullo stesso grafico
+        plt.plot(cost_dataframe_algo["datetime"], cost_dataframe_algo["value"], color=color_mixed, label="With Contstraints")
+        plt.plot(cost_dataframe_algo2["datetime"], cost_dataframe_algo2["value"], color=color_ga, label="Without Constraints")
+
+        # Impostazioni del grafico
+        plt.xlabel("")
+        plt.ylabel("€", fontsize=20)
+        plt.legend()  # Mostra la legenda per distinguere le curve
+        #plt.ylim(-2, 2)  # Puoi regolare o rimuovere questi limiti
+        plt.grid(True)  # Aggiungi una griglia per facilitare la lettura
+        plt.xticks(cost_dataframe_algo["datetime"], cost_dataframe_algo["datetime"].dt.strftime('%H:%M'), rotation=90, fontsize=20)
+        plt.yticks(fontsize=20)
+        
+        title ="Cost Comparison (Positive Earnings)"
+        plt.title(title, weight='bold', fontsize=20)
+        plt.savefig(base+"Cost Comparison")
+        plt.close()
+
+    def plot_comparison_degradation(dictionary1, dictionary2):
+        current_datetime = datetime.now() + timedelta(hours=1)
+
+        lista = dictionary_to_list(dictionary1, "battery_capacity")
+        lista=lista[1:]
+        time_column =pd.date_range(start=current_datetime.replace(minute=0, second=0, microsecond=0), periods=len(lista), freq='h') 
+
+        degradation_plant_dataframe = pd.DataFrame({'datetime': time_column, 'value': lista})
+
+        lista2 = dictionary_to_list(dictionary2, "battery_capacity")
+        lista2=lista2[1:]
+        time_column =pd.date_range(start=current_datetime.replace(minute=0, second=0, microsecond=0), periods=len(lista2), freq='h') 
+
+        degradation_plant_dataframe2 = pd.DataFrame({'datetime': time_column, 'value': lista2})
+    
+        plt.figure(figsize=(14, 8),facecolor='#edf1ef')
+
+        # Tracciare tutte le curve sullo stesso grafico
+        plt.plot(degradation_plant_dataframe["datetime"], degradation_plant_dataframe["value"], color=color_mixed, label="With Contraints")
+        plt.plot(degradation_plant_dataframe["datetime"], degradation_plant_dataframe2["value"], color=color_ga, label="Without Constraints")
+
+        # Impostazioni del grafico
+        plt.xlabel("")
+        plt.ylabel("Wh", fontsize=20)
+        plt.legend()  # Mostra la legenda per distinguere le curve
+        plt.grid(True)  # Aggiungi una griglia per facilitare la lettura
+        plt.xticks(degradation_plant_dataframe["datetime"], degradation_plant_dataframe["datetime"].dt.strftime('%H:%M'), rotation=90, fontsize=20)
+        plt.yticks(fontsize=20)
+        title ="Battery Degradation Comparison"
+        plt.title(title, weight='bold', fontsize=20)
+        plt.savefig(base+"Degradation Comparison")
+        plt.close()
+        # Mostra il grafico
+        plt.tight_layout()
+
+    def plot_comparison_battery(dictionary1, dictionary2):
+        current_datetime = datetime.now() + timedelta(hours=1)
+        time_column =pd.date_range(start=current_datetime.replace(minute=0, second=0, microsecond=0) - timedelta(hours=1), periods=len(dictionary["actual_percentage_algo"]), freq='h') 
+
+        actual_percentage_algo = dictionary1["actual_percentage_algo"]
+        
+        battery_wh = [float(dictionary1["soc_min"] * dictionary1[f"battery_capacity{i}"]) + (percentage * (float(dictionary1["soc_max"] * dictionary1[f"battery_capacity{i}"]) - float(dictionary1["soc_min"] * dictionary1[f"battery_capacity{i}"]))) for i,percentage in enumerate(actual_percentage_algo)]
+        battery_wh_dataframe = pd.DataFrame({'datetime': time_column, 'value': battery_wh})
+
+        actual_percentage_algo = dictionary2["actual_percentage_algo"]
+        
+        battery_wh = [float(dictionary2["soc_min"] * dictionary2[f"battery_capacity{i}"]) + (percentage * (float(dictionary2["soc_max"] * dictionary2[f"battery_capacity{i}"]) - float(dictionary2["soc_min"] * dictionary2[f"battery_capacity{i}"]))) for i,percentage in enumerate(actual_percentage_algo)]
+        battery_wh_dataframe2 = pd.DataFrame({'datetime': time_column, 'value': battery_wh})
+
+
+        plt.figure(figsize=(14, 8),facecolor='#edf1ef')
+
+        # Tracciare tutte le curve sullo stesso grafico
+        plt.plot(battery_wh_dataframe["datetime"], battery_wh_dataframe["value"], color=color_mixed, label="With Constraints")
+        plt.plot(battery_wh_dataframe["datetime"], battery_wh_dataframe2["value"], color=color_ga, label="Without Constraints")
+
+        # Impostazioni del grafico
+        plt.xlabel("")
+        plt.ylabel("Wh", fontsize=20)
+        plt.legend()  # Mostra la legenda per distinguere le curve
+        plt.grid(True)  # Aggiungi una griglia per facilitare la lettura
+        plt.xticks(battery_wh_dataframe["datetime"], battery_wh_dataframe["datetime"].dt.strftime('%H:%M'), rotation=90, fontsize=20)
+        plt.yticks(fontsize=20)
+        title ="Energy in Battery Comparison"
+        plt.title(title, weight='bold', fontsize=20)
+        plt.savefig(base+"Energy in Battery Comparison")
+        plt.close()
+        # Mostra il grafico
+        plt.tight_layout()
+
+
+
+    
+    plot_cost_comparison(dictionary, dictionary_NSGA)
+    plot_comparison_degradation(dictionary, dictionary_NSGA)
+    plot_comparison_battery(dictionary, dictionary_NSGA)

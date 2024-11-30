@@ -41,8 +41,8 @@ def setup(polynomial_inverter, filename='csv/socs.csv') -> dict:
     data["estimate"] = get_estimate_load_consumption(get_true_load_consumption(data))  # It gives an estimation of the load consumption
     
     data["polynomial_inverter"] = polynomial_inverter
-    data["expected_production"] = get_expected_power_production_from_pv_24_hours_from_now(data)
-    data["difference_of_production"] = difference_of_production(data)
+    #data["expected_production"] = get_expected_power_production_from_pv_24_hours_from_now(data)
+    # data["difference_of_production"] = difference_of_production(data)
     #data["production_not_rs"] = forecast_percentage_production_from_not_renewable_sources(api_key=data["api_key"])  
     
 
@@ -424,30 +424,58 @@ def plot_and_save_2d_pareto(solutions, objective_names, folder_name, filename_fu
     f1, f2 = solutions[:, 0], solutions[:, 1]
     nome_f1, nome_f2 = objective_names
 
+    sorted_data = np.sort(solutions, axis=0)
+    max_values = np.max(solutions, axis=0)
+    min_values = np.min(solutions, axis=0)
     # --- Grafico completo ---
-    plt.figure(figsize=(8, 6))
+    plt.figure(figsize=(14, 8))
     plt.scatter(f1, f2, c='blue', alpha=0.7)
     plt.xlabel(nome_f1)
     plt.ylabel(nome_f2)
+    print(max_values[1])
+    plt.xlim(min_values[0], max_values[0])
+    plt.ylim(min_values[1], max_values[1])
+    # plt.xlim([0, max_values[0]+0.5])
+    # plt.ylim([0, max_values[1]-1000])
     plt.title(f'Pareto Front: {nome_f1} vs {nome_f2}')
     plt.grid(True)
+    plt.axis('equal')
 
     # Salva il grafico completo
     plt.savefig(path_full)
     plt.close()
 
-    # --- Grafico zoomato attorno all'origine ---
-    plt.figure(figsize=(8, 6))
-    plt.scatter(f1, f2, c='red', alpha=0.7)
-    plt.xlim([0, 0.5])
-    plt.ylim([0, 0.5])
-    plt.xlabel(nome_f1)
-    plt.ylabel(nome_f2)
-    plt.title(f'Pareto Front (Zoom): {nome_f1} vs {nome_f2}')
-    plt.grid(True)
 
-    # Salva il grafico zoomato
-    plt.savefig(path_zoom)
-    plt.close()
-    
 
+    # fifth_minimum = sorted_data[5, :]
+    # # --- Grafico zoomato attorno all'origine ---
+    # plt.figure(figsize=(8, 6))
+    # plt.scatter(f1, f2, c='red', alpha=0.7)
+    # plt.xlim([0, fifth_minimum[0]])
+    # plt.ylim([0, fifth_minimum[1]])
+    # plt.xlabel(nome_f1)
+    # plt.ylabel(nome_f2)
+    # plt.title(f'Pareto Front (Zoom): {nome_f1} vs {nome_f2}')
+    # plt.grid(True)
+
+    # # Salva il grafico zoomato
+    # plt.savefig(path_zoom)
+    # plt.close()
+
+
+def pareto_front(solutions):
+    # Crea un array booleano per tenere traccia delle soluzioni non dominate
+    is_non_dominated = np.ones(solutions.shape[0], dtype=bool)
+
+    # Confronta ogni soluzione con le altre
+    for i, solution in enumerate(solutions):
+        if is_non_dominated[i]:
+            for j, other_solution in enumerate(solutions):
+                if i != j and is_non_dominated[j]:
+                    # Se la soluzione j domina la soluzione i, segna i come dominata
+                    if all(other_solution <= solution) and any(other_solution < solution):
+                        is_non_dominated[i] = False
+                        break  # Non è più necessario confrontare la soluzione i
+
+    # Restituisce solo le soluzioni non dominate
+    return solutions[is_non_dominated]
